@@ -1,0 +1,13 @@
+{
+  "ConnectionStrings": {
+    "MyCnn": "Server=(localdb)\\mssqllocaldb;Database=CloneEbayDB;Trusted_Connection=True;TrustServerCertificate=True"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.AspNetCore.SpaProxy": "Information",
+      "Microsoft.Hosting.Lifetime": "Information"
+    }
+  }
+}

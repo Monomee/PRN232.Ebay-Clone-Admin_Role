@@ -1,0 +1,46 @@
+# For more info on HTTP files go to https://aka.ms/vs/httpfile
+@Web_HostAddress = https://localhost:5001
+@AuthCookieName = .AspNetCore.Identity.Application
+@AuthCookieValue = <AuthCookieValue>   # Replace with cookie value returned after successful login
+
+# GET Identity Account Login
+# Get the @RequestVerificationToken necessary for logging in.
+GET {{Web_HostAddress}}/Identity/Account/Login
+
+###
+
+# POST Identity Account Login
+# After the GET above, submit login and capture the authentication cookie (set @AuthCookieValue).
+@Email=administrator@localhost
+@Password=Administrator1!
+@RequestVerificationToken=<RequestVerificationToken>
+POST {{Web_HostAddress}}/Identity/Account/Login
+Content-Type: application/x-www-form-urlencoded
+
+Input.Email={{Email}}&Input.Password={{Password}}&__RequestVerificationToken={{RequestVerificationToken}}
+
+###
+
+# Example API requests using the authentication cookie (replace @AuthCookieValue with actual cookie)
+# GET WeatherForecast
+GET {{Web_HostAddress}}/api/WeatherForecasts
+Cookie: {{AuthCookieName}}={{AuthCookieValue}}
+
+###
+
+# GET TodoLists
+GET {{Web_HostAddress}}/api/TodoLists
+Cookie: {{AuthCookieName}}={{AuthCookieValue}}
+
+###
+
+# POST TodoLists
+POST {{Web_HostAddress}}/api/TodoLists
+Cookie: {{AuthCookieName}}={{AuthCookieValue}}
+Content-Type: application/json
+
+{
+  "Title": "Backlog"
+}
+
+###

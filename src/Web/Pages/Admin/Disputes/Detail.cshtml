@@ -1,0 +1,375 @@
+@page "{id:int}"
+@model EbayClone.Web.Pages.Admin.Disputes.DetailModel
+@{
+    ViewData["Title"] = $"Dispute: {Model.Dispute?.CaseId}";
+    var d = Model.Dispute;
+}
+
+<div class="container-fluid py-4">
+    @if (d == null)
+    {
+        <div class="alert alert-danger">Dispute not found</div>
+        return;
+    }
+
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <a asp-page="./Index" class="btn btn-outline-secondary btn-sm mb-2">
+                <i class="fas fa-arrow-left"></i> Back to Docket
+            </a>
+            <h2 class="mb-0">Case: @d.CaseId</h2>
+            <div>
+                <span class="badge @d.PriorityBadgeClass">@d.Priority Priority</span>
+                <span class="badge @d.StatusBadgeClass">@d.Status</span>
+                <span class="badge @d.TypeBadgeClass">@d.Type</span>
+                @if (d.IsHighValue)
+                {
+                    <span class="badge badge-danger">?? High Value</span>
+                }
+            </div>
+        </div>
+        <div>
+            @if (d.Status == "Escalated" || d.Status == "UnderReview")
+            {
+                <form method="post" asp-page-handler="Assign" class="d-inline">
+                    <input type="hidden" name="disputeId" value="@d.Id" />
+                    <button type="submit" class="btn btn-primary">
+                        <i class="fas fa-hand-paper"></i> Assign to Me
+                    </button>
+                </form>
+                <a asp-page="./Resolve" asp-route-id="@d.Id" class="btn btn-success">
+                    <i class="fas fa-gavel"></i> Make Decision
+                </a>
+            }
+        </div>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="row">
+        <!-- LEFT: CASE OVERVIEW -->
+        <div class="col-md-4">
+            <div class="card mb-3">
+                <div class="card-header"><strong>?? Case Overview</strong></div>
+                <div class="card-body">
+                    <p><strong>?? Amount:</strong> $@(d.Amount?.ToString("N2"))</p>
+                    <p><strong>?? Type:</strong> @d.Type (@d.Subcategory)</p>
+                    <p><strong>?? Desired Outcome:</strong> @d.DesiredOutcome</p>
+                    <p><strong>? Deadline:</strong> 
+                        @if (d.Deadline.HasValue)
+                        {
+                            @d.Deadline.Value.ToString("MMM dd, yyyy HH:mm")
+                            @if (d.IsUrgent)
+                            {
+                                <span class="badge bg-danger">URGENT</span>
+                            }
+                        }
+                    </p>
+                    <p><strong>?? Time Remaining:</strong> 
+                        @if (d.TimeRemaining.HasValue)
+                        {
+                            var tr = d.TimeRemaining.Value;
+                            if (tr.TotalHours < 0)
+                            {
+                                <span class="text-danger">OVERDUE</span>
+                            }
+                            else
+                            {
+                                <span>@((int)tr.TotalHours)h @tr.Minutes min</span>
+                            }
+                        }
+                    </p>
+                </div>
+            </div>
+
+            <!-- ORDER INFO -->
+            @if (d.Order != null)
+            {
+                <div class="card mb-3">
+                    <div class="card-header"><strong>?? Order Information</strong></div>
+                    <div class="card-body">
+                        <p><strong>Order:</strong> @d.Order.OrderNumber</p>
+                        <p><strong>Product:</strong> @d.Order.ProductTitle</p>
+                        <p><strong>Price:</strong> $@(d.Order.TotalPrice?.ToString("N2"))</p>
+                        <p><strong>Order Date:</strong> @d.Order.OrderDate?.ToString("MMM dd, yyyy")</p>
+                        <p><strong>Completed:</strong> @d.Order.CompletedAt?.ToString("MMM dd, yyyy")</p>
+                        <p><strong>Status:</strong> <span class="badge badge-info">@d.Order.Status</span></p>
+                    </div>
+                </div>
+            }
+
+            <!-- PARTIES -->
+            <div class="card mb-3">
+                <div class="card-header"><strong>?? Parties</strong></div>
+                <div class="card-body">
+                    @if (d.Buyer != null)
+                    {
+                        <h6>?? Buyer</h6>
+                        <p class="mb-2"><strong>@d.Buyer.Username</strong></p>
+                        <p class="mb-1 small">?? @d.Buyer.Email</p>
+                        <p class="mb-1 small">?? Total Spent: $@d.Buyer.TotalSpent.ToString("N2")</p>
+                        <p class="mb-1 small">?? Orders: @d.Buyer.TotalOrders</p>
+                        <p class="mb-3 small">?? Disputes: @d.Buyer.DisputeCount</p>
+                    }
+
+                    @if (d.Seller != null)
+                    {
+                        <h6>?? Seller</h6>
+                        <p class="mb-2"><strong>@d.Seller.Username</strong></p>
+                        <p class="mb-1 small">?? @d.Seller.Email</p>
+                        @if (d.Seller.AverageRating.HasValue)
+                        {
+                            <p class="mb-1 small">? Rating: @d.Seller.AverageRating.Value.ToString("N1")/5.0 (@d.Seller.TotalReviews reviews)</p>
+                        }
+                        <p class="mb-1 small">?? Violations: @d.Seller.ViolationCount</p>
+                    }
+                </div>
+            </div>
+
+            <!-- TIMELINE -->
+            <div class="card">
+                <div class="card-header"><strong>?? Timeline</strong></div>
+                <div class="card-body">
+                    @foreach (var evt in d.Timeline)
+                    {
+                        <div class="mb-3">
+                            <div>
+                                <span class="badge @evt.BadgeClass">
+                                    <i class="@evt.Icon"></i> @evt.EventType
+                                </span>
+                            </div>
+                            <small class="text-muted">
+                                @evt.Timestamp.ToString("MMM dd, HH:mm") - @evt.Actor
+                            </small>
+                            <p class="mb-0 small">@evt.Description</p>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+
+        <!-- RIGHT: TABS -->
+        <div class="col-md-8">
+            <ul class="nav nav-tabs" id="disputeTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" data-bs-toggle="tab" data-bs-target="#buyer-tab">
+                        ?? Buyer's Claim
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#seller-tab">
+                        ?? Seller's Response
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#messages-tab">
+                        ?? Messages (@d.Messages.Count)
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" data-bs-toggle="tab" data-bs-target="#admin-tab">
+                        ?? Admin Notes
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content p-4 border border-top-0">
+                <!-- TAB 1: BUYER'S CLAIM -->
+                <div class="tab-pane fade show active" id="buyer-tab">
+                    <h4>Buyer's Complaint</h4>
+                    <p class="lead">@d.Description</p>
+                    
+                    <hr/>
+                    
+                    <h5>?? Buyer's Evidence (@d.BuyerEvidences.Count items)</h5>
+                    <div class="row">
+                        @foreach (var evidence in d.BuyerEvidences)
+                        {
+                            <div class="col-md-4 mb-3">
+                                @if (evidence.Type == "image")
+                                {
+                                    <img src="@evidence.Url" class="img-fluid rounded" alt="Evidence" />
+                                }
+                                else if (evidence.Type == "video")
+                                {
+                                    <video controls class="w-100 rounded">
+                                        <source src="@evidence.Url" type="video/mp4">
+                                    </video>
+                                }
+                                <small class="d-block mt-1">@evidence.Description</small>
+                            </div>
+                        }
+                        
+                        @if (!d.BuyerEvidences.Any())
+                        {
+                            <p class="text-muted">No evidence provided</p>
+                        }
+                    </div>
+                </div>
+
+                <!-- TAB 2: SELLER'S RESPONSE -->
+                <div class="tab-pane fade" id="seller-tab">
+                    <h4>Seller's Response</h4>
+                    
+                    @if (d.FirstResponseAt.HasValue)
+                    {
+                        <p class="text-muted">Response time: @((d.FirstResponseAt.Value - d.CreatedAt).TotalHours.ToString("F1")) hours</p>
+                    }
+                    else
+                    {
+                        <div class="alert alert-warning">? Awaiting seller response</div>
+                    }
+                    
+                    <h5>?? Seller's Evidence (@d.SellerEvidences.Count items)</h5>
+                    <div class="row">
+                        @foreach (var evidence in d.SellerEvidences)
+                        {
+                            <div class="col-md-4 mb-3">
+                                @if (evidence.Type == "image")
+                                {
+                                    <img src="@evidence.Url" class="img-fluid rounded" alt="Evidence" />
+                                }
+                                <small class="d-block mt-1">@evidence.Description</small>
+                            </div>
+                        }
+                        
+                        @if (!d.SellerEvidences.Any())
+                        {
+                            <p class="text-muted">No evidence provided yet</p>
+                        }
+                    </div>
+                    
+                    @if (d.OfferHistory.Any())
+                    {
+                        <hr/>
+                        <h5>?? Negotiation History</h5>
+                        @foreach (var offer in d.OfferHistory)
+                        {
+                            <div class="card mb-2">
+                                <div class="card-body">
+                                    <p><strong>@offer.OfferedBy offered $@offer.Amount.ToString("N2")</strong> (@offer.Percentage%)</p>
+                                    <p class="mb-0 small text-muted">Reason: @offer.Reason</p>
+                                    <p class="mb-0">
+                                        <span class="badge @(offer.Status == "Accepted" ? "badge-success" : "badge-danger")">
+                                            @offer.Status
+                                        </span>
+                                    </p>
+                                </div>
+                            </div>
+                        }
+                    }
+                </div>
+
+                <!-- TAB 3: MESSAGES -->
+                <div class="tab-pane fade" id="messages-tab">
+                    <h4>?? Communication History</h4>
+                    <div class="chat-container">
+                        @foreach (var msg in d.Messages.Where(m => !m.IsInternal))
+                        {
+                            var alignClass = msg.SenderType == "Buyer" ? "text-end" : "text-start";
+                            var bgClass = msg.SenderType switch {
+                                "Buyer" => "bg-primary",
+                                "Seller" => "bg-success",
+                                "Admin" => "bg-warning",
+                                _ => "bg-secondary"
+                            };
+                            
+                            <div class="mb-3 @alignClass">
+                                <div class="d-inline-block text-start" style="max-width: 70%;">
+                                    <div class="badge @bgClass mb-1">
+                                        @msg.SenderType: @msg.SenderUsername
+                                    </div>
+                                    <div class="card">
+                                        <div class="card-body">
+                                            <p class="mb-0">@msg.Content</p>
+                                            
+                                            @if (msg.OfferAmount.HasValue)
+                                            {
+                                                <div class="alert alert-info mt-2 mb-0">
+                                                    ?? Offer: $@msg.OfferAmount.Value.ToString("N2")
+                                                    @if (!string.IsNullOrEmpty(msg.OfferReason))
+                                                    {
+                                                        <br/><small>@msg.OfferReason</small>
+                                                    }
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                    <small class="text-muted">@msg.CreatedAt.ToString("MMM dd, HH:mm")</small>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- TAB 4: ADMIN NOTES -->
+                <div class="tab-pane fade" id="admin-tab">
+                    <h4>?? Admin Analysis</h4>
+                    
+                    @if (!string.IsNullOrEmpty(d.AdminNotes))
+                    {
+                        <div class="alert alert-info">
+                            <strong>Previous Decision Notes:</strong>
+                            <p class="mb-0">@d.AdminNotes</p>
+                        </div>
+                    }
+                    
+                    <div class="card">
+                        <div class="card-body">
+                            <h6>?? Key Metrics:</h6>
+                            <ul>
+                                <li>View Count: @d.ViewCount times</li>
+                                <li>Last Viewed: @(d.LastViewedAt?.ToString("MMM dd, HH:mm") ?? "Never")</li>
+                                <li>Negotiation Rounds: @d.NegotiationRounds</li>
+                                <li>Time to First Response: @((d.FirstResponseAt.HasValue ? (d.FirstResponseAt.Value - d.CreatedAt).TotalHours : 0).ToString("F1"))h</li>
+                            </ul>
+                            
+                            <h6>?? Risk Factors:</h6>
+                            <ul>
+                                @if (d.IsHighValue)
+                                {
+                                    <li class="text-danger">High value transaction (>$1000)</li>
+                                }
+                                @if (d.IsVeRO)
+                                {
+                                    <li class="text-danger">VeRO Program (Brand Owner Complaint)</li>
+                                }
+                                @if (d.Seller?.ViolationCount > 0)
+                                {
+                                    <li class="text-warning">Seller has @d.Seller.ViolationCount previous violations</li>
+                                }
+                                @if (d.Buyer?.DisputeCount > 2)
+                                {
+                                    <li class="text-warning">Buyer has @d.Buyer.DisputeCount disputes</li>
+                                }
+                            </ul>
+                            
+                            @if (d.TrackingNumber != null)
+                            {
+                                <h6>?? Shipping Info:</h6>
+                                <p><strong>Tracking:</strong> @d.TrackingNumber</p>
+                                <p><strong>Delivery Status:</strong> @d.DeliveryStatus</p>
+                            }
+                        </div>
+                    </div>
+                    
+                    @if (d.Status == "Escalated" || d.Status == "UnderReview")
+                    {
+                        <div class="mt-3">
+                            <a asp-page="./Resolve" asp-route-id="@d.Id" class="btn btn-success btn-lg w-100">
+                                <i class="fas fa-gavel"></i> Proceed to Resolution
+                            </a>
+                        </div>
+                    }
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .chat-container {
+        max-height: 600px;
+        overflow-y: auto;
+    }
+</style>

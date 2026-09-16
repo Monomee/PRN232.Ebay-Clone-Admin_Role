@@ -1,0 +1,45 @@
+# ============================================================
+# CI — Continuous Integration
+# Chạy khi: push hoặc mở PR vào nhánh main
+# Mục đích: đảm bảo code compile được và tests pass
+# ============================================================
+name: CI
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  build-and-test:
+    name: Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Cài .NET 10
+      - name: Setup .NET 10
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      # 3. Restore NuGet packages
+      - name: Restore dependencies
+        run: dotnet restore src/Web/Web.csproj
+
+      # 4. Build toàn bộ solution
+      - name: Build
+        run: dotnet build src/Web/Web.csproj --no-restore -c Release /p:SkipNSwag=True
+
+      # 5. Chạy Unit Tests
+      - name: Run Unit Tests
+        run: dotnet test tests/Application.UnitTests/Application.UnitTests.csproj --no-build -c Release --verbosity normal
+
+      # 6. (Optional) Chạy Domain Tests nếu có
+      - name: Run Domain Unit Tests
+        run: dotnet test tests/Domain.UnitTests/Domain.UnitTests.csproj --no-build -c Release --verbosity normal
+        continue-on-error: true  # không fail workflow nếu chưa có test case

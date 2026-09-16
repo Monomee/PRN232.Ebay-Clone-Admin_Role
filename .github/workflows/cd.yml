@@ -1,0 +1,71 @@
+# ============================================================
+# CD — Continuous Delivery
+# Chạy khi: push (merge) vào nhánh main VÀ CI pass
+# Mục đích: build Docker image và push lên GitHub Container Registry
+# Image: ghcr.io/pctra266/ebay_clone_adminrole:latest
+# ============================================================
+name: CD
+
+on:
+  push:
+    branches: [ "main" ]
+
+# Quyền để push lên GitHub Container Registry
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  docker-build-push:
+    name: Build & Push Docker Image
+    runs-on: ubuntu-latest
+
+    # Chỉ chạy CD sau khi CI pass
+    needs: []   # CI và CD chạy trong workflow riêng
+
+    steps:
+      # 1. Checkout code
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. Setup Docker Buildx (hỗ trợ multi-platform và cache)
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # 3. Đăng nhập vào GitHub Container Registry
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}  # Token tự động, không cần tạo thủ công
+
+      # 4. Tạo metadata (tags, labels) cho image
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/pctra266/ebay_clone_adminrole
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,prefix=sha-,format=short
+
+      # 5. Build và Push image
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          # Cache layers để build nhanh hơn ở lần sau
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      # 6. In ra image digest để dễ theo dõi
+      - name: Print image info
+        run: |
+          echo "✅ Docker image pushed successfully!"
+          echo "📦 Image: ghcr.io/pctra266/ebay_clone_adminrole:latest"
+          echo "🔖 Tags: ${{ steps.meta.outputs.tags }}"

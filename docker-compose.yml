@@ -1,0 +1,83 @@
+services:
+  # ============================================================
+  # SQL Server 2022
+  # ============================================================
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ebay_sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      # Đây là mật khẩu "mồi" để qua mặt Docker lúc khởi tạo
+      MSSQL_SA_PASSWORD: "InternalStrongPassword123!" 
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    # Kịch bản "Vượt rào": Chạy server -> Đợi -> Đổi về mật khẩu cũ của bạn
+    command: >
+      bash -c "
+      /opt/mssql/bin/sqlservr & 
+      sleep 25; 
+      /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P 'InternalStrongPassword123!' -C -Q \"ALTER LOGIN sa WITH PASSWORD = '${SA_PASSWORD}', CHECK_POLICY = OFF;\" ; 
+      wait"
+    healthcheck:
+      # Healthcheck vẫn dùng ${SA_PASSWORD} vì sau 25s nó sẽ đổi về cái này
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '${SA_PASSWORD}' -Q 'SELECT 1' -C -b -o /dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  # ============================================================
+  # Redis — SignalR Backplane (load balancing real-time)
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ebay_redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ============================================================
+  # ASP.NET Core API + React SPA
+  # ============================================================
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ebay_api
+    ports:
+      - "5000:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
+      # DB connection — 'db' là tên service trên, SQL Server listen port 1433
+      ConnectionStrings__MyCnn: "Server=db,1433;Database=CloneEbayDB;User Id=sa;Password=${SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
+      # JWT
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "EbayClone"
+      Jwt__Audience: "EbayCloneUsers"
+      # Email
+      EmailSettings__SenderEmail: "${EMAIL_SENDER}"
+      EmailSettings__SenderPassword: "${EMAIL_PASSWORD}"
+      EmailSettings__SmtpServer: "smtp.gmail.com"
+      EmailSettings__Port: "587"
+      # Redis backplane cho SignalR (load balancing)
+      Redis__ConnectionString: "redis:6379"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+    name: ebay_sqlserver_data

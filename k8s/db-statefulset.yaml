@@ -1,0 +1,121 @@
+# ============================================================
+# StatefulSet — SQL Server 2022 (Đã sửa đổi để dùng mật khẩu 123456)
+# ============================================================
+
+# 1. Service Headless (Giữ nguyên cho StatefulSet)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ebay-db-headless
+  namespace: ebay-clone
+spec:
+  clusterIP: None
+  selector:
+    app: ebay-db
+  ports:
+    - port: 1433
+      targetPort: 1433
+
+---
+# 2. Service ClusterIP (Cho API kết nối ổn định hơn)
+apiVersion: v1
+kind: Service
+metadata:
+  name: ebay-db
+  namespace: ebay-clone
+spec:
+  type: ClusterIP
+  selector:
+    app: ebay-db
+  ports:
+    - port: 1433
+      targetPort: 1433
+
+---
+# 3. StatefulSet — SQL Server
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ebay-db
+  namespace: ebay-clone
+spec:
+  serviceName: ebay-db-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ebay-db
+  template:
+    metadata:
+      labels:
+        app: ebay-db
+    spec:
+      containers:
+        - name: sqlserver
+          image: mcr.microsoft.com/mssql/server:2022-latest
+          ports:
+            - containerPort: 1433
+          env:
+            - name: ACCEPT_EULA
+              value: "Y"
+            # 1. MẬT KHẨU MỒI: Dùng để vượt qua vòng kiểm tra của K8s lúc khởi động
+            - name: MSSQL_SA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ebay-secrets
+                  key: SA_PASSWORD_INITIAL 
+            # 2. MẬT KHẨU THẬT: Giá trị '123456' từ Secret của bạn
+            - name: REAL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: ebay-secrets
+                  key: SA_PASSWORD_ACTUAL
+          
+          # 3. KỊCH BẢN PHÁ KHÓA: Chạy server -> Đợi -> Ép nhận mật khẩu cũ
+          command: ["/bin/bash", "-c"]
+          args:
+            - |
+              # Chạy SQL Server ở chế độ nền
+              /opt/mssql/bin/sqlservr &
+              
+              # Đợi server khởi động xong (K8s cần khoảng 30s)
+              echo "Waiting for SQL Server to start..."
+              sleep 30
+              
+              # Dùng mật khẩu mồi để đăng nhập, đổi về 123456 và TẮT kiểm tra chính sách bảo mật
+              echo "Overriding password policy and setting password to 123456..."
+              /opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P "$MSSQL_SA_PASSWORD" -C -Q "ALTER LOGIN sa WITH PASSWORD = '$REAL_PASSWORD', CHECK_POLICY = OFF;"
+              
+              echo "Success! SQL Server is now running with password: $REAL_PASSWORD"
+              # Giữ container tiếp tục chạy
+              wait
+          
+          # 4. READINESS PROBE: Phải dùng mật khẩu THẬT để kiểm tra sức khỏe
+          readinessProbe:
+            exec:
+              command:
+                - /bin/bash
+                - -c
+                - "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P \"$REAL_PASSWORD\" -Q 'SELECT 1' -C -b"
+            initialDelaySeconds: 40   # Chờ script ở trên chạy xong (30s + 10s trừ hao)
+            periodSeconds: 10
+            failureThreshold: 10
+
+          resources:
+            requests:
+              memory: "1Gi"
+              cpu: "500m"
+            limits:
+              memory: "2Gi"
+              cpu: "1"
+          volumeMounts:
+            - name: sqlserver-data
+              mountPath: /var/opt/mssql
+
+  volumeClaimTemplates:
+    - metadata:
+        name: sqlserver-data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        resources:
+          requests:
+            storage: 5Gi

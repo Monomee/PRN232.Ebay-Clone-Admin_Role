@@ -1,0 +1,446 @@
+/* ============================================================
+   PayoutEnginePage.css — eBay Brand Admin Aesthetic
+   ============================================================ */
+
+.pe-container {
+    padding: 1.5rem;
+    animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+/* ── Header ────────────────────────────────────────────────────────────────── */
+.pe-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    padding: 0 0.5rem;
+}
+
+.pe-header-title {
+    font-size: 1.75rem;
+    font-weight: 800;
+    color: var(--ebay-black);
+    letter-spacing: -0.5px;
+    margin: 0;
+}
+
+.pe-header-subtitle {
+    font-size: 0.875rem;
+    color: var(--ebay-gray);
+    margin-top: 0.25rem;
+}
+
+/* ── Components ────────────────────────────────────────────────────────────── */
+.pe-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+}
+
+.pe-card-title {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--ebay-black);
+    margin: 0;
+}
+
+/* ── Run Result Banner ──────────────────────────────────────────────────────── */
+.pe-run-result {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    border: 1px solid var(--ebay-blue);
+    background: rgba(0, 100, 210, 0.03);
+}
+
+.pe-run-result__grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+}
+
+.pe-run-stat {
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.pe-run-num {
+    font-size: 1.5rem;
+    font-weight: 800;
+    display: block;
+}
+
+.pe-run-label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--ebay-gray);
+    text-transform: uppercase;
+    margin-top: 0.25rem;
+}
+
+.pe-run-stat--success .pe-run-num {
+    color: var(--ebay-success);
+}
+
+.pe-run-stat--failed .pe-run-num {
+    color: var(--ebay-danger);
+}
+
+.pe-run-stat--hold .pe-run-num {
+    color: var(--ebay-warning);
+}
+
+.pe-run-stat--skip .pe-run-num {
+    color: var(--ebay-gray);
+}
+
+.pe-run-stat--disburse .pe-run-num {
+    color: var(--ebay-blue);
+}
+
+/* ── Table Styling ──────────────────────────────────────────────────────────── */
+.pe-table-container {
+    margin-top: 1rem;
+}
+
+.pe-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.pe-table th {
+    background: #f1f3f5 !important; /* Visible light gray background */
+    color: #212529 !important; /* Fully dark text */
+    font-size: 0.75rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    padding: 1rem;
+    border-bottom: 2px solid #dee2e6;
+}
+
+.header-icon {
+    color: #212529 !important;
+    opacity: 0.8 !important;
+    margin-right: 0.4rem;
+}
+
+.pe-table td {
+    padding: 1.25rem 1rem;
+    border-bottom: 1px solid var(--ebay-border);
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+
+.pe-table tr:last-child td {
+    border-bottom: none;
+}
+
+.pe-table tr:hover td {
+    background: rgba(0, 0, 0, 0.01);
+}
+
+/* ── Custom Utilities ───────────────────────────────────────────────────────── */
+.pe-badge {
+    padding: 0.4rem 0.8rem;
+    border-radius: 2rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.badge-success {
+    background: #e6f4ea;
+    color: #1e7d32;
+}
+
+.badge-failed {
+    background: #fce8e6;
+    color: #d93025;
+}
+
+.badge-hold {
+    background: #fef7e0;
+    color: #b06000;
+}
+
+.badge-processing {
+    background: #e8f0fe;
+    color: #1967d2;
+}
+
+.badge-released {
+    background: #f1f3f4;
+    color: #5f6368;
+}
+
+.pe-input-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1.25rem;
+}
+
+.pe-input-label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--ebay-gray);
+}
+
+.pe-form-control {
+    width: 100%;
+    border: 1.5px solid var(--ebay-border);
+    border-radius: 0.75rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.pe-form-control-sm {
+    padding: 0.4rem 0.75rem;
+    font-size: 0.85rem;
+    border-radius: 0.5rem;
+}
+
+.pe-form-control:focus {
+    border-color: var(--ebay-blue);
+    box-shadow: 0 0 0 3px rgba(0, 100, 210, 0.1);
+    outline: none;
+}
+
+.pe-spinner {
+    width: 1.2rem;
+    height: 1.2rem;
+    border: 2px solid rgba(0, 100, 210, 0.2);
+    border-top-color: var(--ebay-blue);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+    display: inline-block;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Override chart colors for light mode */
+.recharts-cartesian-grid-horizontal line,
+.recharts-cartesian-grid-vertical line {
+    stroke: var(--ebay-border);
+    stroke-opacity: 0.5;
+}
+
+.recharts-text {
+    fill: var(--ebay-gray);
+    font-size: 12px;
+}
+
+/* Tăng hiệu ứng mượt mà cho Guide */
+.guide-container {
+    padding: 1rem;
+    background: rgba(248, 249, 250, 0.5);
+    /* Nền xám nhạt trong suốt */
+    border-radius: 1.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.level-card {
+    transition: all 0.3s ease;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05) !important;
+}
+
+.level-card:hover {
+    transform: translateY(-5px);
+    shadow: 0 10px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+.icon-box {
+    width: 42px;
+    height: 42px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.border-dashed {
+    border-style: dashed !important;
+    border-width: 2px !important;
+    border-color: #dee2e6 !important;
+}
+
+/* Hiệu ứng pulse cho các chỉ số quan trọng */
+.text-success.fw-bold {
+    text-shadow: 0 0 10px rgba(40, 167, 69, 0.1);
+}
+
+/* Animation mượt mà khi hiện ra */
+.animate-fade-in-up {
+    animation: fadeInUp 0.4s ease-out;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Tạo hiệu ứng input không viền hiện đại */
+.input-group-flat {
+    background-color: #f8f9fa;
+    transition: all 0.2s ease;
+    border: 1px solid transparent;
+}
+
+.input-group-flat:focus-within {
+    background-color: #fff;
+    border-color: rgba(13, 110, 253, 0.25);
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.1) !important;
+}
+
+/* Hiệu ứng lòng chảo cho cụm filter */
+.shadow-inner {
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.05) !important;
+    border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+/* Loại bỏ outline thô của select */
+.form-select:focus {
+    box-shadow: none !important;
+    border-color: transparent;
+}
+
+/* Custom cho scrollbar của table nếu cần */
+.table-responsive {
+    scrollbar-width: thin;
+    scrollbar-color: #dee2e6 transparent;
+}
+
+/* Làm cho các hàng của table có hiệu ứng hover nhẹ nhàng hơn */
+.pe-table tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+.pe-table tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.02) !important;
+}
+
+/* ── Interactivity Affordance ──────────────────────────────────────────────── */
+.pe-badge-interactive {
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.pe-badge-interactive:hover {
+    filter: brightness(0.95);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.pe-pending-amount {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 2px 6px;
+    border-radius: 4px;
+    transition: all 0.2s ease;
+    text-decoration: none !important;
+}
+
+.pe-pending-amount:hover {
+    background-color: rgba(255, 193, 7, 0.1);
+    transform: translateX(-2px);
+}
+
+.pe-pending-amount i {
+    opacity: 0;
+    transition: opacity 0.2s ease;
+    font-size: 0.8em;
+}
+
+.pe-pending-amount:hover i {
+    opacity: 1;
+}
+
+/* ── Show, Don't Tell Utilities ───────────────────────────────────────────── */
+.status-indicator {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 600;
+}
+
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+}
+
+.status-dot--active {
+    background-color: var(--ebay-success);
+    box-shadow: 0 0 8px rgba(40, 167, 69, 0.4);
+}
+
+.status-dot--suspended {
+    background-color: var(--ebay-warning);
+}
+
+.status-dot--banned {
+    background-color: var(--ebay-danger);
+}
+
+.status-dot--pending {
+    background-color: var(--ebay-blue);
+}
+
+.level-icon {
+    font-size: 1.1rem;
+    margin-right: 0.4rem;
+}
+
+.header-icon {
+    color: var(--ebay-gray);
+    opacity: 0.6;
+    margin-right: 0.4rem;
+}
+
+.balance-compact {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+}
+
+.balance-label {
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: var(--ebay-gray);
+    margin-bottom: -2px;
+}
+
+/* Hide text on small screens and show only icons */
+@media (max-width: 992px) {
+    .hide-text-mobile {
+        display: none;
+    }
+}

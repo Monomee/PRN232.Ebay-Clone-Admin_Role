@@ -1,0 +1,58 @@
+# ============================================================
+# Redis Deployment + Service cho Kubernetes
+# Dùng làm SignalR backplane khi chạy nhiều pod API
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ebay-redis
+  namespace: ebay-clone
+  labels:
+    app: ebay-redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ebay-redis
+  template:
+    metadata:
+      labels:
+        app: ebay-redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          ports:
+            - containerPort: 6379
+          resources:
+            requests:
+              memory: "64Mi"
+              cpu: "50m"
+            limits:
+              memory: "128Mi"
+              cpu: "100m"
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis-service
+  namespace: ebay-clone
+  labels:
+    app: ebay-redis
+spec:
+  selector:
+    app: ebay-redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+  type: ClusterIP

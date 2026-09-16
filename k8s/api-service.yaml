@@ -1,0 +1,24 @@
+# ============================================================
+# Service — Expose API ra ngoài cluster
+#
+# Type NodePort: truy cập từ localhost khi dùng Docker Desktop K8s
+# Port 30500 → http://localhost:30500
+#
+# Production: đổi type thành LoadBalancer (cloud) hoặc dùng Ingress
+# ============================================================
+apiVersion: v1
+kind: Service
+metadata:
+  name: ebay-api-service
+  namespace: ebay-clone
+  labels:
+    app: ebay-api
+spec:
+  type: ClusterIP
+  selector:
+    app: ebay-api   # route traffic đến tất cả Pods có label này
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80          # port bên trong cluster
+      targetPort: 8080  # port của container

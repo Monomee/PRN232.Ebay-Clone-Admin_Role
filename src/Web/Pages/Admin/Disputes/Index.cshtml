@@ -1,0 +1,245 @@
+@page
+@model EbayClone.Web.Pages.Admin.Disputes.IndexModel
+@{
+    ViewData["Title"] = "Dispute Resolution Center";
+}
+
+<div class="container-fluid py-4">
+    <!-- HEADER -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="mb-0">??? Dispute Resolution Center</h2>
+            <p class="text-muted mb-0">eBay-style Dispute Management</p>
+        </div>
+        <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" onclick="location.reload()">
+                <i class="fas fa-sync"></i> Refresh
+            </button>
+            <a asp-page="./Statistics" class="btn btn-outline-info">
+                <i class="fas fa-chart-bar"></i> Statistics
+            </a>
+        </div>
+    </div>
+
+    <!-- QUICK STATS -->
+    @if (Model.Statistics != null)
+    {
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                    <div class="card-body">
+                        <h3 class="mb-0">@Model.Statistics.TotalEscalated</h3>
+                        <small>Escalated Cases</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                    <div class="card-body">
+                        <h3 class="mb-0">@Model.Statistics.UrgentCases</h3>
+                        <small>Urgent (&lt; 24h)</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-info text-white">
+                    <div class="card-body">
+                        <h3 class="mb-0">@Model.Statistics.TotalOpen</h3>
+                        <small>Open Cases</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card bg-secondary text-white">
+                    <div class="card-body">
+                        <h3 class="mb-0">@Model.Statistics.AverageResolutionTimeHours.ToString("F1")h</h3>
+                        <small>Avg Resolution Time</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+
+    <!-- FILTERS -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Statuses</option>
+                        <option value="Escalated" selected="@(Model.Status == "Escalated")">?? Escalated</option>
+                        <option value="UnderReview" selected="@(Model.Status == "UnderReview")">? Under Review</option>
+                        <option value="AwaitingSellerResponse" selected="@(Model.Status == "AwaitingSellerResponse")">? Awaiting Seller</option>
+                        <option value="Resolved" selected="@(Model.Status == "Resolved")">? Resolved</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label">Priority</label>
+                    <select name="priority" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Priorities</option>
+                        <option value="Critical" selected="@(Model.Priority == "Critical")">?? Critical</option>
+                        <option value="High" selected="@(Model.Priority == "High")">?? High</option>
+                        <option value="Medium" selected="@(Model.Priority == "Medium")">?? Medium</option>
+                        <option value="Low" selected="@(Model.Priority == "Low")">? Low</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-2">
+                    <label class="form-label">Type</label>
+                    <select name="type" class="form-select" onchange="this.form.submit()">
+                        <option value="">All Types</option>
+                        <option value="INR" selected="@(Model.Type == "INR")">INR</option>
+                        <option value="INAD" selected="@(Model.Type == "INAD")">INAD</option>
+                        <option value="Damaged" selected="@(Model.Type == "Damaged")">Damaged</option>
+                        <option value="Counterfeit" selected="@(Model.Type == "Counterfeit")">Counterfeit</option>
+                    </select>
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Search</label>
+                    <input type="text" name="search" value="@Model.SearchTerm" class="form-control" placeholder="Case ID, description...">
+                </div>
+                
+                <div class="col-md-2 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary w-100">
+                        <i class="fas fa-search"></i> Filter
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- DISPUTES LIST -->
+    <div class="card">
+        <div class="card-header">
+            <strong>Showing @Model.Disputes.Items.Count of @Model.Disputes.TotalCount cases</strong>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th style="width: 5%">Priority</th>
+                        <th style="width: 15%">Case ID / Product</th>
+                        <th style="width: 10%">Type</th>
+                        <th style="width: 10%">Amount</th>
+                        <th style="width: 15%">Parties</th>
+                        <th style="width: 10%">Deadline</th>
+                        <th style="width: 10%">Status</th>
+                        <th style="width: 10%">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var dispute in Model.Disputes.Items)
+                    {
+                        var urgentClass = dispute.IsUrgent ? "table-danger" : "";
+                        var priorityIcon = dispute.Priority switch {
+                            "Critical" => "??",
+                            "High" => "??",
+                            "Medium" => "??",
+                            _ => "?"
+                        };
+                        
+                        <tr class="@urgentClass">
+                            <td class="text-center">
+                                <h3 class="mb-0">@priorityIcon</h3>
+                                <small class="text-muted">@dispute.Priority</small>
+                            </td>
+                            <td>
+                                <strong>@dispute.CaseId</strong><br/>
+                                <small class="text-muted">@(dispute.ProductTitle?.Length > 40 ? dispute.ProductTitle.Substring(0, 40) + "..." : dispute.ProductTitle)</small><br/>
+                                <small class="text-muted">Order: @dispute.OrderNumber</small>
+                            </td>
+                            <td>
+                                <span class="badge @dispute.TypeBadgeClass">@dispute.Type</span><br/>
+                                <small class="text-muted">@dispute.Subcategory</small>
+                            </td>
+                            <td>
+                                <strong>${dispute.Amount:N2}</strong>
+                            </td>
+                            <td>
+                                <div><i class="fas fa-user text-primary"></i> @dispute.BuyerUsername</div>
+                                <div><i class="fas fa-store text-success"></i> @dispute.SellerUsername</div>
+                            </td>
+                            <td>
+                                @if (dispute.Deadline.HasValue)
+                                {
+                                    var timeRemaining = dispute.TimeRemaining;
+                                    if (timeRemaining.HasValue)
+                                    {
+                                        if (timeRemaining.Value.TotalHours < 0)
+                                        {
+                                            <span class="badge bg-danger">?? OVERDUE</span>
+                                        }
+                                        else if (timeRemaining.Value.TotalHours <= 24)
+                                        {
+                                            <span class="badge bg-warning">? @((int)timeRemaining.Value.TotalHours)h left</span>
+                                        }
+                                        else
+                                        {
+                                            <span class="badge bg-secondary">@((int)timeRemaining.Value.TotalHours)h</span>
+                                        }
+                                    }
+                                }
+                            </td>
+                            <td>
+                                <span class="badge @dispute.StatusBadgeClass">@dispute.Status</span>
+                                @if (dispute.AssignedTo.HasValue)
+                                {
+                                    <br/><small class="text-muted">Assigned</small>
+                                }
+                            </td>
+                            <td>
+                                <a asp-page="./Detail" asp-route-id="@dispute.Id" class="btn btn-sm btn-primary">
+                                    <i class="fas fa-eye"></i> View
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                    
+                    @if (!Model.Disputes.Items.Any())
+                    {
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <i class="fas fa-inbox fa-3x text-muted mb-3"></i>
+                                <p class="text-muted">No disputes found</p>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- PAGINATION -->
+        @if (Model.Disputes.TotalPages > 1)
+        {
+            <div class="card-footer">
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        <li class="page-item @(Model.Disputes.HasPreviousPage ? "" : "disabled")">
+                            <a class="page-link" asp-route-pageNumber="@(Model.Disputes.PageNumber - 1)">Previous</a>
+                        </li>
+                        
+                        @for (int i = 1; i <= Model.Disputes.TotalPages; i++)
+                        {
+                            <li class="page-item @(i == Model.Disputes.PageNumber ? "active" : "")">
+                                <a class="page-link" asp-route-pageNumber="@i">@i</a>
+                            </li>
+                        }
+                        
+                        <li class="page-item @(Model.Disputes.HasNextPage ? "" : "disabled")">
+                            <a class="page-link" asp-route-pageNumber="@(Model.Disputes.PageNumber + 1)">Next</a>
+                        </li>
+                    </ul>
+                </nav>
+            </div>
+        }
+    </div>
+</div>
+
+<style>
+    .gap-2 {
+        gap: 0.5rem;
+    }
+</style>

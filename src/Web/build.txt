@@ -1,0 +1,16 @@
+﻿  Determining projects to restore...
+D:\.net\Ebay-Application\ebay_clone_adminRole\src\Infrastructure\Infrastructure.csproj : error NU1506: Warning As Error: Duplicate 'PackageVersion' items found. Remove the duplicate items or use the Update functionality to ensure a consistent restore behavior. The duplicate 'PackageVersion' items are: System.IdentityModel.Tokens.Jwt 8.0.1, System.IdentityModel.Tokens.Jwt 8.16.0.
+D:\.net\Ebay-Application\ebay_clone_adminRole\src\Application\Application.csproj : error NU1506: Warning As Error: Duplicate 'PackageVersion' items found. Remove the duplicate items or use the Update functionality to ensure a consistent restore behavior. The duplicate 'PackageVersion' items are: System.IdentityModel.Tokens.Jwt 8.0.1, System.IdentityModel.Tokens.Jwt 8.16.0.
+D:\.net\Ebay-Application\ebay_clone_adminRole\src\Domain\Domain.csproj : error NU1506: Warning As Error: Duplicate 'PackageVersion' items found. Remove the duplicate items or use the Update functionality to ensure a consistent restore behavior. The duplicate 'PackageVersion' items are: System.IdentityModel.Tokens.Jwt 8.0.1, System.IdentityModel.Tokens.Jwt 8.16.0.
+D:\.net\Ebay-Application\ebay_clone_adminRole\src\Web\Web.csproj : error NU1506: Warning As Error: Duplicate 'PackageVersion' items found. Remove the duplicate items or use the Update functionality to ensure a consistent restore behavior. The duplicate 'PackageVersion' items are: System.IdentityModel.Tokens.Jwt 8.0.1, System.IdentityModel.Tokens.Jwt 8.16.0.
+
+Build FAILED.
+
+D:\.net\Ebay-Application\ebay_clone_adminRole\src\Infrastructure\Infrastructure.csproj : error NU1506: Warning As Error: Duplicate 'PackageVersion' items found. Remove the duplicate items or use the Update functionality to ensure a consistent restore behavior. The duplicate 'PackageVersion' items are: System.IdentityModel.Tokens.Jwt 8.0.1, System.IdentityModel.Tokens.Jwt 8.16.0.
+D:\.net\Ebay-Application\ebay_clone_adminRole\src\Application\Application.csproj : error NU1506: Warning As Error: Duplicate 'PackageVersion' items found. Remove the duplicate items or use the Update functionality to ensure a consistent restore behavior. The duplicate 'PackageVersion' items are: System.IdentityModel.Tokens.Jwt 8.0.1, System.IdentityModel.Tokens.Jwt 8.16.0.
+D:\.net\Ebay-Application\ebay_clone_adminRole\src\Domain\Domain.csproj : error NU1506: Warning As Error: Duplicate 'PackageVersion' items found. Remove the duplicate items or use the Update functionality to ensure a consistent restore behavior. The duplicate 'PackageVersion' items are: System.IdentityModel.Tokens.Jwt 8.0.1, System.IdentityModel.Tokens.Jwt 8.16.0.
+D:\.net\Ebay-Application\ebay_clone_adminRole\src\Web\Web.csproj : error NU1506: Warning As Error: Duplicate 'PackageVersion' items found. Remove the duplicate items or use the Update functionality to ensure a consistent restore behavior. The duplicate 'PackageVersion' items are: System.IdentityModel.Tokens.Jwt 8.0.1, System.IdentityModel.Tokens.Jwt 8.16.0.
+    0 Warning(s)
+    4 Error(s)
+
+Time Elapsed 00:00:01.06

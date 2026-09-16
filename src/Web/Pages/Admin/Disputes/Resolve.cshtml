@@ -1,0 +1,215 @@
+@page "{id:int}"
+@model EbayClone.Web.Pages.Admin.Disputes.ResolveModel
+@{
+    ViewData["Title"] = $"Resolve Dispute: {Model.Dispute?.CaseId}";
+    var d = Model.Dispute;
+}
+
+<div class="container py-4">
+    @if (d == null)
+    {
+        <div class="alert alert-danger">Dispute not found</div>
+        return;
+    }
+
+    <!-- HEADER -->
+    <div class="mb-4">
+        <a asp-page="./Detail" asp-route-id="@d.Id" class="btn btn-outline-secondary btn-sm mb-2">
+            <i class="fas fa-arrow-left"></i> Back to Case
+        </a>
+        <h2>?? Resolution Decision - @d.CaseId</h2>
+        <p class="text-muted">Make your final decision on this dispute</p>
+    </div>
+
+    <!-- CASE SUMMARY -->
+    <div class="card mb-4 border-primary">
+        <div class="card-header bg-primary text-white">
+            <strong>?? Case Summary</strong>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Type:</strong> @d.Type - @d.Subcategory</p>
+                    <p><strong>Amount:</strong> $@(d.Amount?.ToString("N2"))</p>
+                    <p><strong>Buyer:</strong> @d.Buyer?.Username ($@d.Buyer?.TotalSpent.ToString("N2") spent)</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Product:</strong> @d.Order?.ProductTitle</p>
+                    <p><strong>Seller:</strong> @d.Seller?.Username (@d.Seller?.ViolationCount violations)</p>
+                    <p><strong>Opened:</strong> @d.CreatedAt.ToString("MMM dd, yyyy")</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- DECISION FORM -->
+    <form method="post">
+        <input type="hidden" asp-for="Input.DisputeId" value="@d.Id" />
+        
+        <div class="card mb-4">
+            <div class="card-header"><strong>?? Decision</strong></div>
+            <div class="card-body">
+                
+                <!-- OPTION 1: BUYER WINS -->
+                <div class="form-check mb-3 p-3 border rounded">
+                    <input class="form-check-input" type="radio" name="Input.Winner" value="Buyer" 
+                           id="buyerWins" asp-for="Input.Winner" onchange="updateRefundAmount('@d.Amount')">
+                    <label class="form-check-label" for="buyerWins">
+                        <h5>?? Buyer Wins</h5>
+                        <ul class="mb-0">
+                            <li>Full Refund: $@(d.Amount?.ToString("N2"))</li>
+                            <li>Release frozen funds to buyer</li>
+                            <li>
+                                <input type="checkbox" asp-for="Input.AddSellerViolation" id="addViolation" class="form-check-input me-2" />
+                                <label for="addViolation">Add seller violation (+1)</label>
+                            </li>
+                            <li>
+                                <input type="checkbox" asp-for="Input.RequireReturn" id="requireReturn" class="form-check-input me-2" />
+                                <label for="requireReturn">Require item return</label>
+                            </li>
+                        </ul>
+                    </label>
+                </div>
+
+                <!-- OPTION 2: SELLER WINS -->
+                <div class="form-check mb-3 p-3 border rounded">
+                    <input class="form-check-input" type="radio" name="Input.Winner" value="Seller" 
+                           id="sellerWins" asp-for="Input.Winner" onchange="updateRefundAmount('0')">
+                    <label class="form-check-label" for="sellerWins">
+                        <h5>?? Seller Wins</h5>
+                        <ul class="mb-0">
+                            <li>No refund</li>
+                            <li>Release frozen funds to seller</li>
+                            <li>Buyer keeps item</li>
+                        </ul>
+                    </label>
+                </div>
+
+                <!-- OPTION 3: SPLIT DECISION -->
+                <div class="form-check mb-3 p-3 border rounded">
+                    <input class="form-check-input" type="radio" name="Input.Winner" value="Split" 
+                           id="splitDecision" asp-for="Input.Winner" onchange="enableCustomAmount()">
+                    <label class="form-check-label" for="splitDecision">
+                        <h5>?? Split Decision (Compromise)</h5>
+                        <div class="mt-2">
+                            <label class="form-label">Partial Refund Amount:</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" asp-for="Input.RefundAmount" class="form-control" 
+                                       id="refundAmountInput" step="0.01" min="0" max="@d.Amount" 
+                                       placeholder="Enter amount">
+                            </div>
+                            <small class="text-muted">
+                                Buyer receives this amount, Seller keeps: $@(d.Amount - (Model.Input?.RefundAmount ?? 0))
+                            </small>
+                        </div>
+                    </label>
+                </div>
+
+                <span asp-validation-for="Input.Winner" class="text-danger"></span>
+            </div>
+        </div>
+
+        <!-- ADMIN NOTES -->
+        <div class="card mb-4">
+            <div class="card-header"><strong>?? Admin Notes (Required)</strong></div>
+            <div class="card-body">
+                <textarea asp-for="Input.AdminNotes" class="form-control" rows="6" 
+                          placeholder="Explain your decision (minimum 50 characters)..."></textarea>
+                <span asp-validation-for="Input.AdminNotes" class="text-danger"></span>
+                <small class="text-muted">Character count: <span id="charCount">0</span>/2000 (min 50)</small>
+            </div>
+        </div>
+
+        <!-- SUMMARY -->
+        <div class="card mb-4 bg-light">
+            <div class="card-body">
+                <h5>?? Resolution Summary</h5>
+                <div id="summaryContent">
+                    <p class="text-muted">Select a decision option above to see summary</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ACTIONS -->
+        <div class="d-flex justify-content-between">
+            <a asp-page="./Detail" asp-route-id="@d.Id" class="btn btn-outline-secondary">
+                <i class="fas fa-times"></i> Cancel
+            </a>
+            <button type="submit" class="btn btn-success btn-lg">
+                <i class="fas fa-gavel"></i> Submit Decision & Close Case
+            </button>
+        </div>
+    </form>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        // Character count
+        const notesTextarea = document.querySelector('textarea[name="Input.AdminNotes"]');
+        const charCount = document.getElementById('charCount');
+        
+        notesTextarea?.addEventListener('input', function() {
+            charCount.textContent = this.value.length;
+        });
+        
+        // Update refund amount based on decision
+        function updateRefundAmount(amount) {
+            const refundInput = document.getElementById('refundAmountInput');
+            if (refundInput) {
+                refundInput.value = amount;
+                updateSummary();
+            }
+        }
+        
+        function enableCustomAmount() {
+            const refundInput = document.getElementById('refundAmountInput');
+            if (refundInput) {
+                refundInput.focus();
+                updateSummary();
+            }
+        }
+        
+        // Update summary
+        function updateSummary() {
+            const winner = document.querySelector('input[name="Input.Winner"]:checked')?.value;
+            const refundAmount = parseFloat(document.getElementById('refundAmountInput')?.value || '0');
+            const totalAmount = @d.Amount;
+            const summaryDiv = document.getElementById('summaryContent');
+            
+            if (!winner) {
+                summaryDiv.innerHTML = '<p class="text-muted">Select a decision option above to see summary</p>';
+                return;
+            }
+            
+            let html = '<ul class="mb-0">';
+            
+            if (winner === 'Buyer') {
+                html += `<li>Buyer receives: <strong>$${totalAmount.toFixed(2)}</strong> (Full refund)</li>`;
+                html += `<li>Seller receives: <strong>$0.00</strong></li>`;
+                html += `<li>Platform absorbs fee loss</li>`;
+            } else if (winner === 'Seller') {
+                html += `<li>Buyer receives: <strong>$0.00</strong> (No refund)</li>`;
+                html += `<li>Seller receives: <strong>$${totalAmount.toFixed(2)}</strong></li>`;
+                html += `<li>Case closed in favor of seller</li>`;
+            } else if (winner === 'Split') {
+                const sellerKeeps = totalAmount - refundAmount;
+                html += `<li>Buyer receives: <strong>$${refundAmount.toFixed(2)}</strong> (${(refundAmount/totalAmount*100).toFixed(1)}%)</li>`;
+                html += `<li>Seller keeps: <strong>$${sellerKeeps.toFixed(2)}</strong> (${(sellerKeeps/totalAmount*100).toFixed(1)}%)</li>`;
+                html += `<li>Compromise resolution</li>`;
+            }
+            
+            html += '</ul>';
+            summaryDiv.innerHTML = html;
+        }
+        
+        // Listen to radio changes
+        document.querySelectorAll('input[name="Input.Winner"]').forEach(radio => {
+            radio.addEventListener('change', updateSummary);
+        });
+        
+        // Listen to refund amount changes
+        document.getElementById('refundAmountInput')?.addEventListener('input', updateSummary);
+    </script>
+}

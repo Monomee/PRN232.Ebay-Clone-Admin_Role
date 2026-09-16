@@ -1,0 +1,43 @@
+## .NET build outputs
+**/bin/
+**/obj/
+**/[Ll]og/
+**/[Ll]ogs/
+
+## Node modules (they'll be restored inside the container)
+**/node_modules/
+**/npm-debug.log*
+
+## React output (will be built inside container)
+src/Web/ClientApp/build/
+
+## Visual Studio files
+**/.vs/
+**/*.user
+**/*.suo
+
+## Git
+.git/
+.gitignore
+
+## Sensitive / environment files — never in Docker context
+.env
+.env.*
+!.env.example
+
+## Test projects (not needed at runtime)
+tests/
+
+## Documentation
+docs/
+README*.md
+DOCKER.md
+*.md
+
+## CI/CD files
+.github/
+
+## Other
+artifacts/
+diff src/
+http src/

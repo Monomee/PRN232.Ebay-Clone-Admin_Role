@@ -1,0 +1,101 @@
+# ============================================================
+# Deployment — ASP.NET Core API
+# ============================================================
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ebay-api
+  namespace: ebay-clone
+  labels:
+    app: ebay-api
+spec:
+  replicas: 2 
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app: ebay-api
+  template:
+    metadata:
+      labels:
+        app: ebay-api
+    spec:
+      containers:
+        - name: ebay-api
+          image: ghcr.io/pctra266/ebay_clone_adminrole:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+
+          # ── Gộp toàn bộ Environment Variables vào đây ─────────────
+          env:
+            # 1. Lấy mật khẩu 123456 từ Secret (Key: SA_PASSWORD_ACTUAL)
+            - name: SA_PASSWORD_VALUE
+              valueFrom:
+                secretKeyRef:
+                  name: ebay-secrets
+                  key: SA_PASSWORD_ACTUAL 
+
+            # 2. Cấu hình Connection String sử dụng mật khẩu trên
+            - name: ConnectionStrings__MyCnn
+              value: "Server=ebay-db,1433;Database=CloneEbayDB;User Id=sa;Password=$(SA_PASSWORD_VALUE);Encrypt=True;TrustServerCertificate=True;"
+
+            # 3. Các thông tin nhạy cảm khác
+            - name: Jwt__Key
+              valueFrom:
+                secretKeyRef:
+                  name: ebay-secrets
+                  key: JWT_KEY
+            - name: EmailSettings__SenderPassword
+              valueFrom:
+                secretKeyRef:
+                  name: ebay-secrets
+                  key: EMAIL_PASSWORD
+
+            # 4. Các cấu hình tĩnh (Hard-coded)
+            - name: Jwt__Issuer
+              value: "EbayClone"
+            - name: Jwt__Audience
+              value: "EbayCloneUsers"
+            - name: EmailSettings__SmtpServer
+              value: "smtp.gmail.com"
+            - name: EmailSettings__Port
+              value: "587"
+            - name: ASPNETCORE_ENVIRONMENT
+              value: "Production"
+
+            # Redis backplane cho SignalR — kết nối với Redis service trong cluster
+            - name: Redis__ConnectionString
+              value: "redis-service:6379"
+
+          # Lấy thêm các config không nhạy cảm từ ConfigMap (nếu có)
+          envFrom:
+            - configMapRef:
+                name: ebay-config
+
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            failureThreshold: 3
+
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 3

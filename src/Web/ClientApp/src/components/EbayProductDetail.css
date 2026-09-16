@@ -1,0 +1,589 @@
+/* EbayProductDetail.css */
+
+.ebay-product-page {
+    background-color: #f7f7f7;
+    font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+}
+
+.ebay-product-main {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px 0;
+}
+
+.ebay-breadcrumbs {
+    font-size: 13px;
+    margin-bottom: 20px;
+}
+
+.ebay-breadcrumbs ol {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    gap: 8px;
+    color: #767676;
+}
+
+.ebay-breadcrumbs a {
+    color: #767676;
+    text-decoration: underline;
+}
+
+.ebay-product-content {
+    display: flex;
+    gap: 30px;
+    background: #fff;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+/* Left: Gallery */
+.ebay-product-gallery {
+    flex: 0 0 450px;
+    display: flex;
+    gap: 15px;
+}
+
+.ebay-product-thumbnails {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.thumbnail-btn {
+    border: 1px solid #ccc;
+    background: none;
+    padding: 2px;
+    cursor: pointer;
+    width: 60px;
+    height: 60px;
+    border-radius: 4px;
+}
+
+.thumbnail-btn.active {
+    border: 2px solid #0654ba;
+}
+
+.thumbnail-btn img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.ebay-product-main-image {
+    width: 100%;
+    max-width: 380px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.ebay-product-main-image img {
+    width: 100%;
+    height: auto;
+    max-height: 400px;
+    object-fit: contain;
+}
+
+/* Middle: Info */
+.ebay-product-info {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.ebay-product-title {
+    font-size: 20px;
+    font-weight: bold;
+    color: #111;
+    margin: 0;
+    line-height: 1.3;
+}
+
+.ebay-product-rating-overview {
+    font-size: 14px;
+}
+
+.stars {
+    color: #ffb520;
+    font-size: 18px;
+}
+
+.review-count {
+    color: #767676;
+    font-size: 13px;
+    margin-left: 5px;
+}
+
+.ebay-product-condition {
+    font-size: 14px;
+}
+
+.condition-label {
+    color: #767676;
+}
+
+.condition-value {
+    color: #111;
+    font-weight: bold;
+}
+
+.ebay-product-price-box {
+    background: #f8f8f8;
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid #e5e5e5;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.price-row {
+    font-size: 24px;
+    font-weight: bold;
+    color: #111;
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+}
+
+.buy-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.buy-actions button {
+    padding: 12px;
+    border-radius: 20px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    border: none;
+    text-align: center;
+}
+
+.btn-buy-now {
+    background-color: #0053a0;
+    color: #fff;
+}
+
+.btn-buy-now:hover {
+    background-color: #003e7a;
+}
+
+.btn-add-cart {
+    background-color: #3665f3;
+    color: #fff;
+}
+
+.btn-add-cart:hover {
+    background-color: #2752c4;
+}
+
+.btn-add-watchlist {
+    background-color: #fff;
+    color: #3665f3;
+    border: 1px solid #3665f3 !important;
+}
+
+.btn-add-watchlist:hover {
+    background-color: #f7f7f7;
+}
+
+.ebay-product-shipping {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    font-size: 14px;
+    margin-top: 10px;
+    border-top: 1px solid #e5e5e5;
+    padding-top: 15px;
+}
+
+.shipping-row, .returns-row {
+    display: flex;
+    gap: 10px;
+}
+
+.shipping-icon, .returns-icon {
+    font-size: 18px;
+    color: #111;
+}
+
+.shipping-details p, .returns-details p {
+    margin: 0;
+    color: #767676;
+}
+
+/* Right: Seller */
+.ebay-product-seller {
+    flex: 0 0 280px;
+}
+
+.seller-box {
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 15px;
+    background: #fff;
+}
+
+.seller-title {
+    font-size: 16px;
+    font-weight: bold;
+    margin-top: 0;
+    margin-bottom: 10px;
+    display: block;
+}
+
+.seller-name-row {
+    margin-bottom: 15px;
+}
+
+.seller-username {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.seller-username a {
+    color: #3665f3;
+    text-decoration: underline;
+}
+
+.seller-feedback {
+    display: block;
+    font-size: 12px;
+    color: #767676;
+    margin-top: 4px;
+}
+
+.seller-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.seller-actions button {
+    background: none;
+    border: 1px solid transparent;
+    color: #3665f3;
+    cursor: pointer;
+    font-size: 14px;
+    text-align: left;
+    padding: 5px 0;
+    text-decoration: underline;
+}
+
+.seller-actions button:hover {
+    text-decoration: none;
+}
+
+.btn-save-seller {
+    border: 1px solid #ccc !important;
+    text-decoration: none !important;
+    color: #111 !important;
+    text-align: center !important;
+    border-radius: 20px;
+    padding: 8px !important;
+    margin-bottom: 10px;
+    font-weight: bold;
+}
+
+.btn-save-seller:hover {
+    background: #f7f7f7;
+}
+
+/* Bottom: Tabs */
+.ebay-product-tabs {
+    margin-top: 30px;
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    padding: 20px;
+}
+
+.tab-headers {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    border-bottom: 1px solid #e5e5e5;
+    gap: 30px;
+}
+
+.tab-headers li {
+    font-size: 16px;
+    font-weight: bold;
+    color: #767676;
+    padding-bottom: 10px;
+    cursor: pointer;
+}
+
+.tab-headers li.active {
+    color: #111;
+    border-bottom: 2px solid #111;
+}
+
+.tab-content {
+    margin-top: 20px;
+}
+
+.description-section h3, .reviews-section h3 {
+    margin-top: 0;
+    font-size: 18px;
+}
+
+.description-section p {
+    font-size: 14px;
+    color: #333;
+    line-height: 1.5;
+}
+
+/* Reviews Section Enhancements */
+.btn-write-review {
+    background-color: #fff;
+    color: #0654ba;
+    border: 1px solid #0654ba;
+    padding: 8px 16px;
+    border-radius: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 14px;
+    transition: all 0.2s ease;
+}
+
+.btn-write-review:hover {
+    background-color: #f0f5ff;
+}
+
+.btn-submit-review {
+    background-color: #3665f3;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-cancel {
+    background-color: #eee;
+    color: #333;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 20px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.seller-reply-box {
+    box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.link-action:hover {
+    text-decoration: underline;
+}
+
+.btn-reply-submit, .btn-report-submit {
+    background-color: #3665f3;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.btn-report-submit {
+    background-color: #e53238;
+}
+
+.ebay-textarea {
+    font-family: inherit;
+    font-size: 14px;
+    resize: vertical;
+}
+
+/* Report Product */
+.report-product-box {
+    margin-top: 15px;
+}
+
+.btn-report-product {
+    background: none;
+    border: 1px solid #e53238;
+    color: #e53238;
+    cursor: pointer;
+    font-size: 13px;
+    padding: 8px 16px;
+    border-radius: 20px;
+    width: 100%;
+    text-align: center;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+.btn-report-product:hover {
+    background-color: #fef2f2;
+}
+
+.report-product-form {
+    margin-top: 12px;
+    padding: 15px;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    background: #fcfcfc;
+}
+
+.report-form-title {
+    font-weight: bold;
+    font-size: 15px;
+    margin: 0 0 5px 0;
+    color: #111;
+}
+
+.report-form-subtitle {
+    font-size: 12px;
+    color: #767676;
+    margin: 0 0 15px 0;
+    line-height: 1.4;
+}
+
+.report-field {
+    margin-bottom: 12px;
+}
+
+.report-field label {
+    display: block;
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.report-field select {
+    width: 100%;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 13px;
+    background: #fff;
+}
+
+.report-field textarea {
+    width: 100%;
+    height: 70px;
+    padding: 8px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+    font-size: 13px;
+    box-sizing: border-box;
+}
+
+.report-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 5px;
+}
+
+.btn-submit-product-report {
+    background-color: #e53238;
+    color: #fff;
+    border: none;
+    padding: 8px 16px;
+    border-radius: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background-color 0.2s ease;
+}
+
+.btn-submit-product-report:hover {
+    background-color: #cc2b30;
+}
+
+.btn-submit-product-report:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* Product Banned / Unavailable Overlay */
+.product-banned-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    animation: fadeInOverlay 0.4s ease;
+}
+
+@keyframes fadeInOverlay {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.product-banned-card {
+    background: #fff;
+    border-radius: 12px;
+    padding: 40px 50px;
+    text-align: center;
+    max-width: 460px;
+    width: 90%;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25);
+    animation: slideUpCard 0.4s ease;
+}
+
+@keyframes slideUpCard {
+    from { transform: translateY(30px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.product-banned-icon {
+    font-size: 56px;
+    color: #e53238;
+    margin-bottom: 15px;
+}
+
+.product-banned-card h2 {
+    font-size: 24px;
+    font-weight: bold;
+    color: #111;
+    margin: 0 0 10px 0;
+}
+
+.product-banned-card p {
+    font-size: 15px;
+    color: #555;
+    margin: 0 0 25px 0;
+    line-height: 1.5;
+}
+
+.btn-back-home {
+    display: inline-block;
+    background-color: #3665f3;
+    color: #fff;
+    padding: 12px 30px;
+    border-radius: 24px;
+    font-size: 15px;
+    font-weight: bold;
+    text-decoration: none;
+    transition: background-color 0.2s ease;
+}
+
+.btn-back-home:hover {
+    background-color: #2752c4;
+    color: #fff;
+}

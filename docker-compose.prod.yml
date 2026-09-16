@@ -1,0 +1,67 @@
+# ============================================================
+# docker-compose.prod.yml
+# Dùng image đã build sẵn từ GitHub Container Registry
+# Đồng đội KHÔNG cần build — chỉ pull là chạy được
+#
+# Cách dùng:
+#   docker-compose -f docker-compose.prod.yml up
+# ============================================================
+
+services:
+  # ── SQL Server ──────────────────────────────────────────────
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ebay_sqlserver
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD}"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '${SA_PASSWORD}' -Q 'SELECT 1' -C -b -o /dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+
+  # ── Redis — SignalR Backplane ─────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ebay_redis
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+
+  # ── API (pull image từ GHCR, không build local) ─────────────
+  api:
+    image: ghcr.io/pctra266/ebay_clone_adminrole:latest
+    container_name: ebay_api
+    ports:
+      - "5000:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
+      ConnectionStrings__MyCnn: "Server=db,1433;Database=CloneEbayDB;User Id=sa;Password=${SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "EbayClone"
+      Jwt__Audience: "EbayCloneUsers"
+      EmailSettings__SenderEmail: "${EMAIL_SENDER}"
+      EmailSettings__SenderPassword: "${EMAIL_PASSWORD}"
+      EmailSettings__SmtpServer: "smtp.gmail.com"
+      EmailSettings__Port: "587"
+      # Redis backplane cho SignalR (load balancing real-time)
+      Redis__ConnectionString: "redis:6379"
+    restart: unless-stopped
+
+volumes:
+  sqlserver_data:
+    name: ebay_sqlserver_data

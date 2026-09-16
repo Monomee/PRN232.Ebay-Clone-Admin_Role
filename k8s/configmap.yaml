@@ -1,0 +1,17 @@
+# ============================================================
+# ConfigMap — Config không nhạy cảm
+# Giá trị nhạy cảm (password, key) → dùng Secret thay thế
+#
+# Chỉ giữ các giá trị KHÔNG được khai báo trong api-deployment.yaml env.
+# Các biến đã có trong deployment env sẽ OVERRIDE giá trị ở đây.
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ebay-config
+  namespace: ebay-clone
+data:
+  ASPNETCORE_URLS: "http://+:8080"
+
+  # Email sender (non-sensitive, thay bằng email thực)
+  EmailSettings__SenderEmail: "your-email@gmail.com"

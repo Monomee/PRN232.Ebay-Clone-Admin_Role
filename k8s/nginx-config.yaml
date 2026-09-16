@@ -1,0 +1,88 @@
+# ============================================================
+# ConfigMap — Nginx Configuration
+# ============================================================
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: nginx-config
+  namespace: ebay-clone
+data:
+  nginx.conf: |
+    user  nginx;
+    worker_processes  auto;
+    error_log  /var/log/nginx/error.log warn;
+    pid        /var/run/nginx.pid;
+
+    events {
+        worker_connections  1024;
+    }
+
+    http {
+        include       /etc/nginx/mime.types;
+        default_type  application/octet-stream;
+
+        log_format  main  '$remote_addr - $remote_user [$time_local] "$request" '
+                          '$status $body_bytes_sent "$http_referer" '
+                          '"$http_user_agent" "$http_x_forwarded_for" '
+                          'Proxy-to: $upstream_addr';
+
+        access_log  /var/log/nginx/access.log  main;
+
+        sendfile        on;
+        keepalive_timeout  65;
+
+        # ── Map để tự động chọn Connection header đúng ──────────────
+        # Nếu request có Upgrade (WebSocket) → "upgrade"
+        # Nếu request thông thường (HTTP)    → "keep-alive"
+        map $http_upgrade $connection_upgrade {
+            default   upgrade;
+            ''        keep-alive;
+        }
+
+        # ── Load Balance Upstream — Chia tải cho 2 Pods API ──
+        upstream backend_api {
+            server ebay-api-service:80;
+            # Mặc định là Round Robin
+        }
+
+        server {
+            listen       80;
+            server_name  localhost;
+
+            # Health check cho Nginx
+            location /nginx-health {
+                access_log off;
+                return 200 "healthy\n";
+            }
+
+            # ── SignalR WebSocket — PHẢI đặt TRƯỚC location / ────────
+            # Redis backplane phân phối message giữa các pod qua Pub/Sub
+            location /hubs/ {
+                proxy_pass         http://backend_api;
+                proxy_http_version 1.1;
+                proxy_set_header   Upgrade $http_upgrade;
+                proxy_set_header   Connection $connection_upgrade;
+                proxy_set_header   Host $host;
+                proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header   X-Forwarded-Proto $scheme;
+                proxy_read_timeout 86400s; # 24h — giữ kết nối WS lâu dài
+                proxy_send_timeout 86400s;
+            }
+
+            # ── Proxy toàn bộ request HTTP thông thường ──────────────
+            location / {
+                proxy_pass         http://backend_api;
+                proxy_http_version 1.1;
+                proxy_set_header   Upgrade $http_upgrade;
+                proxy_set_header   Connection $connection_upgrade;
+                proxy_set_header   Host $host;
+                proxy_cache_bypass $http_upgrade;
+                proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header   X-Forwarded-Proto $scheme;
+                proxy_set_header   X-Real-IP $remote_addr;
+
+                # Thêm header để quan sát xem request trúng Pod nào (để test)
+                add_header X-Backend-Server $upstream_addr;
+            }
+        }
+    }
