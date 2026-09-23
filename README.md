@@ -82,6 +82,8 @@ Hệ thống bao gồm các nhóm chức năng chính phục vụ việc vận h
 
 ## 5. Cách chạy project (Step by Step)
 
+> 💡 **Gặp lỗi khi chạy project?** Xem ngay tài liệu xử lý lỗi chi tiết tại: [**TROUBLESHOOTING.md**](TROUBLESHOOTING.md) (Hướng dẫn sửa lỗi Visual Studio Startup, kết nối SQL Server, lỗi SPA Proxy npm start, 403 Forbidden IP, v.v.).
+
 ### 5.1. Yêu cầu hệ thống
 - .NET SDK (v8.0 hoặc v10.0).
 - Node.js (v16 trở lên) để chạy Frontend.

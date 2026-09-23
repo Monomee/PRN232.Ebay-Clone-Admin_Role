@@ -1,0 +1,23 @@
+Quản trị viên (Admin)
+Yêu cầu tổng hợp:
+•	Giao diện dashboard tổng quan: số lượng user, sản phẩm, đơn hàng
+•	Danh sách người dùng: duyệt tài khoản mới, khoá/mở khoá
+•	Danh sách sản phẩm: xoá hoặc ẩn các sản phẩm vi phạm
+•	Quản lý đơn hàng toàn hệ thống
+•	Thống kê hệ thống theo ngày, tháng, quý (doanh thu, đơn hàng, người dùng mới)
+•	Giám sát hệ thống đánh giá – phản hồi (Review + Feedback)
+•	Quản lý danh sách khiếu nại (Dispute): duyệt, điều phối, phân xử
+•	Xét duyệt yêu cầu hoàn trả đơn hàng
+•	Gửi email cảnh báo hệ thống hoặc thông báo toàn bộ người dùng
+•	🔐 Admin panel chỉ truy cập từ IP nội bộ hoặc xác minh 2FA
+•	📉 Phân quyền rõ ràng cho từng loại admin (monitor, support...)
+•	📈 Có khả năng mở rộng dashboard để theo dõi nhiều loại thống kê hơn
+•	💾 Dữ liệu nhạy cảm phải được log riêng (kèm mã hóa khi lưu)
+•	🧩 Giao diện dễ sử dụng cho quản trị viên không chuyên kỹ thuật
+Các yêu cầu khác (25% số điểm)
+•	Đáp ưng được khi lượng người dùng tăng lên: load balance, Nginx
+•	Hạn chế số lượt request của người trong khoảng thời gian: rate limiting
+•	CI&CD: jenkins, github action
+•	Quản lý team. Jira
+•	Kiểm thử về tải, an ninh mạng: Jmetter
+•	Đảm bảo Zero Downtime khi hệ thống cập nhật. K8s

@@ -1,0 +1,48 @@
+{
+  "InternalIps": [
+    "127.0.0.1",
+    "::1",
+    "192.168.1.*",
+    "192.168.*.*",
+    "172.*",
+    "10.*"
+  ],
+  "ConnectionStrings": {
+    "MyCnn": "Server=.\\SQLEXPRESS;Database=CloneEbayDB;Trusted_Connection=True;TrustServerCertificate=True;"
+  },
+  "EmailSettings": {
+    "SmtpServer": "smtp.gmail.com",
+    "Port": 587,
+    "SenderEmail": "your_email@gmail.com",
+    "SenderPassword": "your_gmail_app_password"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft": "Warning",
+      "Microsoft.AspNetCore.SpaProxy": "Information",
+      "Microsoft.Hosting.Lifetime": "Information"
+    },
+    "Console": {
+      "FormatterName": "simple",
+      "FormatterOptions": {
+        "TimestampFormat": "[yyyy-MM-dd HH:mm:ss] ",
+        "SingleLine": true,
+        "IncludeScopes": false
+      }
+    }
+  },
+  "Jwt": {
+    "Key": "THIS_IS_A_SAMPLE_SECRET_KEY_PLEASE_CHANGE_IN_PRODUCTION_123456",
+    "Issuer": "EbayClone",
+    "Audience": "EbayCloneUsers"
+  },
+  "OpenAI": {
+    "ApiKey": "your_openai_or_openrouter_api_key_here",
+    "Model": "openrouter/auto",
+    "BaseUrl": "https://openrouter.ai/api/v1/chat/completions"
+  },
+  "Redis": {
+    "ConnectionString": ""
+  }
+}
