@@ -39,7 +39,7 @@ services:
 
   # ── API (pull image từ GHCR, không build local) ─────────────
   api:
-    image: ghcr.io/Monomee/ebay_clone_adminrole:latest
+    image: ghcr.io/monomee/ebay_clone_adminrole:latest
     container_name: ebay_api
     ports:
       - "5000:8080"

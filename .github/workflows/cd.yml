@@ -67,5 +67,5 @@ jobs:
       - name: Print image info
         run: |
           echo "✅ Docker image pushed successfully!"
-          echo "📦 Image: ghcr.io/pctra266/ebay_clone_adminrole:latest"
+          echo "📦 Image: ghcr.io/Monomee/ebay_clone_adminrole:latest"
           echo "🔖 Tags: ${{ steps.meta.outputs.tags }}"
