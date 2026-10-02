@@ -2,7 +2,7 @@
 # CD — Continuous Delivery
 # Chạy khi: push (merge) vào nhánh main VÀ CI pass
 # Mục đích: build Docker image và push lên GitHub Container Registry
-# Image: ghcr.io/pctra266/ebay_clone_adminrole:latest
+# Image: ghcr.io/monomee/ebay_clone_adminrole:latest
 # ============================================================
 name: CD
 
@@ -45,7 +45,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ghcr.io/pctra266/ebay_clone_adminrole
+          images: ghcr.io/monomee/ebay_clone_adminrole
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,prefix=sha-,format=short
@@ -67,5 +67,5 @@ jobs:
       - name: Print image info
         run: |
           echo "✅ Docker image pushed successfully!"
-          echo "📦 Image: ghcr.io/Monomee/ebay_clone_adminrole:latest"
+          echo "📦 Image: ghcr.io/monomee/ebay_clone_adminrole:latest"
           echo "🔖 Tags: ${{ steps.meta.outputs.tags }}"

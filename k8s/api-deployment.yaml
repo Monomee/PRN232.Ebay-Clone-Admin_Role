@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: ebay-api
-          image: ghcr.io/pctra266/ebay_clone_adminrole:latest
+          image: ghcr.io/monomee/ebay_clone_adminrole:latest
           imagePullPolicy: Always
           ports:
             - containerPort: 8080
