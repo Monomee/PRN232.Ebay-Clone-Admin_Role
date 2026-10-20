@@ -28,11 +28,17 @@ public class DashboardStatsTests
         _context.Dispose();
     }
 
+    private sealed class FixedClock : TimeProvider
+    {
+        public override DateTimeOffset GetUtcNow() =>
+            new DateTimeOffset(2026, 5, 15, 12, 0, 0, TimeSpan.Zero);
+    }
+
     [Test]
     public async Task Handle_ShouldReturnCorrectStats()
     {
         // Arrange
-        var now = DateTime.UtcNow;
+        var now = new DateTime(2026, 5, 15, 12, 0, 0, DateTimeKind.Utc);
         _context.FinancialTransactions.AddRange(new List<FinancialTransaction>
         {
             new FinancialTransaction { Id = 1, Type = "FeeDeduction", Amount = 100, Date = now }, // Daily
@@ -50,7 +56,7 @@ public class DashboardStatsTests
 
         await _context.SaveChangesAsync();
 
-        var handler = new GetAdminDashboardStatsQueryHandler(_context);
+        var handler = new GetAdminDashboardStatsQueryHandler(_context, new FixedClock());
         var query = new GetAdminDashboardStatsQuery();
 
         // Act

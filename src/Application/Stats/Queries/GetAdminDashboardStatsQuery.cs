@@ -18,15 +18,16 @@ public record GetAdminDashboardStatsQuery : IRequest<AdminDashboardStatsDto>;
 public class GetAdminDashboardStatsQueryHandler : IRequestHandler<GetAdminDashboardStatsQuery, AdminDashboardStatsDto>
 {
     private readonly IApplicationDbContext _context;
-
-    public GetAdminDashboardStatsQueryHandler(IApplicationDbContext context)
+    private readonly TimeProvider _time;
+    public GetAdminDashboardStatsQueryHandler(IApplicationDbContext context, TimeProvider time)
     {
         _context = context;
+        _time = time;
     }
 
     public async Task<AdminDashboardStatsDto> Handle(GetAdminDashboardStatsQuery request, CancellationToken cancellationToken)
     {
-        var now = DateTime.UtcNow;
+        var now = _time.GetUtcNow().UtcDateTime;
         var startOfDay = now.Date;
         var startOfMonth = new DateTime(now.Year, now.Month, 1);
         var startOfQuarter = new DateTime(now.Year, ((now.Month - 1) / 3) * 3 + 1, 1);
