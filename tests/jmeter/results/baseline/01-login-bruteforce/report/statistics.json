@@ -1,0 +1,50 @@
+{
+  "Total" : {
+    "transaction" : "Total",
+    "sampleCount" : 6,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 125.5,
+    "medianResTime" : 135.0,
+    "minResTime" : 3.0,
+    "maxResTime" : 210.0,
+    "pct1ResTime" : 210.0,
+    "pct2ResTime" : 210.0,
+    "pct3ResTime" : 210.0,
+    "throughput" : 7.662835249042145,
+    "receivedKBytesPerSec" : 2.138958732439336,
+    "sentKBytesPerSec" : 1.7585608237547892
+  },
+  "Login sai - vượt giới hạn  (HTTP Request)" : {
+    "transaction" : "Login sai - vượt giới hạn  (HTTP Request)",
+    "sampleCount" : 1,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 3.0,
+    "medianResTime" : 3.0,
+    "minResTime" : 3.0,
+    "maxResTime" : 3.0,
+    "pct1ResTime" : 3.0,
+    "pct2ResTime" : 3.0,
+    "pct3ResTime" : 3.0,
+    "throughput" : 333.3333333333333,
+    "receivedKBytesPerSec" : 79.75260416666667,
+    "sentKBytesPerSec" : 76.49739583333333
+  },
+  "Login sai - trong giới hạn  (HTTP Request)" : {
+    "transaction" : "Login sai - trong giới hạn  (HTTP Request)",
+    "sampleCount" : 5,
+    "errorCount" : 0,
+    "errorPct" : 0.0,
+    "meanResTime" : 150.0,
+    "medianResTime" : 135.0,
+    "minResTime" : 134.0,
+    "maxResTime" : 210.0,
+    "pct1ResTime" : 210.0,
+    "pct2ResTime" : 210.0,
+    "pct3ResTime" : 210.0,
+    "throughput" : 6.418485237483954,
+    "receivedKBytesPerSec" : 1.8428072849807444,
+    "sentKBytesPerSec" : 1.4729922175866494
+  }
+}

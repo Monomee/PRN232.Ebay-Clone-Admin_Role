@@ -1,0 +1,7 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1792508998031,210,Login sai - trong giới hạn  (HTTP Request),200,OK,Thread Group 1-1,text,true,,294,235,1,1,http://localhost:5000/api/Auth/login,207,0,22
+1792508998266,136,Login sai - trong giới hạn  (HTTP Request),200,OK,Thread Group 1-1,text,true,,294,235,1,1,http://localhost:5000/api/Auth/login,136,0,0
+1792508998403,135,Login sai - trong giới hạn  (HTTP Request),200,OK,Thread Group 1-1,text,true,,294,235,1,1,http://localhost:5000/api/Auth/login,135,0,0
+1792508998539,135,Login sai - trong giới hạn  (HTTP Request),200,OK,Thread Group 1-1,text,true,,294,235,1,1,http://localhost:5000/api/Auth/login,135,0,0
+1792508998676,134,Login sai - trong giới hạn  (HTTP Request),200,OK,Thread Group 1-1,text,true,,294,235,1,1,http://localhost:5000/api/Auth/login,134,0,0
+1792508998811,3,Login sai - vượt giới hạn  (HTTP Request),429,Too Many Requests,Thread Group 1-1,text,true,,245,235,1,1,http://localhost:5000/api/Auth/login,3,0,0

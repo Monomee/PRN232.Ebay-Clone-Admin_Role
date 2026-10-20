@@ -1,0 +1,7 @@
+# Kết quả chạy thử — không commit
+results/*
+!results/baseline/
+!results/.gitkeep
+# Log của JMeter
+jmeter.log
+*.log
