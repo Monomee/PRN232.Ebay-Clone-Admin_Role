@@ -71,22 +71,22 @@ SP đo **độ khó + độ chưa chắc chắn**, không phải số giờ.
 - **Tuần 7 (19–25/10) là tuần đầu tiên có dữ liệu thật**, nên cả nhóm phải bấm Track time ngay từ đầu tuần.
 - Velocity cuối tuần 7 dùng để chỉnh tải tuần 8. Tuần 9 chủ yếu là demo, nên số liệu chỉ còn giá trị để rút kinh nghiệm.
 
-## 7. Tổng kết SP – cập nhật 20/10/2026
+## 7. Tổng kết SP – cập nhật 20/10/2026 (lần 2)
 
 Nguồn: ClickUp folder **Sprints (Tuần 1–9)**, 135 task lá, tổng 421 SP. Các ô ghi theo dạng *SP hoàn thành / SP được giao*.
 
 | Tuần | Hoàng | Mạnh | Dương | Cường | Tùng | **Cả nhóm** |
 |---|---|---|---|---|---|---|
-| 1 | 0/9 | 0/10 | 0/8 | 0/6 | 0/6 | **0/39** |
-| 2 | 9/9 | 0/11 | 0/8 | 0/10 | 0/8 | **9/46** |
-| 3 | 2/15 | 0/5 | 0/5 | 5/8 | 5/5 | **12/38** |
+| 1 | 9/9 | 10/10 | 8/8 | 6/6 | 6/6 | **39/39** |
+| 2 | 9/9 | 11/11 | 8/8 | 10/10 | 8/8 | **46/46** |
+| 3 | 15/15 | 5/5 | 5/5 | 8/8 | 5/5 | **38/38** |
 | 4 | 13/13 | 10/10 | 8/8 | 3/3 | 6/6 | **40/40** |
 | 5 | 8/8 | 10/10 | 10/10 | 5/5 | 5/5 | **38/38** |
 | 6 | 5/7 | 5/7 | 5/7 | 7/9 | 7/9 | **29/39** |
 | 7 (đang chạy) | 0/17 | 0/19 | 0/17 | 1/18 | 0/17 | **1/88** |
 | 8 | 0/15 | 0/15 | 0/14 | 0/13 | 0/10 | **0/67** |
 | 9 | 0/6 | 0/6 | 0/6 | 0/4 | 0/4 | **0/26** |
-| **Tổng** | **37/99** | **25/93** | **23/83** | **21/76** | **23/70** | **129/421** |
+| **Tổng** | **59/99** | **51/93** | **44/83** | **40/76** | **37/70** | **231/421** |
 
 ### Velocity và tải tuần 7
 
@@ -95,13 +95,13 @@ Nguồn: ClickUp folder **Sprints (Tuần 1–9)**, 135 task lá, tổng 421 SP.
 | Velocity TB tuần 4–6 (SP) | 8,7 | 8,3 | 7,7 | 5,0 | 6,0 |
 | SP giao tuần 7 | 17 | 19 | 17 | 18 | 17 |
 | Gấp bao nhiêu lần velocity | ~2,0× | ~2,3× | ~2,2× | ~3,6× | ~2,8× |
-| SP tuần 1–6 chưa complete | 24 | 28 | 23 | 21 | 16 |
+| SP tuần 1–6 chưa complete | 2 | 2 | 2 | 2 | 2 |
 
 ### Nhận xét
 
-1. **Chưa có giờ track nào** (0 time entry), nên chưa tính được hệ số ước lượng. Tỉ lệ đúng hạn tuần 1–6 không có ý nghĩa vì các task đó được đánh complete bù vào 18–19/10.
+1. **Chưa có giờ track thật**: chỉ có 4 time entry ~10 giây (bấm thử trên W7-01, W7-03, W7-05, W7-09), nên chưa tính được hệ số ước lượng. Tỉ lệ đúng hạn tuần 1–6 không có ý nghĩa vì các task đó được đánh complete bù vào 18–19/10.
 2. Velocity tuần 4–6 chỉ để tham khảo, xem mục 6.
-3. Tuần 1–3 và W6-04, W6-05 còn **112 SP ở trạng thái in progress**, mâu thuẫn với W6-03 (demo MVP 9 chức năng) đã complete. Task nào thực tế đã xong thì cần đóng, nếu không velocity sẽ bị thấp giả.
+3. Tuần 1–3 đã đóng hết (+102 SP so với bản trước). Tuần 1–6 chỉ còn **10 SP in progress**: W6-04 (Hoàng, 2 SP) và W6-05 (Mạnh, Dương, Cường, Tùng, mỗi người 2 SP). Xong thì đóng nốt, hoặc dời sang tuần 7 nếu còn làm.
 4. **Tuần 7 quá tải:** 88 SP, trong khi các tuần trước nhóm làm khoảng 40 SP/tuần. Theo mục 4 (giao không quá 90% sức chứa), mỗi người chỉ nên nhận khoảng 7–8 SP.
    - Căng nhất là Cường (có W7-15 sp-8) và Mạnh (có W7-05 sp-8, hạn 20/10, đang chặn W7-02, W7-15, W8-16).
    - Đề xuất: dời các task không nằm trên đường găng (ví dụ W7-13, W7-17, W7-21) sang tuần 8, hoặc dùng velocity thật cuối tuần 7 để chỉnh tải tuần 8.
