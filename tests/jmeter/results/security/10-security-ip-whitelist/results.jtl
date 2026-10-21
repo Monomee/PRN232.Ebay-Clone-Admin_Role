@@ -1,0 +1,12 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1792589470397,69,IP 01 Ngoai whitelist - Google DNS,403,Forbidden,Thread Group 1-1,,true,,150,152,1,1,http://localhost:5000/api/Categories,69,0,20
+1792589471093,4,IP 02 Ngoai whitelist - TEST-NET,403,Forbidden,Thread Group 1-1,,true,,150,157,1,1,http://localhost:5000/api/Categories,4,0,0
+1792589471099,20,IP 03 Trong whitelist - Docker 172.x,200,OK,Thread Group 1-1,text,true,,638,155,1,1,http://localhost:5000/api/Categories,20,0,0
+1792589471121,7,IP 04 Trong whitelist - LAN 192.168.x,200,OK,Thread Group 1-1,text,true,,638,157,1,1,http://localhost:5000/api/Categories,7,0,0
+1792589471129,6,IP 05 [BUG?] Prefix 10.* khop nham 100.x,200,OK,Thread Group 1-1,text,false,"Test failed: code expected to equal /
+
+****** received  : [[[200]]]
+
+****** comparison: [[[403]]]
+
+/",638,154,1,1,http://localhost:5000/api/Categories,6,0,0

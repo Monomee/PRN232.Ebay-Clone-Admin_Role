@@ -1,0 +1,6 @@
+caseName,xff,expectedCode
+01 Ngoai whitelist - Google DNS,8.8.8.8,403
+02 Ngoai whitelist - TEST-NET,203.0.113.10,403
+03 Trong whitelist - Docker 172.x,172.20.0.5,200
+04 Trong whitelist - LAN 192.168.x,192.168.1.50,200
+05 [BUG?] Prefix 10.* khop nham 100.x,100.1.2.3,403

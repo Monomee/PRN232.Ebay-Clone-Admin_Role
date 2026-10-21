@@ -1,0 +1,35 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1792598723518,176,Login monitor,200,OK,setUp Thread Group 1-1,text,true,,993,232,1,1,http://localhost:5000/api/Auth/login,173,0,21
+1792598723719,134,Login support,200,OK,setUp Thread Group 1-1,text,true,,991,232,1,1,http://localhost:5000/api/Auth/login,133,0,0
+1792598724445,31,P1 Doi chung - Monitor xem Dashboard,200,OK,Thread Group “RBAC” 1-1,text,true,,566,829,1,1,http://localhost:5000/api/Dashboard/metrics,30,0,1
+1792598724477,20,P2 Doi chung - Support xem Users,200,OK,Thread Group “RBAC” 1-1,text,true,,2254,860,1,1,http://localhost:5000/api/Users?PageNumber=1&PageSize=10&IsDescending=false,20,0,0
+1792598724498,3,M1 Monitor ghi - doi trang thai user,403,Forbidden,Thread Group “RBAC” 1-1,,true,,99,833,1,1,http://localhost:5000/api/Users/999999/status,3,0,0
+1792598724503,3,M2 Monitor ghi - ban user,403,Forbidden,Thread Group “RBAC” 1-1,,true,,99,831,1,1,http://localhost:5000/api/Users/999999/ban,3,0,0
+1792598724507,4,M3 Monitor ghi - sua phi san,403,Forbidden,Thread Group “RBAC” 1-1,,true,,99,829,1,1,http://localhost:5000/api/Financials/fees,4,0,0
+1792598724512,3,M4 Monitor ghi - tao admin role,403,Forbidden,Thread Group “RBAC” 1-1,,true,,99,831,1,1,http://localhost:5000/api/AdminRoles/roles,3,0,0
+1792598724516,11,M5 [BUG?] Monitor ghi - assign dispute,404,Not Found,Thread Group “RBAC” 1-1,,false,"Test failed: code expected to equal /
+
+****** received  : 40[[[4]]]
+
+****** comparison: 40[[[3]]]
+
+/",99,837,1,1,http://localhost:5000/api/Disputes/999999/assign,11,0,0
+1792598724528,3,S1 Support tai chinh - xem phi san,403,Forbidden,Thread Group “RBAC” 1-1,,true,,99,826,1,1,http://localhost:5000/api/Financials/fees,3,0,0
+1792598724532,3,S2 Support tai chinh - lich su payout,403,Forbidden,Thread Group “RBAC” 1-1,,true,,99,837,1,1,http://localhost:5000/api/Financials/payouts/history,3,0,0
+1792598724536,3,S3 Support tai chinh - danh sach vi,403,Forbidden,Thread Group “RBAC” 1-1,,true,,99,818,1,1,http://localhost:5000/api/Wallets,3,0,0
+1792598724540,3,S4 Support admin roles - xem roles,403,Forbidden,Thread Group “RBAC” 1-1,,true,,99,827,1,1,http://localhost:5000/api/AdminRoles/roles,3,0,0
+1792598724544,3,S5 Support admin roles - xem admin users,403,Forbidden,Thread Group “RBAC” 1-1,,true,,99,827,1,1,http://localhost:5000/api/AdminRoles/users,3,0,0
+1792598724548,10,S6 [BUG?] Support tai chinh - don cho quyet toan,200,OK,Thread Group “RBAC” 1-1,text,false,"Test failed: code expected to equal /
+
+****** received  : [[[200]]]
+
+****** comparison: [[[403]]]
+
+/",160,839,1,1,http://localhost:5000/api/Financials/settlement-orders,10,0,0
+1792598724560,2,A1 [BUG?] Chua dang nhap - duyet tra hang,400,Bad Request,Thread Group “RBAC” 1-1,,false,"Test failed: code expected to equal /
+
+****** received  : 40[[[0]]]
+
+****** comparison: 40[[[1]]]
+
+/",101,225,1,1,http://localhost:5000/api/AdminReturnRequests/999999/approve,2,0,0

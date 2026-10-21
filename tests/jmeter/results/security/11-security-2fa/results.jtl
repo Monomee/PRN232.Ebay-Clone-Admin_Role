@@ -1,0 +1,5 @@
+timeStamp,elapsed,label,responseCode,responseMessage,threadName,dataType,success,failureMessage,bytes,sentBytes,grpThreads,allThreads,URL,Latency,IdleTime,Connect
+1792595945987,173,"1. Login (dung mat khau, chua qua 2FA)",200,OK,Thread Group 1-1,text,true,,255,239,1,1,http://localhost:5000/api/Auth/login,170,0,18
+1792595946187,13,2. Verify 2FA - sai ma,200,OK,Thread Group 1-1,text,true,,251,212,1,1,http://localhost:5000/api/Auth/verify-2fa,13,0,0
+1792595946201,6,3. Verify 2FA - thieu ma,200,OK,Thread Group 1-1,text,true,,251,206,1,1,http://localhost:5000/api/Auth/verify-2fa,6,0,0
+1792595946208,4,4. Goi API khi chua qua 2FA,401,Unauthorized,Thread Group 1-1,,true,,128,155,1,1,http://localhost:5000/api/Auth/me,4,0,0

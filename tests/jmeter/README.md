@@ -11,16 +11,20 @@ tests/jmeter/
 │   ├── 01-login-bruteforce.jmx     # Brute-force login, kỳ vọng 429
 │   ├── 02-dashboard-stats.jmx      # Dashboard/Stats, 100–500 users
 │   ├── 03-users-orders-paging.jmx  # Users/Orders list phân trang
-│   └── 04-dispute-detail.jmx       # Dispute detail theo id từ CSV
+│   ├── 04-dispute-detail.jmx       # Dispute detail theo id từ CSV
+│   ├── 10-security-ip-whitelist.jmx # W7-19: IP whitelist (giả lập IP qua X-Forwarded-For)
+│   ├── 11-security-2fa.jmx          # W7-19: thiếu/sai mã 2FA không được cấp cookie
+│   └── 12-security-rbac.jmx         # W7-19: phân quyền Monitor / Support / chưa đăng nhập
 ├── config/
 │   ├── local.properties    # host/port/threads mặc định (docker-compose)
 │   └── load-500.properties # profile tải cao, ghi đè threads/rampup/duration
-├── data/                   # CSV data (accounts, paging, dispute-ids)
+├── data/                   # CSV data (accounts, paging, dispute-ids, ip-cases, rbac-cases)
 ├── scripts/
 │   ├── run.ps1             # Chạy 1 plan non-GUI + xuất HTML report
 │   └── run-all.ps1         # Chạy toàn bộ theo đúng thứ tự
 └── results/
-    └── baseline/           # Kết quả baseline được commit (thư mục khác bị ignore)
+    ├── baseline/           # Kết quả baseline hiệu năng (W7-18) — được commit
+    └── security/           # Kết quả security test (W7-19) — được commit
 ```
 
 ## Yêu cầu
@@ -207,3 +211,65 @@ Ghi chú:
 | 02 Dashboard/Stats | 47 (request lẻ) | 223.2 | 0% | Chưa bão hoà |
 | 03 Users/Orders | 30 | 221.2 | 0% | Chưa bão hoà |
 | 04 Dispute detail | 2651 | 153.8 | 0% | **Bão hoà từ ~260 users** |
+
+## Security test (W7-19)
+
+Nguyên tắc: **assertion luôn ghi hành vi đúng về bảo mật**. Ca nào đỏ = lỗ hổng tìm được (không phải lỗi của plan).
+Các ca ghi dữ liệu dùng id không tồn tại (`999999`) → nếu lọt qua phân quyền chỉ nhận 404/400, không sửa dữ liệu thật.
+
+Chạy (cách nhau ≥ 60s vì plan 11, 12 dùng lượt login):
+
+```powershell
+.\scripts\run.ps1 -Plan 10-security-ip-whitelist
+.\scripts\run.ps1 -Plan 11-security-2fa       # 3 lượt strict (login + 2 verify-2fa)
+.\scripts\run.ps1 -Plan 12-security-rbac      # 2 lượt strict (login monitor + support)
+```
+
+Tài khoản: `techseller@example.com` / `Password123!` (seed **bật 2FA**), `monitor@ebay.local`, `support@ebay.local` / `Admin123!` (phải **tắt 2FA**).
+
+### Kết quả (2026-10-21, commit `4983a90`) — `results/security/`
+
+**10 — IP whitelist** (`data/ip-cases.csv`, gửi `X-Forwarded-For` để giả lập IP client)
+
+| Ca | IP | Kỳ vọng | Thực tế | |
+|---|---|---|---|---|
+| 01 | 8.8.8.8 | 403 | 403 | ✅ |
+| 02 | 203.0.113.10 | 403 | 403 | ✅ |
+| 03 | 172.20.0.5 | 200 | 200 | ✅ đối chứng |
+| 04 | 192.168.1.50 | 200 | 200 | ✅ đối chứng |
+| 05 | 100.1.2.3 | 403 | **200** | ❌ **SEC-02** |
+
+**11 — 2FA** (tài khoản bật 2FA)
+
+| Bước | Kỳ vọng | Thực tế | |
+|---|---|---|---|
+| Login đúng mật khẩu | `requireTwoFactor=true`, không có `auth_token` | đúng | ✅ |
+| verify-2fa mã sai `000000` | `success=false`, không có `auth_token` | đúng | ✅ |
+| verify-2fa thiếu mã | không có `auth_token` | 200, không cookie | ✅ (nên trả 400) |
+| `GET /api/Auth/me` sau các bước trên | 401 | 401 | ✅ |
+
+**12 — Phân quyền** (`data/rbac-cases.csv`)
+
+| Ca | Role | Request | Kỳ vọng | Thực tế | |
+|---|---|---|---|---|---|
+| P1 | Monitor | GET /api/Dashboard/metrics | 200 | 200 | ✅ đối chứng |
+| P2 | Support | GET /api/Users | 200 | 200 | ✅ đối chứng |
+| M1–M4 | Monitor | PUT/POST Users status/ban, PUT Financials/fees, POST AdminRoles/roles | 403 | 403 | ✅ |
+| M5 | Monitor | POST /api/Disputes/999999/assign | 403 | **404** | ❌ **SEC-03** |
+| S1–S5 | Support | Financials/fees, payouts/history, Wallets, AdminRoles/roles, AdminRoles/users | 403 | 403 | ✅ |
+| S6 | Support | GET /api/Financials/settlement-orders | 403 | **200** | ❌ **SEC-04** |
+| A1 | Chưa đăng nhập | POST /api/AdminReturnRequests/999999/approve | 401 | **400** | ❌ **SEC-05** |
+
+DoD W7-19: IP ngoài whitelist → 403 ✅ · thiếu/sai 2FA không có cookie ✅ · Monitor ghi / Support tài chính & admin roles → 403 ✅ (trừ các lỗ hổng dưới đây).
+
+### Lỗ hổng tìm được
+
+| ID | Mức độ | Mô tả | Bằng chứng | Đề xuất sửa |
+|---|---|---|---|---|
+| SEC-01 | **Cao** | Giả mạo IP: `UseForwardedHeaders` tin mọi nguồn (`KnownProxies/KnownIPNetworks.Clear()`), client gửi `X-Forwarded-For: 127.0.0.1` là vượt whitelist | Plan 10 ca 01–02: header giả được dùng làm IP client | Chỉ tin header từ IP của Nginx (`KnownProxies`) |
+| SEC-02 | Trung bình | So khớp whitelist bằng `StartsWith` không có dấu chấm: `10.*` khớp cả `100.x`, `101.x` (IP public) | Plan 10 ca 05 | So khớp CIDR (`IPNetwork.Contains`) hoặc thêm dấu `.` |
+| SEC-03 | **Cao** | `POST /api/Disputes/{id}/assign` và `/resolve` chỉ `RequireAuthorization()` → Monitor (chỉ xem) assign/resolve được dispute | Plan 12 M5: 404 (đã qua phân quyền) | `.RequireAuthorization(Policies.ManageDisputes)` |
+| SEC-04 | Trung bình | `Financials/settlement-orders`, `pending/{sellerId}`, `trigger-settlement` không giới hạn role → Support xem (và có thể kích hoạt) quyết toán | Plan 12 S6: 200 | Thêm `RequireRole(Administrator, SuperAdmin)` |
+| SEC-05 | **Nghiêm trọng** | `AdminReturnRequests`, `Products`, `Reviews` không có `RequireAuthorization` → người chưa đăng nhập gọi được API admin | Plan 12 A1: 400 (đã vào endpoint) | Thêm `RequireAuthorization(...)` cho cả group |
+| SEC-06 | Trung bình | `verify-2fa` chỉ nhận `UserId` + `Code`, không ràng buộc với bước mật khẩu → có mã 2FA là đăng nhập được, bỏ qua mật khẩu | Đọc code `Verify2FACommand` | Cấp token tạm sau bước mật khẩu, verify-2fa bắt buộc token này |
+| SEC-07 | Thấp | Môi trường Development trả stack trace đầy đủ khi lỗi | Plan 03 (thiếu `IsDescending`) | Chạy `ASPNETCORE_ENVIRONMENT=Production` khi demo/deploy |
