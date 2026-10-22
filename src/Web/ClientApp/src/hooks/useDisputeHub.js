@@ -11,14 +11,18 @@ import * as signalR from "@microsoft/signalr";
  * @param {Function} onDisputeResolved - Callback khi nhận event DisputeResolved
  * @returns {{ connectionState: string }}
  */
-export function useDisputeHub(onDisputeResolved) {
+export function useDisputeHub(onDisputeResolved, onReconnected) {
   const connectionRef = useRef(null);
   const callbackRef = useRef(onDisputeResolved);
+  const reconnectedRef = useRef(onReconnected);
 
-  // Cập nhật callback ref để tránh stale closure
   useEffect(() => {
     callbackRef.current = onDisputeResolved;
   }, [onDisputeResolved]);
+
+  useEffect(() => {
+    reconnectedRef.current = onReconnected;
+  }, [onReconnected]);
 
   useEffect(() => {
     // Trong dev: trỏ thẳng vào backend (https://localhost:5001) để bypass vấn đề
@@ -52,6 +56,10 @@ export function useDisputeHub(onDisputeResolved) {
       if (callbackRef.current) {
         callbackRef.current(data);
       }
+    });
+
+    connection.onreconnected(() => {
+      reconnectedRef.current?.();
     });
 
     // Bắt đầu kết nối

@@ -59,7 +59,7 @@ export default function ReturnRequestsPage() {
   useNotificationHub(['ReturnRequestCreated', 'ReturnRequestUpdated'], useCallback(() => {
       // Re-fetch data when a return request is created or updated
       fetchData();
-  }, [fetchData]));
+  }, [fetchData]), fetchData);
 
   // Derived Statistics
   const totalCount = requests.length;

@@ -23,10 +23,16 @@ spec:
       labels:
         app: ebay-api
     spec:
+      # 15s preStop + 25s host shutdown. Hết 45s kubelet SIGKILL.
+      terminationGracePeriodSeconds: 45
       containers:
         - name: ebay-api
           image: ghcr.io/monomee/ebay_clone_adminrole:latest
           imagePullPolicy: Always
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sh", "-c", "sleep 15"]
           ports:
             - containerPort: 8080
 

@@ -47,8 +47,6 @@ export function DisputeDetailPage() {
     }
   }, [id]);
 
-  useDisputeHub(handleDisputeResolved);
-
   const loadDisputeDetail = async () => {
     setLoading(true);
     try {
@@ -75,6 +73,8 @@ export function DisputeDetailPage() {
       setLoading(false);
     }
   };
+
+  useDisputeHub(handleDisputeResolved, loadDisputeDetail);
 
   const handleAssignToMe = async () => {
     try {

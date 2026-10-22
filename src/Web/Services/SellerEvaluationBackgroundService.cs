@@ -37,29 +37,51 @@ public class SellerEvaluationBackgroundService : BackgroundService
                 {
                     _logger.LogInformation("Evaluation scheduled time reached (or forced). Running evaluation...");
                     var mediator = scope.ServiceProvider.GetRequiredService<ISender>();
-                    var updated = await mediator.Send(new EvaluateSellerLevelsCommand(), stoppingToken);
+                    var updated = await mediator.Send(new EvaluateSellerLevelsCommand
+                    {
+                        NextEvaluationDate = NextEvaluationDate(force)
+                    }, stoppingToken);
                     
                     _logger.LogInformation("Evaluated seller levels. Updated {Count} sellers.", updated);
-
-                    // Set next evaluation date to the 20th of the next month
-                    var now = DateTime.UtcNow;
-                    var nextYear = now.Year;
-                    var nextMonth = now.Month;
-                    if (now.Day >= 20 || force) {
-                        nextMonth++;
-                        if (nextMonth > 12) { nextMonth = 1; nextYear++; }
-                    }
-                    criteria.NextEvaluationDate = new DateTime(nextYear, nextMonth, 20, 0, 0, 0, DateTimeKind.Utc);
-                    await context.SaveChangesAsync(stoppingToken);
                 }
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred in SellerEvaluationBackgroundService.");
             }
 
-            // Polling every 15 seconds to allow UI-driven demo adjustments
-            await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
         }
+
+        _logger.LogInformation("SellerEvaluationBackgroundService is stopping.");
+    }
+
+    private static DateTime NextEvaluationDate(bool force)
+    {
+        var now = DateTime.UtcNow;
+        var nextYear = now.Year;
+        var nextMonth = now.Month;
+        if (now.Day >= 20 || force)
+        {
+            nextMonth++;
+            if (nextMonth > 12)
+            {
+                nextMonth = 1;
+                nextYear++;
+            }
+        }
+
+        return new DateTime(nextYear, nextMonth, 20, 0, 0, 0, DateTimeKind.Utc);
     }
 }

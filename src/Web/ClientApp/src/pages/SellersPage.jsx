@@ -71,6 +71,12 @@ export const SellersPage = () => {
             .configureLogging(LogLevel.Warning)
             .build();
 
+        connection.onreconnected(() => {
+            console.log('[SellerHub] Reconnected — reloading wallets');
+            loadWallets();
+            loadCriteria();
+        });
+
         connection.start()
             .then(() => {
                 console.log('[SellerHub] Connected ✓');

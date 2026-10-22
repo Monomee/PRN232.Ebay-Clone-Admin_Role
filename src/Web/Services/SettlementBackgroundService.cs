@@ -38,10 +38,8 @@ public class SettlementBackgroundService : BackgroundService
                 // Run settlement checks every 15 seconds (reduced for demo UI accuracy)
                 await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
-                // Khi stoppingToken bị hủy, Task.Delay sẽ quăng exception này.
-                // Catch ở đây để cho phép vòng lặp thoát một cách êm ái.
                 break;
             }
             catch (Exception ex)

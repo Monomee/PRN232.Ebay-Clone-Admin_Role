@@ -15,6 +15,12 @@ builder.AddApplicationServices();
 builder.AddInfrastructureServices();
 builder.AddWebServices();
 
+// Ngắn hơn terminationGracePeriodSeconds (45) trừ preStop (15), để process tự thoát trước SIGKILL.
+builder.Services.Configure<HostOptions>(options =>
+{
+    options.ShutdownTimeout = TimeSpan.FromSeconds(25);
+});
+
 
 var app = builder.Build();
 
