@@ -34,7 +34,7 @@ public static class DependencyInjection
 
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddHealthChecks()
-            .AddDbContextCheck<ApplicationDbContext>();
+            .AddDbContextCheck<ApplicationDbContext>(tags: ["ready"]);
 
         builder.Services.AddHostedService<SellerEvaluationBackgroundService>();
         builder.Services.AddHostedService<SettlementBackgroundService>();

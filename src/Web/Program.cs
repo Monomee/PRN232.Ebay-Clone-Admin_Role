@@ -4,6 +4,7 @@ using EbayClone.Application.Common.Interfaces;
 using EbayClone.Infrastructure.Services;
 using EbayClone.Web.Hubs;
 using EbayClone.Web.Infrastructure; // <-- added for InternalIpMiddleware
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -41,6 +42,18 @@ else
 }
 
 // ── Core middleware (ORDER MATTERS) ──────────────────────────
+// Liveness: process còn trả lời. Không mở SQL, để DB sập không làm kubelet giết pod.
+app.UseHealthChecks("/health/live", new HealthCheckOptions
+{
+    Predicate = _ => false
+});
+
+// Readiness: CanConnectAsync tới SQL Server. 503 thì pod ra khỏi Service.
+app.UseHealthChecks("/health/ready", new HealthCheckOptions
+{
+    Predicate = check => check.Tags.Contains("ready")
+});
+
 app.UseHealthChecks("/health");
 app.UseHttpsRedirection();
 app.UseMiddleware<InternalIpMiddleware>(); // <-- restrict to internal IPs early

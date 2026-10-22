@@ -16,7 +16,7 @@ flowchart LR
 
 &#x20;   D --> E\[New pod starts]
 
-&#x20;   E --> F{Readiness probe /health passes?}
+&#x20;   E --> F{Readiness probe /health/ready passes?}
 
 &#x20;   F -- yes --> G\[Pod added to Service, one old pod removed]
 
@@ -48,9 +48,9 @@ Traffic path: `Client → Nginx (nginx-service) → ebay-api-service (ClusterIP 
 
 | Deployment | `k8s/api-deployment.yaml` | The rolling engine: `replicas: 2`, `RollingUpdate`, `maxSurge: 1`, `maxUnavailable: 0`. |
 
-| Readiness probe | `k8s/api-deployment.yaml` | Gate: a new pod gets no traffic until `/health` passes. |
+| Readiness probe | `k8s/api-deployment.yaml` | Gate: a new pod gets no traffic until `/health/ready` connects to SQL Server. |
 
-| Liveness probe | `k8s/api-deployment.yaml` | Restarts hung pods. Not part of the rollout itself. |
+| Liveness probe | `k8s/api-deployment.yaml` | Restarts the container when `/health/live` stops responding. It does not check SQL Server. |
 
 | Service | `k8s/api-service.yaml` | Routes only to ready pods, which moves traffic between versions. |
 
@@ -106,7 +106,7 @@ kubectl -n ebay-clone get svc
 
 \- \[ ] Database changes are backward-compatible (add first, remove later) because old and new pods share one database.
 
-\- \[ ] `/health` verifies the app can actually serve requests, including database connectivity.
+\- \[ ] `/health/ready` connects to SQL Server. `/health/live` only checks that the process responds.
 
 \- \[ ] The PR passed CI.
 
@@ -158,7 +158,7 @@ Expected behavior with 2 replicas:
 
 \### Step 6: Verify
 
-\- Through Nginx, call `/nginx-health` and `/health` and expect HTTP 200.
+\- Through Nginx, call `/nginx-health` and `/health/ready` and expect HTTP 200.
 
 \- Inspect the `X-Backend-Server` response header across several requests to see traffic reach the new pods.
 
@@ -200,9 +200,9 @@ Rollback is itself a rolling replacement, so it is not instant. To target a spec
 
 3\. \*\*Database compatibility\*\* is the main risk of this strategy. Use the expand/contract migration pattern, and confirm whether migrations run at app startup.
 
-4\. \*\*Readiness probe quality.\*\* `/health` should fail until the app is genuinely ready.
+4\. \*\*Readiness probe.\*\* `/health/ready` runs `AddDbContextCheck` (`CanConnectAsync`). `/health/live` does not touch the database. See `docs/ExpandContractMigrations.md` for schema changes during a rollout.
 
 5\. \*\*Database and Redis are single replicas.\*\* They are outside the rolling update but remain single points of failure.
 
-6\. \*\*Graceful shutdown.\*\* Consider a `preStop` delay and `terminationGracePeriodSeconds` so in-flight requests and websocket clients drain cleanly when old pods are removed.
+6\. \*\*Graceful shutdown.\*\* `preStop` sleeps 15 seconds and `terminationGracePeriodSeconds` is 45. The host stops within 25 seconds so worker loops and SignalR close before SIGKILL.
 
