@@ -62,10 +62,23 @@ public class RunPayoutEngineCommandHandler : IRequestHandler<RunPayoutEngineComm
             .FirstOrDefaultAsync(cancellationToken)
             ?? new PayoutConfig();  // fallback to defaults if no row
 
+        int successCount = 0, failedCount = 0, holdCount = 0, skippedCount = 0;
+        decimal totalDisbursed = 0m;
+        string? diagnosticMessage = null;
+
+        var resumed = await ResumeStaleProcessingAsync(request.SellerId, sessionId, cancellationToken);
+        successCount += resumed.Success;
+        failedCount += resumed.Failed;
+        totalDisbursed += resumed.Disbursed;
+
         if (!config.IsEnabled && !request.SellerId.HasValue)
         {
             _logger.LogInformation("[INFO] Payout Engine is DISABLED by admin. Aborting.");
-            return new PayoutEngineResult(0, 0, 0, 0, 0, 0, sessionId);
+            return new PayoutEngineResult(
+                0, successCount, failedCount, holdCount, skippedCount, totalDisbursed, sessionId,
+                resumed.Success + resumed.Failed > 0
+                    ? "Finished stale payouts. Engine is disabled."
+                    : null);
         }
 
         _logger.LogInformation("[INFO] Config: Frequency={Frequency}, MinThreshold=${Min}",
@@ -90,12 +103,14 @@ public class RunPayoutEngineCommandHandler : IRequestHandler<RunPayoutEngineComm
 
         _logger.LogInformation("[INFO] Total sellers with eligible balance: {Count}", wallets.Count);
 
-        int successCount = 0, failedCount = 0, holdCount = 0, skippedCount = 0;
-        decimal totalDisbursed = 0m;
-        string? diagnosticMessage = null;
-
         foreach (var wallet in wallets)
         {
+            if (cancellationToken.IsCancellationRequested)
+            {
+                _logger.LogInformation("Payout engine stopping before locking more sellers.");
+                break;
+            }
+
             var seller = wallet.Seller;
             if (seller == null) 
             { 
@@ -172,54 +187,21 @@ public class RunPayoutEngineCommandHandler : IRequestHandler<RunPayoutEngineComm
             // Flush the lock to DB before calling gateway (ensures idempotency across concurrent runs)
             await _context.SaveChangesAsync(cancellationToken);
 
-            // ── STEP 3: Call Mock Payment Gateway ─────────────────────────────
-            var gatewayResult = await _gateway.ProcessAsync(amountToPay, seller.BankAccountMock);
-            _logger.LogCritical("[PAYOUT_DEBUG] GATEWAY: Success={S}, Error={E}", gatewayResult.Success, gatewayResult.ErrorMessage);
-
-            // ── STEP 4: Post-processing ───────────────────────────────────────
-            if (gatewayResult.Success)
+            var finalized = await FinalizePayoutAsync(wallet, seller, payoutTx, amountToPay, sessionId);
+            if (finalized)
             {
-                wallet.ConfirmWithdrawal(amountToPay); // LockedBalance → TotalWithdrawn
-                _logger.LogCritical("[PAYOUT_DEBUG] CONFIRMED: Available={Av}, TotalWithdrawn={Tw}", wallet.AvailableBalance, wallet.TotalWithdrawn);
-                payoutTx.Status = PayoutTransaction.StatusSuccess;
-                payoutTx.CompletedAt = DateTime.UtcNow;
-
-                // Audit trail
-                _context.FinancialTransactions.Add(new FinancialTransaction
-                {
-                    SellerId = seller.Id,
-                    UserId = seller.Id,
-                    Type = "AutoPayout",
-                    Amount = amountToPay,
-                    BalanceAfter = wallet.AvailableBalance,
-                    Description = $"[AutoPayout] Session {sessionId} – transferred ${amountToPay:F2}",
-                    Date = DateTime.UtcNow
-                });
-
                 totalDisbursed += amountToPay;
                 successCount++;
-                _logger.LogInformation("[SUCCESS] Seller #{Id} ({Name}): ${Amount} → bank ✓",
-                    seller.Id, seller.Username, amountToPay);
                 if (request.SellerId.HasValue) diagnosticMessage = "Payout successful.";
             }
             else
             {
-                // Return funds to Available
-                wallet.UnlockFunds(amountToPay);
-                payoutTx.Status = PayoutTransaction.StatusFailed;
-                payoutTx.ErrorLog = gatewayResult.ErrorMessage;
-                payoutTx.CompletedAt = DateTime.UtcNow;
-
                 failedCount++;
-                _logger.LogError("[FAILED] Seller #{Id} ({Name}): ${Amount} → {Error}",
-                    seller.Id, seller.Username, amountToPay, gatewayResult.ErrorMessage);
-                if (request.SellerId.HasValue) diagnosticMessage = $"FAILED: {gatewayResult.ErrorMessage}";
+                if (request.SellerId.HasValue) diagnosticMessage = $"FAILED: {payoutTx.ErrorLog}";
             }
-
-            await _context.SaveChangesAsync(cancellationToken);
         }
 
-        if (request.SellerId.HasValue && wallets.Count == 0)
+        if (request.SellerId.HasValue && wallets.Count == 0 && diagnosticMessage == null)
         {
             diagnosticMessage = "Seller has no available balance or balance is below minimum threshold.";
         }
@@ -231,5 +213,130 @@ public class RunPayoutEngineCommandHandler : IRequestHandler<RunPayoutEngineComm
 
         return new PayoutEngineResult(
             wallets.Count, successCount, failedCount, holdCount, skippedCount, totalDisbursed, sessionId, diagnosticMessage);
+    }
+
+    /// <summary>
+    /// A Processing row older than the pod grace period has no live owner.
+    /// The mock gateway died with that process, so calling it again does not pay twice.
+    /// </summary>
+    private async Task<ResumeTally> ResumeStaleProcessingAsync(
+        int? sellerId,
+        string sessionId,
+        CancellationToken cancellationToken)
+    {
+        var cutoff = DateTime.UtcNow.AddSeconds(-45);
+        var query = _context.PayoutTransactions
+            .Include(p => p.Seller)
+            .Where(p => p.Status == PayoutTransaction.StatusProcessing && p.CreatedAt < cutoff);
+
+        if (sellerId.HasValue)
+            query = query.Where(p => p.SellerId == sellerId.Value);
+
+        var stale = await query.ToListAsync(cancellationToken);
+        var tally = new ResumeTally();
+
+        foreach (var payoutTx in stale)
+        {
+            if (cancellationToken.IsCancellationRequested)
+                break;
+
+            var seller = payoutTx.Seller;
+            if (seller == null)
+            {
+                _logger.LogWarning("Stale payout #{Id} has no seller. Leaving it Processing.", payoutTx.Id);
+                continue;
+            }
+
+            var wallet = await _context.SellerWallets
+                .FirstOrDefaultAsync(w => w.SellerId == payoutTx.SellerId, cancellationToken);
+            if (wallet == null)
+            {
+                _logger.LogWarning("Stale payout #{Id} has no wallet. Leaving it Processing.", payoutTx.Id);
+                continue;
+            }
+
+            _logger.LogInformation(
+                "Resuming stale payout #{Id} for seller #{SellerId}, created {CreatedAt:o}.",
+                payoutTx.Id, payoutTx.SellerId, payoutTx.CreatedAt);
+
+            var finalized = await FinalizePayoutAsync(
+                wallet,
+                seller,
+                payoutTx,
+                payoutTx.Amount,
+                payoutTx.SessionId ?? sessionId);
+
+            if (finalized)
+            {
+                tally.Success++;
+                tally.Disbursed += payoutTx.Amount;
+            }
+            else
+            {
+                tally.Failed++;
+            }
+        }
+
+        return tally;
+    }
+
+    /// <summary>
+    /// Gateway then the second save. The save ignores shutdown cancellation so a seller
+    /// already locked is not left in Processing when the host is stopping.
+    /// </summary>
+    private async Task<bool> FinalizePayoutAsync(
+        SellerWallet wallet,
+        User seller,
+        PayoutTransaction payoutTx,
+        decimal amount,
+        string sessionId)
+    {
+        var bank = string.IsNullOrWhiteSpace(payoutTx.BankSnapshot)
+            ? seller.BankAccountMock
+            : payoutTx.BankSnapshot;
+
+        var gatewayResult = await _gateway.ProcessAsync(amount, bank ?? string.Empty);
+        _logger.LogCritical("[PAYOUT_DEBUG] GATEWAY: Success={S}, Error={E}", gatewayResult.Success, gatewayResult.ErrorMessage);
+
+        if (gatewayResult.Success)
+        {
+            wallet.ConfirmWithdrawal(amount);
+            payoutTx.Status = PayoutTransaction.StatusSuccess;
+            payoutTx.CompletedAt = DateTime.UtcNow;
+
+            _context.FinancialTransactions.Add(new FinancialTransaction
+            {
+                SellerId = seller.Id,
+                UserId = seller.Id,
+                Type = "AutoPayout",
+                Amount = amount,
+                BalanceAfter = wallet.AvailableBalance,
+                Description = $"[AutoPayout] Session {sessionId} – transferred ${amount:F2}",
+                Date = DateTime.UtcNow
+            });
+
+            _logger.LogInformation("[SUCCESS] Seller #{Id} ({Name}): ${Amount} → bank ✓",
+                seller.Id, seller.Username, amount);
+        }
+        else
+        {
+            wallet.UnlockFunds(amount);
+            payoutTx.Status = PayoutTransaction.StatusFailed;
+            payoutTx.ErrorLog = gatewayResult.ErrorMessage;
+            payoutTx.CompletedAt = DateTime.UtcNow;
+
+            _logger.LogError("[FAILED] Seller #{Id} ({Name}): ${Amount} → {Error}",
+                seller.Id, seller.Username, amount, gatewayResult.ErrorMessage);
+        }
+
+        await _context.SaveChangesAsync(CancellationToken.None);
+        return gatewayResult.Success;
+    }
+
+    private sealed class ResumeTally
+    {
+        public int Success { get; set; }
+        public int Failed { get; set; }
+        public decimal Disbursed { get; set; }
     }
 }

@@ -28,13 +28,23 @@ public class ReturnRequestEscalationService : BackgroundService
             {
                 await EscalateRequestsAsync(stoppingToken);
             }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while escalating return requests.");
             }
 
-            // Chạy định kỳ mỗi 1 giờ
-            await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+            try
+            {
+                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
         }
 
         _logger.LogInformation("ReturnRequestEscalationService stopping.");
@@ -59,13 +69,14 @@ public class ReturnRequestEscalationService : BackgroundService
         foreach (var request in pendingRequests)
         {
             _logger.LogInformation("Escalating Return Request #{Id} (Created: {CreatedAt})", request.Id, request.CreatedAt);
-
             request.Status = ReturnStatuses.Escalated;
-            
-            // Broadcast the update
-            await notifier.NotifyReturnRequestUpdatedAsync(request.Id, request.Status, cancellationToken);
         }
 
         await context.SaveChangesAsync(cancellationToken);
+
+        foreach (var request in pendingRequests)
+        {
+            await notifier.NotifyReturnRequestUpdatedAsync(request.Id, ReturnStatuses.Escalated, cancellationToken);
+        }
     }
 }

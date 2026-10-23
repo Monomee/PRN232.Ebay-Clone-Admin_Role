@@ -58,15 +58,21 @@ public class PayoutEngineBackgroundService : BackgroundService
                     "PayoutEngine scheduled run complete. Success={S}, Failed={F}, Hold={H}, Skipped={K}, Disbursed=${D:F2}",
                     result.Success, result.Failed, result.OnHold, result.Skipped, result.TotalDisbursed);
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
             {
                 break;
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "PayoutEngine scheduled run encountered an unhandled error. Retrying in 1 hour.");
-                // On error, wait 1 hour before retrying to avoid a tight retry loop
-                await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                try
+                {
+                    await Task.Delay(TimeSpan.FromHours(1), stoppingToken);
+                }
+                catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+                {
+                    break;
+                }
             }
         }
 

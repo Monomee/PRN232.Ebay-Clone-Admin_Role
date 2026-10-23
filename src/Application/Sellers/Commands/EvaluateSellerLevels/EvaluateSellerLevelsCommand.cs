@@ -5,7 +5,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EbayClone.Application.Sellers.Commands.EvaluateSellerLevels;
 
-public record EvaluateSellerLevelsCommand : IRequest<int>;
+public record EvaluateSellerLevelsCommand : IRequest<int>
+{
+    /// <summary>
+    /// When set, persisted in the same SaveChanges as any seller-level updates.
+    /// </summary>
+    public DateTime? NextEvaluationDate { get; init; }
+}
 
 public class EvaluateSellerLevelsCommandHandler : IRequestHandler<EvaluateSellerLevelsCommand, int>
 {
@@ -132,10 +138,20 @@ public class EvaluateSellerLevelsCommandHandler : IRequestHandler<EvaluateSeller
             }
         }
 
-        if (updatedCount > 0)
+        var scheduleMoved = false;
+        if (request.NextEvaluationDate.HasValue && criteria.Id > 0)
+        {
+            criteria.NextEvaluationDate = request.NextEvaluationDate.Value;
+            scheduleMoved = true;
+        }
+
+        if (updatedCount > 0 || scheduleMoved)
         {
             await _context.SaveChangesAsync(cancellationToken);
+        }
 
+        if (updatedCount > 0)
+        {
             var metricsList = await _sender.Send(new EbayClone.Application.Sellers.Queries.GetSellerPerformanceMetrics.GetSellerPerformanceMetricsQuery(), cancellationToken);
             var updatedMetrics = metricsList.Where(m => updatedSellerIds.Contains(m.Id));
             foreach(var metric in updatedMetrics)

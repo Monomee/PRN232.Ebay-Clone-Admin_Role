@@ -8,11 +8,15 @@ import * as signalR from "@microsoft/signalr";
  * 
  * @param {Function} onNewNotification - Callback khi nhận thông báo mới
  */
-export function useNotificationHub(events, callback) {
+export function useNotificationHub(events, callback, onReconnected) {
   let eventNames = ["NewNotification"];
   let cb = events;
+  let reconnected = onReconnected;
 
-  if (typeof events === 'string') {
+  if (typeof events === 'function') {
+    cb = events;
+    reconnected = typeof callback === 'function' ? callback : undefined;
+  } else if (typeof events === 'string') {
     eventNames = [events];
     cb = callback;
   } else if (Array.isArray(events)) {
@@ -21,10 +25,15 @@ export function useNotificationHub(events, callback) {
   }
 
   const callbackRef = useRef(cb);
+  const reconnectedRef = useRef(reconnected);
 
   useEffect(() => {
     callbackRef.current = cb;
   }, [cb]);
+
+  useEffect(() => {
+    reconnectedRef.current = reconnected;
+  }, [reconnected]);
 
   useEffect(() => {
     const baseUrl = process.env.REACT_APP_HUB_BASE_URL || "";
@@ -48,6 +57,10 @@ export function useNotificationHub(events, callback) {
           callbackRef.current(...args);
         }
       });
+    });
+
+    connection.onreconnected(() => {
+      reconnectedRef.current?.();
     });
 
     connection.start().catch((err) => {

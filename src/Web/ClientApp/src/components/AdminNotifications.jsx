@@ -30,7 +30,7 @@ export const AdminNotifications = () => {
             if (prev.find(b => b.id === newNotif.id)) return prev;
             return [newNotif, ...prev];
         });
-    });
+    }, loadNotifications);
 
     const handleMarkAsRead = async (id) => {
         try {

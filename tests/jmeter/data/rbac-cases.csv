@@ -1,0 +1,15 @@
+caseName,role,method,path,body,expectedCode
+P1 Doi chung - Monitor xem Dashboard,monitor,GET,/api/Dashboard/metrics,,200
+P2 Doi chung - Support xem Users,support,GET,/api/Users?PageNumber=1&PageSize=10&IsDescending=false,,200
+M1 Monitor ghi - doi trang thai user,monitor,PUT,/api/Users/999999/status,{},403
+M2 Monitor ghi - ban user,monitor,POST,/api/Users/999999/ban,{},403
+M3 Monitor ghi - sua phi san,monitor,PUT,/api/Financials/fees,{},403
+M4 Monitor ghi - tao admin role,monitor,POST,/api/AdminRoles/roles,{},403
+M5 [BUG?] Monitor ghi - assign dispute,monitor,POST,/api/Disputes/999999/assign,{},403
+S1 Support tai chinh - xem phi san,support,GET,/api/Financials/fees,,403
+S2 Support tai chinh - lich su payout,support,GET,/api/Financials/payouts/history,,403
+S3 Support tai chinh - danh sach vi,support,GET,/api/Wallets,,403
+S4 Support admin roles - xem roles,support,GET,/api/AdminRoles/roles,,403
+S5 Support admin roles - xem admin users,support,GET,/api/AdminRoles/users,,403
+S6 [BUG?] Support tai chinh - don cho quyet toan,support,GET,/api/Financials/settlement-orders,,403
+A1 [BUG?] Chua dang nhap - duyet tra hang,anon,POST,/api/AdminReturnRequests/999999/approve,{},401

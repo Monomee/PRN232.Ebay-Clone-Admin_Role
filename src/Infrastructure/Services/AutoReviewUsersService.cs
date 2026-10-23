@@ -28,13 +28,23 @@ public class AutoReviewUsersService : BackgroundService
             {
                 await ProcessPendingUsersAsync(stoppingToken);
             }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
             catch (Exception ex)
             {
                 _logger.LogError(ex, "Error occurred while processing pending users.");
             }
 
-            // Chạy định kỳ mỗi 5 phút (Batch Processing)
-            await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+            try
+            {
+                await Task.Delay(TimeSpan.FromSeconds(15), stoppingToken);
+            }
+            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+            {
+                break;
+            }
         }
 
         _logger.LogInformation("AutoReviewUsersService stopping.");

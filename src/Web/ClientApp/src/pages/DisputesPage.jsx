@@ -104,7 +104,7 @@ export function DisputesPage() {
     loadDisputes();
   }, [loadDisputes]);
 
-  useDisputeHub(handleDisputeResolved);
+  useDisputeHub(handleDisputeResolved, loadDisputes);
 
   const handleAssignDispute = async (disputeId) => {
     try {
