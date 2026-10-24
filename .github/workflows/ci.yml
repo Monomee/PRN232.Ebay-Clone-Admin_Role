@@ -36,10 +36,12 @@ jobs:
         run: dotnet build src/Web/Web.csproj --no-restore -c Release /p:SkipNSwag=True
 
       # 5. Chạy Unit Tests
+      # Không dùng --no-build: bước Build ở trên chỉ build Web.csproj (không gồm project test),
+      # nên dotnet test phải tự build project test, nếu không sẽ không có test nào được chạy.
       - name: Run Unit Tests
-        run: dotnet test tests/Application.UnitTests/Application.UnitTests.csproj --no-build -c Release --verbosity normal
+        run: dotnet test tests/Application.UnitTests/Application.UnitTests.csproj -c Release --verbosity normal
 
       # 6. (Optional) Chạy Domain Tests nếu có
       - name: Run Domain Unit Tests
-        run: dotnet test tests/Domain.UnitTests/Domain.UnitTests.csproj --no-build -c Release --verbosity normal
+        run: dotnet test tests/Domain.UnitTests/Domain.UnitTests.csproj -c Release --verbosity normal
         continue-on-error: true  # không fail workflow nếu chưa có test case
