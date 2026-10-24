@@ -28,7 +28,10 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder
             .UseEnvironment("Testing")
-            .UseSetting("ConnectionStrings:MyCnn", _connectionString);
+            .UseSetting("ConnectionStrings:MyCnn", _connectionString)
+            .UseSetting("Jwt:Key", "functional-test-signing-key-32bytes!")
+            .UseSetting("Jwt:Issuer", "EbayCloneTest")
+            .UseSetting("Jwt:Audience", "EbayCloneTest");
 
         builder.ConfigureTestServices(services =>
         {
