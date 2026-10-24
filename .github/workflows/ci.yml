@@ -43,3 +43,8 @@ jobs:
       - name: Run Domain Unit Tests
         run: dotnet test tests/Domain.UnitTests/Domain.UnitTests.csproj --no-build -c Release --verbosity normal
         continue-on-error: true  # không fail workflow nếu chưa có test case
+
+      # 7. Functional tests: SQL Server do Testcontainers tự kéo trên Docker của runner.
+      #    Không dùng --no-build vì bước Build ở trên chỉ build Web, chưa build project test này.
+      - name: Run Functional Tests
+        run: dotnet test tests/Application.FunctionalTests/Application.FunctionalTests.csproj -c Release --verbosity normal
