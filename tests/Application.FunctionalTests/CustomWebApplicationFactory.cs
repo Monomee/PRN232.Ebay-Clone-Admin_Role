@@ -8,6 +8,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Hosting;
 
 namespace EbayClone.Application.FunctionalTests;
 
@@ -28,10 +29,15 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     {
         builder
             .UseEnvironment("Testing")
-            .UseSetting("ConnectionStrings:MyCnn", _connectionString);
+            .UseSetting("ConnectionStrings:MyCnn", _connectionString)
+            .UseSetting("Jwt:Key", "functional-test-signing-key-32bytes!")
+            .UseSetting("Jwt:Issuer", "EbayCloneTest")
+            .UseSetting("Jwt:Audience", "EbayCloneTest");
 
         builder.ConfigureTestServices(services =>
         {
+            services.RemoveAll<IHostedService>();
+
             services
                 .RemoveAll<IUser>()
                 .AddTransient(provider =>

@@ -25,8 +25,11 @@ builder.Services.Configure<HostOptions>(options =>
 
 var app = builder.Build();
 
-// Run DB migration + seeder on startup (idempotent — safe to run every time)
-await app.InitialiseDatabaseAsync();
+// Run DB migration + seeder on startup if not in testing environment (idempotent — safe to run every time)
+if (!app.Environment.IsEnvironment("Testing"))
+{
+    await app.InitialiseDatabaseAsync();
+}
 
 // Ensure real client IP is captured before any other middleware
 app.UseForwardedHeaders();
