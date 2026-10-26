@@ -15,6 +15,8 @@ public class Reviews : EndpointGroupBase
     public override void Map(RouteGroupBuilder groupBuilder)
     {
         groupBuilder.MapGet(GetFlaggedReviews, "flagged");
+        groupBuilder.MapGet(GetReviewStatistics, "statistics");
+        groupBuilder.MapGet(GetSellerFeedbacks, "seller-feedbacks");
         groupBuilder.MapPut(UpdateReviewStatus, "{id:int}/status");
         groupBuilder.MapPost(CreateReview);
         groupBuilder.MapPost(ReplyToReview, "{id:int}/reply");
@@ -30,12 +32,43 @@ public class Reviews : EndpointGroupBase
     public async Task<Ok<PaginatedList<ReviewModerationDto>>> GetFlaggedReviews(
         ISender sender,
         [FromQuery] int pageNumber = 1,
-        [FromQuery] int pageSize = 10)
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? status = null,
+        [FromQuery] string? reason = null,
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] int? rating = null)
     {
         var result = await sender.Send(new GetFlaggedReviewsQuery 
         { 
             PageNumber = pageNumber, 
-            PageSize = pageSize 
+            PageSize = pageSize,
+            Status = status,
+            Reason = reason,
+            SearchTerm = searchTerm,
+            Rating = rating
+        });
+        return TypedResults.Ok(result);
+    }
+
+    public async Task<Ok<ReviewStatisticsDto>> GetReviewStatistics(ISender sender)
+    {
+        var result = await sender.Send(new GetReviewStatisticsQuery());
+        return TypedResults.Ok(result);
+    }
+
+    public async Task<Ok<PaginatedList<SellerFeedbackDto>>> GetSellerFeedbacks(
+        ISender sender,
+        [FromQuery] int pageNumber = 1,
+        [FromQuery] int pageSize = 10,
+        [FromQuery] string? searchTerm = null,
+        [FromQuery] string? tier = null)
+    {
+        var result = await sender.Send(new GetSellerFeedbacksQuery
+        {
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            SearchTerm = searchTerm,
+            Tier = tier
         });
         return TypedResults.Ok(result);
     }

@@ -57,6 +57,8 @@ export const ENDPOINTS = {
     REVIEWS: {
         BASE: '/api/reviews',
         FLAGGED: '/api/reviews/flagged',
+        STATISTICS: '/api/reviews/statistics',
+        FEEDBACKS: '/api/reviews/seller-feedbacks',
         STATUS: (id) => `/api/reviews/${id}/status`,
         REPLY: (id) => `/api/reviews/${id}/reply`,
         REPORT: (id) => `/api/reviews/${id}/report`,

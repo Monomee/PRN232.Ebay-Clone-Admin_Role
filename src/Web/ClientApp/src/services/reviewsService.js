@@ -14,12 +14,48 @@ export const reviewsService = {
     },
 
     // GET /api/reviews/flagged
-    getFlaggedReviews: async (pageNumber = 1, pageSize = 10) => {
+    getFlaggedReviews: async ({ pageNumber = 1, pageSize = 10, status = '', reason = '', searchTerm = '', rating = '' } = {}) => {
         try {
-            const response = await axios.get(`${ENDPOINTS.REVIEWS.FLAGGED}?pageNumber=${pageNumber}&pageSize=${pageSize}`);
+            const params = new URLSearchParams();
+            if (pageNumber) params.append('pageNumber', pageNumber);
+            if (pageSize) params.append('pageSize', pageSize);
+            if (status && status !== 'All') params.append('status', status);
+            if (reason && reason !== 'All') params.append('reason', reason);
+            if (searchTerm) params.append('searchTerm', searchTerm);
+            if (rating) params.append('rating', rating);
+
+            const response = await axios.get(`${ENDPOINTS.REVIEWS.FLAGGED}?${params.toString()}`);
             return response.data;
         } catch (error) {
             console.error("Error fetching flagged reviews:", error);
+            throw error;
+        }
+    },
+
+    // GET /api/reviews/statistics
+    getReviewStatistics: async () => {
+        try {
+            const response = await axios.get(ENDPOINTS.REVIEWS.STATISTICS);
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching review statistics:", error);
+            throw error;
+        }
+    },
+
+    // GET /api/reviews/seller-feedbacks
+    getSellerFeedbacks: async ({ pageNumber = 1, pageSize = 10, searchTerm = '', tier = '' } = {}) => {
+        try {
+            const params = new URLSearchParams();
+            if (pageNumber) params.append('pageNumber', pageNumber);
+            if (pageSize) params.append('pageSize', pageSize);
+            if (searchTerm) params.append('searchTerm', searchTerm);
+            if (tier && tier !== 'All') params.append('tier', tier);
+
+            const response = await axios.get(`${ENDPOINTS.REVIEWS.FEEDBACKS}?${params.toString()}`);
+            return response.data;
+        } catch (error) {
+            console.error("Error fetching seller feedbacks:", error);
             throw error;
         }
     },
