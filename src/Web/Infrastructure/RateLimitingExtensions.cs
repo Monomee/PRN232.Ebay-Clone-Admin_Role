@@ -58,9 +58,11 @@ public static class RateLimitingExtensions
                         ((int)retryAfter.TotalSeconds).ToString();
                 }
 
+                context.HttpContext.Response.Headers["X-RateLimit-Source"] = "App-RateLimiter";
+
                 context.HttpContext.Response.ContentType = "application/json";
                 await context.HttpContext.Response.WriteAsync(
-                    """{"error": "Too many requests. Please slow down and try again later."}""",
+                    """{"error": "Too many requests. Please slow down and try again later.", "source": "Application Layer"}""",
                     cancellationToken);
             };
         });
