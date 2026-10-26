@@ -95,14 +95,19 @@ Flag `--build` bắt Docker build lại image với code mới.
 ## 🐞 Xem logs / Debug
 
 ```bash
-# Xem log của cả 2 service
+# Xem log của tất cả services
 docker-compose logs -f
 
-# Chỉ xem log của API
-docker-compose logs -f api
+# Xem log của Nginx Load Balancer (xem request trúng instance nào)
+docker-compose logs -f nginx
 
-# Chỉ xem log của SQL Server
+# Xem log từng instance API
+docker-compose logs -f api1
+docker-compose logs -f api2
+
+# Xem log của SQL Server & Redis
 docker-compose logs -f db
+docker-compose logs -f redis
 ```
 
 ---

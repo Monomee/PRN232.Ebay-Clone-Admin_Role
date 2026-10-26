@@ -13,7 +13,7 @@ services:
       - "1433:1433"
     volumes:
       - sqlserver_data:/var/opt/mssql
-    # Kịch bản "Vượt rào": Chạy server -> Đợi -> Đổi về mật khẩu cũ của bạn
+    # Kịch bản "Vượt rào": Chạy server -> Đợi -> Đổi về mật khẩu gốc của bạn
     command: >
       bash -c "
       /opt/mssql/bin/sqlservr & 
@@ -29,7 +29,7 @@ services:
       start_period: 40s
 
   # ============================================================
-  # Redis — SignalR Backplane (load balancing real-time)
+  # Redis – SignalR Backplane (load balancing real-time)
   # ============================================================
   redis:
     image: redis:7-alpine
@@ -44,39 +44,55 @@ services:
       retries: 5
 
   # ============================================================
-  # ASP.NET Core API + React SPA
+  # ASP.NET Core API - Instance 1
   # ============================================================
-  api:
+  api1: &api-common
     build:
       context: .
       dockerfile: Dockerfile
-    container_name: ebay_api
-    ports:
-      - "5000:8080"
-    depends_on:
-      db:
-        condition: service_healthy
-    environment:
-      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
-      # DB connection — 'db' là tên service trên, SQL Server listen port 1433
-      ConnectionStrings__MyCnn: "Server=db,1433;Database=CloneEbayDB;User Id=sa;Password=${SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
-      # JWT
-      Jwt__Key: "${JWT_KEY}"
-      Jwt__Issuer: "EbayClone"
-      Jwt__Audience: "EbayCloneUsers"
-      # Email
-      EmailSettings__SenderEmail: "${EMAIL_SENDER}"
-      EmailSettings__SenderPassword: "${EMAIL_PASSWORD}"
-      EmailSettings__SmtpServer: "smtp.gmail.com"
-      EmailSettings__Port: "587"
-      # Redis backplane cho SignalR (load balancing)
-      Redis__ConnectionString: "redis:6379"
+    container_name: ebay_api_1
+    expose:
+      - "8080"
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
+      ConnectionStrings__MyCnn: "Server=db,1433;Database=CloneEbayDB;User Id=sa;Password=${SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "EbayClone"
+      Jwt__Audience: "EbayCloneUsers"
+      EmailSettings__SenderEmail: "${EMAIL_SENDER}"
+      EmailSettings__SenderPassword: "${EMAIL_PASSWORD}"
+      EmailSettings__SmtpServer: "smtp.gmail.com"
+      EmailSettings__Port: "587"
+      Redis__ConnectionString: "redis:6379"
     restart: unless-stopped
+
+  # ============================================================
+  # ASP.NET Core API - Instance 2
+  # ============================================================
+  api2:
+    <<: *api-common
+    container_name: ebay_api_2
+
+  # ============================================================
+  # Nginx Load Balancer (Cân bằng tải cho 2 instances API)
+  # ============================================================
+  nginx:
+    image: nginx:alpine
+    container_name: ebay_nginx_lb
+    restart: unless-stopped
+    ports:
+      - "5000:80"   # Cổng truy cập chính (http://localhost:5000)
+      - "80:80"     # Cổng HTTP tiêu chuẩn
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api1
+      - api2
 
 volumes:
   sqlserver_data:
