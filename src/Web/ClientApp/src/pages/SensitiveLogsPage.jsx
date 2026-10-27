@@ -55,7 +55,7 @@ export const SensitiveLogsPage = () => {
             });
         } catch (error) {
             console.error("Error fetching sensitive logs:", error);
-            showToast("Lỗi khi tải nhật ký dữ liệu nhạy cảm", "danger");
+            showToast("Failed to load sensitive data logs", "danger");
         } finally {
             setLoading(false);
         }
@@ -96,10 +96,10 @@ export const SensitiveLogsPage = () => {
         try {
             const result = await sensitiveLogService.decryptLog(logId);
             setDecryptedResult(result);
-            showToast("Giải mã AES-256 thành công!", "success");
+            showToast("AES-256 decryption successful!", "success");
         } catch (error) {
             console.error("Error decrypting log:", error);
-            showToast("Không thể giải mã bản ghi hoặc không đủ quyền hạn", "danger");
+            showToast("Unable to decrypt log or insufficient permissions", "danger");
         } finally {
             setDecryptingId(null);
         }
@@ -115,13 +115,13 @@ export const SensitiveLogsPage = () => {
     const getClassificationBadge = (classification) => {
         switch (classification) {
             case 'Financial':
-                return <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1"><i className="bi bi-cash-stack me-1"></i>TÀI CHÍNH</span>;
+                return <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1"><i className="bi bi-cash-stack me-1"></i>FINANCIAL</span>;
             case 'PII':
-                return <span className="badge bg-info bg-opacity-10 text-info-emphasis border border-info border-opacity-25 px-2 py-1"><i className="bi bi-person-vcard me-1"></i>ĐỊNH DANH (PII)</span>;
+                return <span className="badge bg-info bg-opacity-10 text-info-emphasis border border-info border-opacity-25 px-2 py-1"><i className="bi bi-person-vcard me-1"></i>PII</span>;
             case 'SecurityCredential':
-                return <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1"><i className="bi bi-key-fill me-1"></i>MẬT MÃ / 2FA</span>;
+                return <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 px-2 py-1"><i className="bi bi-key-fill me-1"></i>SECURITY / 2FA</span>;
             case 'AdminPrivilege':
-                return <span className="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25 px-2 py-1"><i className="bi bi-shield-lock-fill me-1"></i>QUYỀN QUẢN TRỊ</span>;
+                return <span className="badge bg-warning bg-opacity-10 text-warning-emphasis border border-warning border-opacity-25 px-2 py-1"><i className="bi bi-shield-lock-fill me-1"></i>ADMIN PRIVILEGE</span>;
             default:
                 return <span className="badge bg-secondary bg-opacity-10 text-secondary border px-2 py-1">{classification}</span>;
         }
@@ -162,7 +162,7 @@ export const SensitiveLogsPage = () => {
                             </span>
                         </div>
                         <p className="text-secondary mb-0 small">
-                            Nhật ký lưu trữ riêng biệt cho dữ liệu nhạy cảm (Tài chính, CCCD/PII, Mật khẩu, Cấp quyền). Dữ liệu được mã hóa đối xứng khi lưu trong Database và chỉ SuperAdmin mới có thể giải mã an toàn.
+                            Dedicated audit log for sensitive data (Financial, National ID/PII, Credentials, Permissions). Data is symmetrically encrypted when stored in the database and can only be decrypted by SuperAdmin.
                         </p>
                     </div>
                     <div className="d-flex gap-2 mt-2 mt-sm-0">
@@ -170,7 +170,7 @@ export const SensitiveLogsPage = () => {
                             className="btn btn-sm btn-white border shadow-sm rounded-pill px-3 py-1 fw-semibold text-secondary"
                             onClick={() => { fetchSummary(); fetchLogs(pageNumber); }}
                         >
-                            <i className="bi bi-arrow-clockwise me-1"></i> Làm mới
+                            <i className="bi bi-arrow-clockwise me-1"></i> Refresh
                         </button>
                     </div>
                 </div>
@@ -183,11 +183,11 @@ export const SensitiveLogsPage = () => {
                                 <i className="bi bi-database-lock"></i>
                             </div>
                             <div>
-                                <span className="text-muted small fw-bold text-uppercase">Tổng Bản Ghi Nhạy Cảm</span>
+                                <span className="text-muted small fw-bold text-uppercase">Total Sensitive Logs</span>
                                 <h4 className="mb-0 fw-bold text-dark">
                                     {summary ? summary.totalLogs : <span className="spinner-border spinner-border-sm"></span>}
                                 </h4>
-                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>Được bảo vệ mã hóa toàn bộ</small>
+                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>Fully encrypted and protected</small>
                             </div>
                         </div>
                     </div>
@@ -198,11 +198,11 @@ export const SensitiveLogsPage = () => {
                                 <i className="bi bi-wallet2"></i>
                             </div>
                             <div>
-                                <span className="text-muted small fw-bold text-uppercase">Dữ Liệu Tài Chính</span>
+                                <span className="text-muted small fw-bold text-uppercase">Financial Data</span>
                                 <h4 className="mb-0 fw-bold text-dark">
                                     {summary ? summary.financialCount : <span className="spinner-border spinner-border-sm"></span>}
                                 </h4>
-                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>Bank, Payout, Ví điện tử</small>
+                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>Bank, Payout, E-Wallets</small>
                             </div>
                         </div>
                     </div>
@@ -213,11 +213,11 @@ export const SensitiveLogsPage = () => {
                                 <i className="bi bi-person-badge"></i>
                             </div>
                             <div>
-                                <span className="text-muted small fw-bold text-uppercase">Định Danh Cá Nhân (PII)</span>
+                                <span className="text-muted small fw-bold text-uppercase">Personal Identity (PII)</span>
                                 <h4 className="mb-0 fw-bold text-dark">
                                     {summary ? summary.piiCount : <span className="spinner-border spinner-border-sm"></span>}
                                 </h4>
-                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>CCCD, Hộ chiếu, Địa chỉ</small>
+                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>ID card, Passport, Address</small>
                             </div>
                         </div>
                     </div>
@@ -228,11 +228,11 @@ export const SensitiveLogsPage = () => {
                                 <i className="bi bi-shield-slash-fill"></i>
                             </div>
                             <div>
-                                <span className="text-muted small fw-bold text-uppercase">Mật Mã & Quyền Hạn</span>
+                                <span className="text-muted small fw-bold text-uppercase">Credentials & Privileges</span>
                                 <h4 className="mb-0 fw-bold text-dark">
                                     {summary ? summary.securityCredentialCount + summary.adminPrivilegeCount : <span className="spinner-border spinner-border-sm"></span>}
                                 </h4>
-                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>2FA, Mật khẩu, Cấp quyền</small>
+                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>2FA, Passwords, Role grants</small>
                             </div>
                         </div>
                     </div>
@@ -250,7 +250,7 @@ export const SensitiveLogsPage = () => {
                                     <input 
                                         type="text"
                                         className="form-control form-control-sm ps-5 rounded-pill border-light-subtle"
-                                        placeholder="Tìm theo Actor, Action, Target, IP..."
+                                        placeholder="Search by Actor, Action, Target, IP..."
                                         value={searchInputValue}
                                         onChange={(e) => setSearchInputValue(e.target.value)}
                                     />
@@ -264,11 +264,11 @@ export const SensitiveLogsPage = () => {
                                     value={classificationFilter}
                                     onChange={(e) => { setClassificationFilter(e.target.value); setPageNumber(1); }}
                                 >
-                                    <option value="All">Phân loại: Tất cả</option>
-                                    <option value="Financial">Tài chính (Financial)</option>
-                                    <option value="PII">Định danh cá nhân (PII)</option>
-                                    <option value="SecurityCredential">Mật mã & Xác thực (Security)</option>
-                                    <option value="AdminPrivilege">Quyền quản trị (Admin Privilege)</option>
+                                    <option value="All">Classification: All</option>
+                                    <option value="Financial">Financial</option>
+                                    <option value="PII">Personal Identity (PII)</option>
+                                    <option value="SecurityCredential">Security & Credentials</option>
+                                    <option value="AdminPrivilege">Admin Privilege</option>
                                 </select>
                             </div>
 
@@ -279,14 +279,14 @@ export const SensitiveLogsPage = () => {
                                     value={actionFilter}
                                     onChange={(e) => { setActionFilter(e.target.value); setPageNumber(1); }}
                                 >
-                                    <option value="All">Hành động: Tất cả</option>
-                                    <option value="UpdatePaymentInfo">Cập nhật tài khoản Bank</option>
-                                    <option value="ExportKYC">Xuất dữ liệu KYC</option>
-                                    <option value="ResetPassword">Reset mật khẩu tài khoản</option>
-                                    <option value="ChangeAdminRole">Thay đổi quyền Admin</option>
-                                    <option value="PayoutExecution">Thực thi giải ngân Payout</option>
-                                    <option value="WalletAdjustment">Điều chỉnh số dư ví</option>
-                                    <option value="TwoFactorSecret">Thiết lập bảo mật 2FA</option>
+                                    <option value="All">Action: All</option>
+                                    <option value="UpdatePaymentInfo">Update Bank Account</option>
+                                    <option value="ExportKYC">Export KYC Data</option>
+                                    <option value="ResetPassword">Reset Account Password</option>
+                                    <option value="ChangeAdminRole">Change Admin Role</option>
+                                    <option value="PayoutExecution">Execute Payout</option>
+                                    <option value="WalletAdjustment">Adjust Wallet Balance</option>
+                                    <option value="TwoFactorSecret">Setup 2FA Security</option>
                                 </select>
                             </div>
 
@@ -296,7 +296,7 @@ export const SensitiveLogsPage = () => {
                                     className="btn btn-sm btn-outline-secondary rounded-pill w-100"
                                     onClick={resetFilters}
                                 >
-                                    <i className="bi bi-x-circle me-1"></i> Xóa lọc
+                                    <i className="bi bi-x-circle me-1"></i> Reset Filters
                                 </button>
                             </div>
                         </div>
@@ -307,12 +307,12 @@ export const SensitiveLogsPage = () => {
                         <table className="table mb-0 align-middle" style={{ fontSize: '0.85rem' }}>
                             <thead className="bg-light text-secondary text-uppercase" style={{ fontSize: '0.72rem', letterSpacing: '0.5px' }}>
                                 <tr>
-                                    <th style={{ width: '15%' }} className="ps-4">Thời Gian</th>
-                                    <th style={{ width: '18%' }}>Người Thực Hiện (Actor)</th>
-                                    <th style={{ width: '22%' }}>Hành Động & Phân Loại</th>
-                                    <th style={{ width: '15%' }}>Đối Tượng (Target)</th>
-                                    <th style={{ width: '18%' }}>Dữ Liệu Mã Hóa (Ciphertext)</th>
-                                    <th style={{ width: '12%' }} className="text-end pe-4">Thao Tác</th>
+                                    <th style={{ width: '15%' }} className="ps-4">Timestamp</th>
+                                    <th style={{ width: '18%' }}>Actor</th>
+                                    <th style={{ width: '22%' }}>Action & Classification</th>
+                                    <th style={{ width: '15%' }}>Target</th>
+                                    <th style={{ width: '18%' }}>Encrypted Data (Ciphertext)</th>
+                                    <th style={{ width: '12%' }} className="text-end pe-4">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -322,15 +322,15 @@ export const SensitiveLogsPage = () => {
                                             <div className="spinner-border text-danger" role="status">
                                                 <span className="visually-hidden">Loading...</span>
                                             </div>
-                                            <div className="text-muted small mt-2">Đang tải nhật ký nhạy cảm...</div>
+                                            <div className="text-muted small mt-2">Loading sensitive logs...</div>
                                         </td>
                                     </tr>
                                 ) : logs.length === 0 ? (
                                     <tr>
                                         <td colSpan="6" className="text-center py-5">
                                             <i className="bi bi-shield-check text-success" style={{ fontSize: '3rem' }}></i>
-                                            <h6 className="mt-2 text-dark fw-bold">Không có bản ghi nhạy cảm nào</h6>
-                                            <p className="text-muted small mb-0">Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.</p>
+                                            <h6 className="mt-2 text-dark fw-bold">No sensitive logs found</h6>
+                                            <p className="text-muted small mb-0">Try adjusting your filters or search keywords.</p>
                                         </td>
                                     </tr>
                                 ) : (
@@ -339,10 +339,10 @@ export const SensitiveLogsPage = () => {
                                             {/* Timestamp */}
                                             <td className="ps-4">
                                                 <div className="fw-semibold text-dark">
-                                                    {log.createdAt ? new Date(log.createdAt).toLocaleDateString('vi-VN') : '-'}
+                                                    {log.createdAt ? new Date(log.createdAt).toLocaleDateString('en-US') : '-'}
                                                 </div>
                                                 <small className="text-muted" style={{ fontSize: '0.72rem' }}>
-                                                    {log.createdAt ? new Date(log.createdAt).toLocaleTimeString('vi-VN') : ''}
+                                                    {log.createdAt ? new Date(log.createdAt).toLocaleTimeString('en-US') : ''}
                                                 </small>
                                             </td>
 
@@ -380,7 +380,7 @@ export const SensitiveLogsPage = () => {
                                                     {log.encryptedData ? log.encryptedData.substring(0, 18) + '...' : ''}
                                                 </div>
                                                 <small className="text-muted d-block mt-1" style={{ fontSize: '0.68rem' }}>
-                                                    Thuật toán: {log.encryptionAlgorithm}
+                                                    Algorithm: {log.encryptionAlgorithm}
                                                 </small>
                                             </td>
 
@@ -391,14 +391,14 @@ export const SensitiveLogsPage = () => {
                                                     onClick={() => handleDecrypt(log.id)}
                                                     disabled={decryptingId === log.id}
                                                     style={{ fontSize: '0.75rem' }}
-                                                    title="Chỉ SuperAdmin có quyền giải mã dữ liệu này"
+                                                    title="SuperAdmin only permission to decrypt this data"
                                                 >
                                                     {decryptingId === log.id ? (
                                                         <span className="spinner-border spinner-border-sm me-1"></span>
                                                     ) : (
                                                         <i className="bi bi-key-fill me-1"></i>
                                                     )}
-                                                    Giải mã
+                                                    Decrypt
                                                 </button>
                                             </td>
                                         </tr>
@@ -411,18 +411,18 @@ export const SensitiveLogsPage = () => {
                     {/* Pagination */}
                     <div className="px-4 py-3 bg-white border-top d-flex justify-content-between align-items-center">
                         <span className="text-muted small">
-                            Trang <strong>{pageNumber}</strong> / {pagination.totalPages} (Tổng {pagination.totalCount} bản ghi)
+                            Page <strong>{pageNumber}</strong> / {pagination.totalPages} (Total {pagination.totalCount} records)
                         </span>
                         <nav>
                             <ul className="pagination pagination-sm mb-0 gap-1">
                                 <li className={`page-item ${!pagination.hasPreviousPage ? 'disabled' : ''}`}>
                                     <button className="page-link rounded-pill border-0 px-3" onClick={() => setPageNumber(prev => Math.max(1, prev - 1))}>
-                                        <i className="bi bi-chevron-left me-1"></i> Trước
+                                        <i className="bi bi-chevron-left me-1"></i> Prev
                                     </button>
                                 </li>
                                 <li className={`page-item ${!pagination.hasNextPage ? 'disabled' : ''}`}>
                                     <button className="page-link rounded-pill border-0 px-3" onClick={() => setPageNumber(prev => prev + 1)}>
-                                        Sau <i className="bi bi-chevron-right ms-1"></i>
+                                        Next <i className="bi bi-chevron-right ms-1"></i>
                                     </button>
                                 </li>
                             </ul>
@@ -444,10 +444,10 @@ export const SensitiveLogsPage = () => {
                                         </div>
                                         <div>
                                             <h5 className="modal-title fw-bold h6 mb-0">
-                                                Dữ Liệu Nhạy Cảm Đã Giải Mã #{decryptedResult.id}
+                                                Decrypted Sensitive Data #{decryptedResult.id}
                                             </h5>
                                             <small className="text-white-50" style={{ fontSize: '0.72rem' }}>
-                                                Giải mã thành công bởi: <strong>{decryptedResult.decryptedBy}</strong> ({new Date(decryptedResult.decryptedAt).toLocaleTimeString('vi-VN')})
+                                                Successfully decrypted by: <strong>{decryptedResult.decryptedBy}</strong> ({new Date(decryptedResult.decryptedAt).toLocaleTimeString('en-US')})
                                             </small>
                                         </div>
                                     </div>
@@ -457,13 +457,13 @@ export const SensitiveLogsPage = () => {
                                     {/* Verification Badges */}
                                     <div className="d-flex flex-wrap gap-2 mb-3">
                                         <span className="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25 px-2 py-1">
-                                            <i className="bi bi-patch-check-fill me-1"></i>Toàn Vẹn: HMAC-SHA256 Hợp Lệ
+                                            <i className="bi bi-patch-check-fill me-1"></i>Integrity: Valid HMAC-SHA256
                                         </span>
                                         <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">
-                                            <i className="bi bi-cpu me-1"></i>Thuật toán: {decryptedResult.encryptionAlgorithm}
+                                            <i className="bi bi-cpu me-1"></i>Algorithm: {decryptedResult.encryptionAlgorithm}
                                         </span>
                                         <span className="badge bg-dark bg-opacity-10 text-dark border px-2 py-1">
-                                            Hành động: {decryptedResult.action}
+                                            Action: {decryptedResult.action}
                                         </span>
                                     </div>
 
@@ -472,7 +472,7 @@ export const SensitiveLogsPage = () => {
                                         <div className="d-flex justify-content-between align-items-center mb-1">
                                             <label className="form-label fw-bold small text-secondary mb-0">
                                                 <i className="bi bi-lock-fill text-danger me-1"></i>
-                                                Dữ liệu mã hóa lưu trong Database (Ciphertext Base64):
+                                                Encrypted Data in Database (Ciphertext Base64):
                                             </label>
                                             <button 
                                                 className="btn btn-sm btn-link text-decoration-none p-0 text-muted small"
@@ -491,7 +491,7 @@ export const SensitiveLogsPage = () => {
                                         <div className="d-flex justify-content-between align-items-center mb-1">
                                             <label className="form-label fw-bold small text-dark mb-0">
                                                 <i className="bi bi-file-earmark-code text-success me-1"></i>
-                                                Nội dung nhạy cảm sau khi giải mã (Plaintext Payload JSON):
+                                                Decrypted Sensitive Content (Plaintext Payload JSON):
                                             </label>
                                             <button 
                                                 className={`btn btn-sm btn-${copied ? 'success' : 'outline-primary'} rounded-pill px-3 py-1 fw-semibold`}
@@ -499,7 +499,7 @@ export const SensitiveLogsPage = () => {
                                                 onClick={() => copyToClipboard(decryptedResult.decryptedData)}
                                             >
                                                 <i className={`bi ${copied ? 'bi-check2' : 'bi-clipboard'} me-1`}></i>
-                                                {copied ? 'Đã sao chép!' : 'Sao chép JSON'}
+                                                {copied ? 'Copied!' : 'Copy JSON'}
                                             </button>
                                         </div>
                                         <div className="p-3 bg-dark text-white rounded-3 font-monospace small" style={{ maxHeight: '240px', overflowY: 'auto', fontSize: '0.82rem' }}>
@@ -518,13 +518,13 @@ export const SensitiveLogsPage = () => {
                                     <div className="alert alert-warning border-0 d-flex align-items-center gap-2 mb-0 py-2 px-3 small rounded-3 mt-3">
                                         <i className="bi bi-exclamation-triangle-fill text-warning fs-5"></i>
                                         <span>
-                                            <strong>Lưu ý bảo mật:</strong> Thao tác giải mã dữ liệu nhạy cảm này đã được hệ thống tự động lưu vào <strong>Audit Log</strong> phục vụ công tác thanh tra và tuân thủ an toàn thông tin.
+                                            <strong>Security Notice:</strong> This sensitive data decryption operation has been automatically recorded in the <strong>Audit Log</strong> for compliance and security auditing.
                                         </span>
                                     </div>
                                 </div>
                                 <div className="modal-footer bg-white px-4 py-3">
                                     <button type="button" className="btn btn-sm btn-dark rounded-pill px-4 fw-semibold" onClick={() => setDecryptedResult(null)}>
-                                        Đóng
+                                        Close
                                     </button>
                                 </div>
                             </div>

@@ -70,7 +70,7 @@ export const ReviewMonitoringPage = () => {
             });
         } catch (error) {
             console.error("Error fetching flagged reviews:", error);
-            showToast("Không thể tải danh sách đánh giá", "danger");
+            showToast("Failed to load review list", "danger");
         } finally {
             setReviewsLoading(false);
         }
@@ -94,7 +94,7 @@ export const ReviewMonitoringPage = () => {
             });
         } catch (error) {
             console.error("Error fetching seller feedbacks:", error);
-            showToast("Không thể tải danh sách uy tín người bán", "danger");
+            showToast("Failed to load seller reputation list", "danger");
         } finally {
             setFeedbacksLoading(false);
         }
@@ -124,13 +124,13 @@ export const ReviewMonitoringPage = () => {
         try {
             await reviewsService.updateReviewStatus(id, { status, action, adminId: 1 });
             showToast(action === 'Hide' 
-                ? "Đã ẩn đánh giá và áp dụng mức xử phạt tài khoản vi phạm!" 
-                : "Đã duyệt giữ lại đánh giá công khai!");
+                ? "Review hidden and penalty applied to the offending account!" 
+                : "Review approved and retained publicly!");
             fetchFlaggedReviews(reviewPage);
             fetchStats();
         } catch (error) {
             console.error("Error updating review:", error);
-            showToast("Có lỗi xảy ra khi cập nhật đánh giá", "danger");
+            showToast("An error occurred while updating the review", "danger");
         } finally {
             setActionLoading(prev => ({ ...prev, [id]: false }));
         }
@@ -164,7 +164,7 @@ export const ReviewMonitoringPage = () => {
                 
                 {/* Toast Notification */}
                 {toastMessage && (
-                    <div className={`position-fixed top-0 end-0 p-3`} style={{ zIndex: 1100 }}>
+                    <div className="position-fixed top-0 end-0 p-3" style={{ zIndex: 1100 }}>
                         <div className={`toast show align-items-center text-white bg-${toastMessage.type === 'danger' ? 'danger' : 'success'} border-0 shadow-lg`} role="alert">
                             <div className="d-flex">
                                 <div className="toast-body fw-medium">
@@ -182,10 +182,10 @@ export const ReviewMonitoringPage = () => {
                     <div>
                         <h1 className="h3 fw-bold text-dark mb-1" style={{ letterSpacing: '-0.5px' }}>
                             <i className="bi bi-shield-check text-primary me-2"></i>
-                            Giám sát Đánh giá & Phản hồi
+                            Review & Feedback Moderation
                         </h1>
                         <p className="text-secondary mb-0 small">
-                            Kiểm duyệt các đánh giá vi phạm, giải quyết khiếu nại của người bán và theo dõi uy tín Feedback trên sàn eBay.
+                            Moderate flagged reviews, resolve seller disputes, and monitor seller feedback ratings on eBay.
                         </p>
                     </div>
                     <div className="d-flex gap-2 mt-2 mt-sm-0">
@@ -197,7 +197,7 @@ export const ReviewMonitoringPage = () => {
                                 else fetchSellerFeedbacks(feedbackPage);
                             }}
                         >
-                            <i className="bi bi-arrow-clockwise me-1"></i> Làm mới
+                            <i className="bi bi-arrow-clockwise me-1"></i> Refresh
                         </button>
                     </div>
                 </div>
@@ -210,12 +210,12 @@ export const ReviewMonitoringPage = () => {
                                 <i className="bi bi-flag-fill"></i>
                             </div>
                             <div>
-                                <span className="text-muted small fw-bold text-uppercase">Cần Kiểm Duyệt</span>
+                                <span className="text-muted small fw-bold text-uppercase">Pending Moderation</span>
                                 <h4 className="mb-0 fw-bold text-dark">
                                     {stats ? stats.flaggedCount : <span className="spinner-border spinner-border-sm"></span>}
                                 </h4>
                                 <small className="text-muted" style={{ fontSize: '0.72rem' }}>
-                                    {stats ? `${stats.pendingCount} chờ xử lý` : ''}
+                                    {stats ? `${stats.pendingCount} pending` : ''}
                                 </small>
                             </div>
                         </div>
@@ -227,11 +227,11 @@ export const ReviewMonitoringPage = () => {
                                 <i className="bi bi-shop"></i>
                             </div>
                             <div>
-                                <span className="text-muted small fw-bold text-uppercase">Người Bán Báo Cáo</span>
+                                <span className="text-muted small fw-bold text-uppercase">Seller Reported</span>
                                 <h4 className="mb-0 fw-bold text-dark">
                                     {stats ? stats.sellerReportedCount : <span className="spinner-border spinner-border-sm"></span>}
                                 </h4>
-                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>Seller khiếu nại đánh giá xấu</small>
+                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>Seller disputes on bad reviews</small>
                             </div>
                         </div>
                     </div>
@@ -242,11 +242,11 @@ export const ReviewMonitoringPage = () => {
                                 <i className="bi bi-people-fill"></i>
                             </div>
                             <div>
-                                <span className="text-muted small fw-bold text-uppercase">Cộng Đồng Báo Cáo</span>
+                                <span className="text-muted small fw-bold text-uppercase">Community Reported</span>
                                 <h4 className="mb-0 fw-bold text-dark">
                                     {stats ? stats.communityReportedCount : <span className="spinner-border spinner-border-sm"></span>}
                                 </h4>
-                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>Spam, hàng giả, xúc phạm</small>
+                                <small className="text-muted" style={{ fontSize: '0.72rem' }}>Spam, counterfeit, abusive</small>
                             </div>
                         </div>
                     </div>
@@ -257,12 +257,12 @@ export const ReviewMonitoringPage = () => {
                                 <i className="bi bi-star-half"></i>
                             </div>
                             <div>
-                                <span className="text-muted small fw-bold text-uppercase">Điểm Đánh Giá TB</span>
+                                <span className="text-muted small fw-bold text-uppercase">Average Rating</span>
                                 <h4 className="mb-0 fw-bold text-dark">
                                     {stats ? `${stats.averageRating} / 5.0` : <span className="spinner-border spinner-border-sm"></span>}
                                 </h4>
                                 <small className="text-muted" style={{ fontSize: '0.72rem' }}>
-                                    {stats ? `Tổng ${stats.totalReviews} lượt đánh giá` : ''}
+                                    {stats ? `Total ${stats.totalReviews} reviews` : ''}
                                 </small>
                             </div>
                         </div>
@@ -278,7 +278,7 @@ export const ReviewMonitoringPage = () => {
                                 onClick={() => setActiveTab('flagged')}
                             >
                                 <i className="bi bi-exclamation-octagon me-2"></i>
-                                Hàng Đợi Kiểm Duyệt Vi Phạm
+                                Flagged Reviews Queue
                                 {stats && stats.flaggedCount > 0 && (
                                     <span className="badge bg-danger ms-2 rounded-pill">{stats.flaggedCount}</span>
                                 )}
@@ -290,7 +290,7 @@ export const ReviewMonitoringPage = () => {
                                 onClick={() => setActiveTab('seller-feedbacks')}
                             >
                                 <i className="bi bi-award me-2"></i>
-                                Giám Sát Uy Tín Người Bán (Seller Feedback)
+                                Seller Reputation Monitoring (Feedback)
                             </button>
                         </li>
                     </ul>
@@ -311,7 +311,7 @@ export const ReviewMonitoringPage = () => {
                                         <input 
                                             type="text"
                                             className="form-control form-control-sm ps-5 rounded-pill border-light-subtle"
-                                            placeholder="Tìm người đánh giá, sản phẩm, nội dung..."
+                                            placeholder="Search reviewer, product, comment..."
                                             value={searchInputValue}
                                             onChange={(e) => setSearchInputValue(e.target.value)}
                                         />
@@ -325,10 +325,10 @@ export const ReviewMonitoringPage = () => {
                                         value={statusFilter}
                                         onChange={(e) => { setStatusFilter(e.target.value); setReviewPage(1); }}
                                     >
-                                        <option value="All">Trạng thái: Tất cả</option>
-                                        <option value="PendingReview">Chờ kiểm duyệt</option>
-                                        <option value="Hidden">Đã ẩn (Hidden)</option>
-                                        <option value="Visible">Đang hiển thị (Visible)</option>
+                                        <option value="All">Status: All</option>
+                                        <option value="PendingReview">Pending Review</option>
+                                        <option value="Hidden">Hidden</option>
+                                        <option value="Visible">Visible</option>
                                     </select>
                                 </div>
 
@@ -339,11 +339,11 @@ export const ReviewMonitoringPage = () => {
                                         value={reasonFilter}
                                         onChange={(e) => { setReasonFilter(e.target.value); setReviewPage(1); }}
                                     >
-                                        <option value="All">Lý do: Tất cả</option>
-                                        <option value="SellerReported">Người bán báo cáo</option>
-                                        <option value="CommunityReported">Cộng đồng báo cáo</option>
-                                        <option value="FlaggedBySystem">Bot quét vi phạm</option>
-                                        <option value="LowRating">Đánh giá thấp (1-2 sao)</option>
+                                        <option value="All">Reason: All</option>
+                                        <option value="SellerReported">Seller Reported</option>
+                                        <option value="CommunityReported">Community Reported</option>
+                                        <option value="FlaggedBySystem">System Bot Flagged</option>
+                                        <option value="LowRating">Low Rating (1-2 stars)</option>
                                     </select>
                                 </div>
 
@@ -354,12 +354,12 @@ export const ReviewMonitoringPage = () => {
                                         value={ratingFilter}
                                         onChange={(e) => { setRatingFilter(e.target.value); setReviewPage(1); }}
                                     >
-                                        <option value="">Số sao: Tất cả</option>
-                                        <option value="1">1 sao (Rất tệ)</option>
-                                        <option value="2">2 sao (Kém)</option>
-                                        <option value="3">3 sao (Trung bình)</option>
-                                        <option value="4">4 sao (Tốt)</option>
-                                        <option value="5">5 sao (Tuyệt vời)</option>
+                                        <option value="">Rating: All</option>
+                                        <option value="1">1 Star (Very Poor)</option>
+                                        <option value="2">2 Stars (Poor)</option>
+                                        <option value="3">3 Stars (Average)</option>
+                                        <option value="4">4 Stars (Good)</option>
+                                        <option value="5">5 Stars (Excellent)</option>
                                     </select>
                                 </div>
 
@@ -367,7 +367,7 @@ export const ReviewMonitoringPage = () => {
                                 <div className="col-6 col-md-1 text-end">
                                     <button 
                                         className="btn btn-sm btn-outline-secondary rounded-pill w-100"
-                                        title="Xóa bộ lọc"
+                                        title="Reset filters"
                                         onClick={resetFilters}
                                     >
                                         <i className="bi bi-x-circle"></i>
@@ -381,11 +381,11 @@ export const ReviewMonitoringPage = () => {
                             <table className="table pe-table mb-0 align-middle">
                                 <thead>
                                     <tr>
-                                        <th style={{ width: '20%' }}>Người Đánh Giá</th>
-                                        <th style={{ width: '22%' }}>Sản Phẩm & Seller</th>
-                                        <th style={{ width: '30%' }}>Nội Dung & Phản Hồi</th>
-                                        <th style={{ width: '14%' }}>Lý Do Cắm Cờ</th>
-                                        <th style={{ width: '14%' }} className="text-end pe-4">Thao Tác</th>
+                                        <th style={{ width: '20%' }}>Reviewer</th>
+                                        <th style={{ width: '22%' }}>Product & Seller</th>
+                                        <th style={{ width: '30%' }}>Content & Feedback</th>
+                                        <th style={{ width: '14%' }}>Flag Reason</th>
+                                        <th style={{ width: '14%' }} className="text-end pe-4">Actions</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -395,15 +395,15 @@ export const ReviewMonitoringPage = () => {
                                                 <div className="spinner-border text-primary" role="status">
                                                     <span className="visually-hidden">Loading...</span>
                                                 </div>
-                                                <div className="text-muted small mt-2">Đang tải danh sách kiểm duyệt...</div>
+                                                <div className="text-muted small mt-2">Loading moderation list...</div>
                                             </td>
                                         </tr>
                                     ) : flaggedReviews.length === 0 ? (
                                         <tr>
                                             <td colSpan="5" className="text-center py-5">
                                                 <i className="bi bi-check2-circle text-success" style={{ fontSize: '3rem' }}></i>
-                                                <h6 className="mt-2 text-dark fw-bold">Không có đánh giá vi phạm nào</h6>
-                                                <p className="text-muted small mb-0">Hệ thống đang hoạt động an toàn, không có phản hồi nào cần kiểm duyệt.</p>
+                                                <h6 className="mt-2 text-dark fw-bold">No flagged reviews found</h6>
+                                                <p className="text-muted small mb-0">System is clean, no reviews currently pending moderation.</p>
                                             </td>
                                         </tr>
                                     ) : (
@@ -418,7 +418,7 @@ export const ReviewMonitoringPage = () => {
                                                         <div>
                                                             <div className="fw-bold text-dark small">{review.reviewerName}</div>
                                                             <div className="text-muted" style={{ fontSize: '0.7rem' }}>
-                                                                ID: #{review.reviewerId} • {review.createdAt ? new Date(review.createdAt).toLocaleDateString('vi-VN') : ''}
+                                                                ID: #{review.reviewerId} • {review.createdAt ? new Date(review.createdAt).toLocaleDateString('en-US') : ''}
                                                             </div>
                                                         </div>
                                                     </div>
@@ -450,7 +450,7 @@ export const ReviewMonitoringPage = () => {
                                                             {review.rating}/5
                                                         </span>
                                                         <span className={`badge ms-1 ${review.status === 'Hidden' ? 'badge-soft-danger' : review.status === 'Visible' ? 'badge-soft-success' : 'badge-soft-warning'}`} style={{ fontSize: '0.65rem' }}>
-                                                            {review.status === 'Hidden' ? 'Đã Ẩn' : review.status === 'Visible' ? 'Đang Hiện' : 'Chờ Duyệt'}
+                                                            {review.status === 'Hidden' ? 'Hidden' : review.status === 'Visible' ? 'Visible' : 'Pending'}
                                                         </span>
                                                     </div>
 
@@ -463,7 +463,7 @@ export const ReviewMonitoringPage = () => {
                                                     {review.sellerReply && (
                                                         <div className="seller-reply-bubble">
                                                             <div className="fw-bold text-primary d-flex align-items-center gap-1" style={{ fontSize: '0.72rem' }}>
-                                                                <i className="bi bi-reply-fill"></i> Phản hồi từ Người bán ({review.sellerName}):
+                                                                <i className="bi bi-reply-fill"></i> Seller Reply ({review.sellerName}):
                                                             </div>
                                                             <div className="text-dark small mt-1">"{review.sellerReply}"</div>
                                                         </div>
@@ -475,7 +475,7 @@ export const ReviewMonitoringPage = () => {
                                                     <div className="d-flex flex-wrap gap-1">
                                                         {review.reportedBySeller && (
                                                             <span className="badge badge-soft-danger fw-bold" style={{ fontSize: '0.65rem' }}>
-                                                                <i className="bi bi-shop me-1"></i>SELLER BÁO CÁO
+                                                                <i className="bi bi-shop me-1"></i>SELLER REPORTED
                                                             </span>
                                                         )}
                                                         {review.reports && review.reports.length > 0 && (
@@ -486,17 +486,17 @@ export const ReviewMonitoringPage = () => {
                                                                 onClick={() => setSelectedReviewModal(review)}
                                                             >
                                                                 <i className="bi bi-flag-fill me-1"></i>
-                                                                {review.reports.length} BÁO CÁO CỘNG ĐỒNG
+                                                                {review.reports.length} COMMUNITY REPORTS
                                                             </button>
                                                         )}
                                                         {review.flaggedBySystem && (
                                                             <span className="badge badge-soft-danger fw-bold" style={{ fontSize: '0.65rem' }}>
-                                                                <i className="bi bi-robot me-1"></i>BOT: {review.flagReason || 'TỪ CẤM'}
+                                                                <i className="bi bi-robot me-1"></i>BOT: {review.flagReason || 'PROFANITY'}
                                                             </span>
                                                         )}
                                                         {!review.reportedBySeller && (!review.reports || review.reports.length === 0) && !review.flaggedBySystem && (
                                                             <span className="badge badge-soft-secondary fw-bold" style={{ fontSize: '0.65rem' }}>
-                                                                {review.rating <= 2 ? 'ĐÁNH GIÁ THẤP' : 'RÀ SOÁT ĐỊNH KỲ'}
+                                                                {review.rating <= 2 ? 'LOW RATING' : 'PERIODIC AUDIT'}
                                                             </span>
                                                         )}
                                                     </div>
@@ -508,7 +508,7 @@ export const ReviewMonitoringPage = () => {
                                                         {/* Detail modal button */}
                                                         <button 
                                                             className="btn btn-sm btn-light rounded-pill px-2"
-                                                            title="Xem chi tiết báo cáo"
+                                                            title="View report details"
                                                             onClick={() => setSelectedReviewModal(review)}
                                                         >
                                                             <i className="bi bi-eye"></i>
@@ -520,13 +520,13 @@ export const ReviewMonitoringPage = () => {
                                                             onClick={() => handleAction(review.id, 'Hidden', 'Hide')}
                                                             disabled={review.status === 'Hidden' || actionLoading[review.id]}
                                                             style={{ fontSize: '0.75rem' }}
-                                                            title="Ẩn đánh giá và cảnh cáo tài khoản"
+                                                            title="Hide review and warn account"
                                                         >
                                                             {actionLoading[review.id] ? (
                                                                 <span className="spinner-border spinner-border-sm"></span>
                                                             ) : (
                                                                 <>
-                                                                    <i className="bi bi-eye-slash me-1"></i>Ẩn
+                                                                    <i className="bi bi-eye-slash me-1"></i>Hide
                                                                 </>
                                                             )}
                                                         </button>
@@ -537,13 +537,13 @@ export const ReviewMonitoringPage = () => {
                                                             onClick={() => handleAction(review.id, 'Visible', 'Keep')}
                                                             disabled={review.status === 'Visible' || actionLoading[review.id]}
                                                             style={{ fontSize: '0.75rem' }}
-                                                            title="Duyệt giữ lại công khai"
+                                                            title="Approve and retain publicly"
                                                         >
                                                             {actionLoading[review.id] ? (
                                                                 <span className="spinner-border spinner-border-sm"></span>
                                                             ) : (
                                                                 <>
-                                                                    <i className="bi bi-check-lg me-1"></i>Giữ
+                                                                    <i className="bi bi-check-lg me-1"></i>Keep
                                                                 </>
                                                             )}
                                                         </button>
@@ -559,18 +559,18 @@ export const ReviewMonitoringPage = () => {
                         {/* Pagination */}
                         <div className="px-4 py-3 bg-white border-top d-flex justify-content-between align-items-center">
                             <span className="text-muted small">
-                                Trang <strong>{reviewPage}</strong> / {reviewPagination.totalPages}
+                                Page <strong>{reviewPage}</strong> / {reviewPagination.totalPages}
                             </span>
                             <nav>
                                 <ul className="pagination pagination-sm mb-0 gap-1">
                                     <li className={`page-item ${!reviewPagination.hasPreviousPage ? 'disabled' : ''}`}>
                                         <button className="page-link rounded-pill border-0 px-3" onClick={() => setReviewPage(prev => Math.max(1, prev - 1))}>
-                                            <i className="bi bi-chevron-left me-1"></i> Trước
+                                            <i className="bi bi-chevron-left me-1"></i> Prev
                                         </button>
                                     </li>
                                     <li className={`page-item ${!reviewPagination.hasNextPage ? 'disabled' : ''}`}>
                                         <button className="page-link rounded-pill border-0 px-3" onClick={() => setReviewPage(prev => prev + 1)}>
-                                            Sau <i className="bi bi-chevron-right ms-1"></i>
+                                            Next <i className="bi bi-chevron-right ms-1"></i>
                                         </button>
                                     </li>
                                 </ul>
@@ -593,7 +593,7 @@ export const ReviewMonitoringPage = () => {
                                         <input 
                                             type="text"
                                             className="form-control form-control-sm ps-5 rounded-pill border-light-subtle"
-                                            placeholder="Tìm người bán theo tên hoặc email..."
+                                            placeholder="Search seller by name or email..."
                                             value={feedbackSearchInputValue}
                                             onChange={(e) => setFeedbackSearchInputValue(e.target.value)}
                                         />
@@ -605,10 +605,10 @@ export const ReviewMonitoringPage = () => {
                                         value={tierFilter}
                                         onChange={(e) => { setTierFilter(e.target.value); setFeedbackPage(1); }}
                                     >
-                                        <option value="All">Hạng uy tín: Tất cả</option>
-                                        <option value="TopRated">🌟 Top Rated Seller (≥95% tích cực, ≥4.5 sao)</option>
-                                        <option value="AboveStandard">🔹 Above Standard (80 - 94% tích cực)</option>
-                                        <option value="BelowStandard">⚠️ Below Standard (&lt;80% tích cực - Cần chú ý)</option>
+                                        <option value="All">Reputation Tier: All</option>
+                                        <option value="TopRated">🌟 Top Rated Seller (≥95% positive, ≥4.5 stars)</option>
+                                        <option value="AboveStandard">🔹 Above Standard (80 - 94% positive)</option>
+                                        <option value="BelowStandard">⚠️ Below Standard (&lt;80% positive - Needs Attention)</option>
                                     </select>
                                 </div>
                                 <div className="col-12 col-md-2 text-end">
@@ -621,7 +621,7 @@ export const ReviewMonitoringPage = () => {
                                             setFeedbackPage(1);
                                         }}
                                     >
-                                        Đặt lại
+                                        Reset
                                     </button>
                                 </div>
                             </div>
@@ -632,11 +632,11 @@ export const ReviewMonitoringPage = () => {
                             <table className="table pe-table mb-0 align-middle">
                                 <thead>
                                     <tr>
-                                        <th style={{ width: '30%' }}>Người Bán (Seller)</th>
-                                        <th style={{ width: '20%' }}>Điểm Đánh Giá TB</th>
-                                        <th style={{ width: '25%' }}>Tỷ Lệ Hài Lòng (Positive Rate)</th>
-                                        <th style={{ width: '15%' }}>Tổng Đánh Giá</th>
-                                        <th style={{ width: '10%' }} className="text-end pe-4">Phân Hạng</th>
+                                        <th style={{ width: '30%' }}>Seller</th>
+                                        <th style={{ width: '20%' }}>Average Rating</th>
+                                        <th style={{ width: '25%' }}>Positive Feedback Rate</th>
+                                        <th style={{ width: '15%' }}>Total Reviews</th>
+                                        <th style={{ width: '10%' }} className="text-end pe-4">Tier</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -646,15 +646,15 @@ export const ReviewMonitoringPage = () => {
                                                 <div className="spinner-border text-primary" role="status">
                                                     <span className="visually-hidden">Loading...</span>
                                                 </div>
-                                                <div className="text-muted small mt-2">Đang tải dữ liệu uy tín người bán...</div>
+                                                <div className="text-muted small mt-2">Loading seller reputation data...</div>
                                             </td>
                                         </tr>
                                     ) : sellerFeedbacks.length === 0 ? (
                                         <tr>
                                             <td colSpan="5" className="text-center py-5">
                                                 <i className="bi bi-inbox text-muted" style={{ fontSize: '3rem' }}></i>
-                                                <h6 className="mt-2 text-dark fw-bold">Không tìm thấy người bán phù hợp</h6>
-                                                <p className="text-muted small mb-0">Thử thay đổi từ khóa tìm kiếm hoặc bỏ lọc phân hạng.</p>
+                                                <h6 className="mt-2 text-dark fw-bold">No matching sellers found</h6>
+                                                <p className="text-muted small mb-0">Try adjusting your search query or tier filter.</p>
                                             </td>
                                         </tr>
                                     ) : (
@@ -686,13 +686,13 @@ export const ReviewMonitoringPage = () => {
                                                             ))}
                                                         </div>
                                                     </div>
-                                                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>thang điểm 5.0</small>
+                                                    <small className="text-muted" style={{ fontSize: '0.7rem' }}>out of 5.0</small>
                                                 </td>
 
                                                 {/* Positive Rate Bar */}
                                                 <td>
                                                     <div className="d-flex justify-content-between align-items-center mb-1">
-                                                        <span className="fw-bold small text-dark">{seller.positiveRate}% Tích cực</span>
+                                                        <span className="fw-bold small text-dark">{seller.positiveRate}% Positive</span>
                                                     </div>
                                                     <div className="progress" style={{ height: '7px', borderRadius: '4px' }}>
                                                         <div 
@@ -706,7 +706,7 @@ export const ReviewMonitoringPage = () => {
                                                 {/* Total Reviews */}
                                                 <td>
                                                     <span className="fw-bold text-dark small">{seller.totalReviews}</span>
-                                                    <span className="text-muted small ms-1">lượt</span>
+                                                    <span className="text-muted small ms-1">reviews</span>
                                                 </td>
 
                                                 {/* Reputation Tier Badge */}
@@ -737,18 +737,18 @@ export const ReviewMonitoringPage = () => {
                         {/* Pagination */}
                         <div className="px-4 py-3 bg-white border-top d-flex justify-content-between align-items-center">
                             <span className="text-muted small">
-                                Trang <strong>{feedbackPage}</strong> / {feedbackPagination.totalPages}
+                                Page <strong>{feedbackPage}</strong> / {feedbackPagination.totalPages}
                             </span>
                             <nav>
                                 <ul className="pagination pagination-sm mb-0 gap-1">
                                     <li className={`page-item ${!feedbackPagination.hasPreviousPage ? 'disabled' : ''}`}>
                                         <button className="page-link rounded-pill border-0 px-3" onClick={() => setFeedbackPage(prev => Math.max(1, prev - 1))}>
-                                            <i className="bi bi-chevron-left me-1"></i> Trước
+                                            <i className="bi bi-chevron-left me-1"></i> Prev
                                         </button>
                                     </li>
                                     <li className={`page-item ${!feedbackPagination.hasNextPage ? 'disabled' : ''}`}>
                                         <button className="page-link rounded-pill border-0 px-3" onClick={() => setFeedbackPage(prev => prev + 1)}>
-                                            Sau <i className="bi bi-chevron-right ms-1"></i>
+                                            Next <i className="bi bi-chevron-right ms-1"></i>
                                         </button>
                                     </li>
                                 </ul>
@@ -758,7 +758,7 @@ export const ReviewMonitoringPage = () => {
                 )}
 
                 {/* ========================================================================= */}
-                {/* DETAIL MODAL: BÁO CÁO CỘNG ĐỒNG & LỊCH SỬ KIỂM DUYỆT */}
+                {/* DETAIL MODAL: COMMUNITY REPORTS & MODERATION HISTORY */}
                 {/* ========================================================================= */}
                 {selectedReviewModal && (
                     <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(15, 23, 42, 0.55)', backdropFilter: 'blur(2px)' }}>
@@ -767,7 +767,7 @@ export const ReviewMonitoringPage = () => {
                                 <div className="modal-header bg-light border-bottom px-4 py-3">
                                     <h5 className="modal-title fw-bold text-dark h6 mb-0">
                                         <i className="bi bi-card-text text-primary me-2"></i>
-                                        Chi Tiết Đánh Giá & Báo Cáo Vi Phạm #{selectedReviewModal.id}
+                                        Review Details & Violation Reports #{selectedReviewModal.id}
                                     </h5>
                                     <button type="button" className="btn-close" onClick={() => setSelectedReviewModal(null)}></button>
                                 </div>
@@ -776,17 +776,17 @@ export const ReviewMonitoringPage = () => {
                                     <div className="row g-3 mb-3">
                                         <div className="col-md-6">
                                             <div className="bg-light p-3 rounded-3 h-100">
-                                                <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.68rem' }}>Sản phẩm được đánh giá</small>
+                                                <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.68rem' }}>Reviewed Product</small>
                                                 <div className="fw-bold text-dark small">{selectedReviewModal.productTitle}</div>
-                                                <div className="text-muted small mt-1">Người bán: <strong>{selectedReviewModal.sellerName || 'N/A'}</strong></div>
+                                                <div className="text-muted small mt-1">Seller: <strong>{selectedReviewModal.sellerName || 'N/A'}</strong></div>
                                             </div>
                                         </div>
                                         <div className="col-md-6">
                                             <div className="bg-light p-3 rounded-3 h-100">
-                                                <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.68rem' }}>Người gửi đánh giá</small>
+                                                <small className="text-muted fw-bold text-uppercase d-block mb-1" style={{ fontSize: '0.68rem' }}>Reviewer</small>
                                                 <div className="fw-bold text-dark small">{selectedReviewModal.reviewerName} (ID: #{selectedReviewModal.reviewerId})</div>
                                                 <div className="text-muted small mt-1">
-                                                    Đánh giá: <strong>{selectedReviewModal.rating}/5 sao</strong> • {selectedReviewModal.createdAt ? new Date(selectedReviewModal.createdAt).toLocaleString('vi-VN') : ''}
+                                                    Rating: <strong>{selectedReviewModal.rating}/5 stars</strong> • {selectedReviewModal.createdAt ? new Date(selectedReviewModal.createdAt).toLocaleString('en-US') : ''}
                                                 </div>
                                             </div>
                                         </div>
@@ -794,7 +794,7 @@ export const ReviewMonitoringPage = () => {
 
                                     {/* Review Comment */}
                                     <div className="mb-4">
-                                        <label className="form-label fw-bold small text-secondary">Nội dung đánh giá:</label>
+                                        <label className="form-label fw-bold small text-secondary">Review comment:</label>
                                         <div className="p-3 bg-light rounded-3 text-dark fst-italic border">
                                             "{selectedReviewModal.comment}"
                                         </div>
@@ -805,7 +805,7 @@ export const ReviewMonitoringPage = () => {
                                         <div className="mb-4">
                                             <label className="form-label fw-bold small text-primary">
                                                 <i className="bi bi-reply-fill me-1"></i>
-                                                Phản hồi của người bán ({selectedReviewModal.sellerName}):
+                                                Seller reply ({selectedReviewModal.sellerName}):
                                             </label>
                                             <div className="seller-reply-bubble">
                                                 "{selectedReviewModal.sellerReply}"
@@ -817,11 +817,11 @@ export const ReviewMonitoringPage = () => {
                                     <div>
                                         <h6 className="fw-bold text-dark small mb-2 d-flex align-items-center gap-2">
                                             <i className="bi bi-flag-fill text-danger"></i>
-                                            Danh sách báo cáo từ cộng đồng ({selectedReviewModal.reports?.length || 0}):
+                                            Community Reports List ({selectedReviewModal.reports?.length || 0}):
                                         </h6>
                                         {!selectedReviewModal.reports || selectedReviewModal.reports.length === 0 ? (
                                             <div className="text-muted small p-3 bg-light rounded-3 text-center">
-                                                Không có báo cáo trực tiếp từ người dùng (đánh giá được phát hiện bởi Bot quét từ cấm hoặc Seller).
+                                                No direct user reports (flagged by system automated filter or seller).
                                             </div>
                                         ) : (
                                             <div className="list-group list-group-flush border rounded-3 overflow-hidden">
@@ -837,10 +837,10 @@ export const ReviewMonitoringPage = () => {
                                                             </span>
                                                         </div>
                                                         <div className="text-secondary small">
-                                                            {rep.description || 'Không có mô tả chi tiết'}
+                                                            {rep.description || 'No detailed description provided'}
                                                         </div>
                                                         <div className="text-muted mt-1" style={{ fontSize: '0.68rem' }}>
-                                                            {rep.createdAt ? new Date(rep.createdAt).toLocaleString('vi-VN') : ''}
+                                                            {rep.createdAt ? new Date(rep.createdAt).toLocaleString('en-US') : ''}
                                                         </div>
                                                     </div>
                                                 ))}
@@ -850,7 +850,7 @@ export const ReviewMonitoringPage = () => {
                                 </div>
                                 <div className="modal-footer bg-light px-4 py-3 d-flex justify-content-between">
                                     <button type="button" className="btn btn-sm btn-outline-secondary rounded-pill px-3" onClick={() => setSelectedReviewModal(null)}>
-                                        Đóng
+                                        Close
                                     </button>
                                     <div className="d-flex gap-2">
                                         <button 
@@ -862,7 +862,7 @@ export const ReviewMonitoringPage = () => {
                                             }}
                                             disabled={selectedReviewModal.status === 'Hidden'}
                                         >
-                                            <i className="bi bi-eye-slash me-1"></i> Ẩn Đánh Giá (Xử Phạt)
+                                            <i className="bi bi-eye-slash me-1"></i> Hide Review (Penalize)
                                         </button>
                                         <button 
                                             type="button" 
@@ -873,7 +873,7 @@ export const ReviewMonitoringPage = () => {
                                             }}
                                             disabled={selectedReviewModal.status === 'Visible'}
                                         >
-                                            <i className="bi bi-check-lg me-1"></i> Duyệt Giữ Lại
+                                            <i className="bi bi-check-lg me-1"></i> Approve & Keep
                                         </button>
                                     </div>
                                 </div>
