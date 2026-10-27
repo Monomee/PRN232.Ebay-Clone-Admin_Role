@@ -79,6 +79,7 @@ export const NavMenu = ({ isOpen, toggleSidebar, closeSidebar }) => {
 
 
                 <SidebarLink to="/audit-logs" icon="bi bi-bar-chart-line">Audit Logs</SidebarLink>
+                <SidebarLink to="/sensitive-logs" icon="bi bi-shield-lock">Sensitive Logs</SidebarLink>
                 <SidebarLink to="/broadcasts" icon="bi bi-megaphone">Broadcasts</SidebarLink>
                 <SidebarLink to="/admin-roles" icon="bi bi-gear">Admin Roles</SidebarLink>
                 <SidebarLink to="/active-connections" icon="bi bi-hdd-network">Active Connections</SidebarLink>

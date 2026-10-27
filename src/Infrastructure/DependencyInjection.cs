@@ -32,6 +32,7 @@ public static class DependencyInjection
 
         builder.Services.AddScoped<IJwtService, JwtService>();
         builder.Services.AddScoped<IEmailService, EmailService>();
+        builder.Services.AddSingleton<IEncryptionService, AesEncryptionService>();
 
         builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 

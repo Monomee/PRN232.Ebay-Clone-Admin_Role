@@ -4,6 +4,7 @@ import { UserDetailPage } from "./pages/UserDetailPage";
 import { BroadcastPage } from "./pages/BroadcastPage";
 import { AdminRolesPage } from "./pages/AdminRolesPage";
 import { AuditLogsPage } from "./pages/AuditLogsPage";
+import { SensitiveLogsPage } from "./pages/SensitiveLogsPage";
 import { FetchData } from "./components/FetchData";
 import { DisputesPage } from "./pages/DisputesPage";
 import { DisputeDashboard } from "./pages/DisputeDashboard";
@@ -89,6 +90,10 @@ const AppRoutes = [
   {
     path: "/audit-logs",
     element: protect(<AuditLogsPage />, ["SuperAdmin"])
+  },
+  {
+    path: "/sensitive-logs",
+    element: protect(<SensitiveLogsPage />, ["SuperAdmin"])
   },
   {
     path: "/fetch-data",

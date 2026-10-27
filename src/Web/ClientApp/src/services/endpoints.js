@@ -21,9 +21,6 @@ export const ENDPOINTS = {
         DETAIL: (id) => `/api/orders/${id}`,
     },
     PRODUCTS: {
-        BASE: "/api/products",
-        MANAGED: "/api/products/managed",
-        DETAIL: (id) => `/api/products/${id}`,
         // GET, POST danh sách chung
         BASE: '/api/products', 
         
@@ -62,5 +59,10 @@ export const ENDPOINTS = {
         STATUS: (id) => `/api/reviews/${id}/status`,
         REPLY: (id) => `/api/reviews/${id}/reply`,
         REPORT: (id) => `/api/reviews/${id}/report`,
+    },
+    SENSITIVE_LOGS: {
+        BASE: "/api/sensitive-logs",
+        SUMMARY: "/api/sensitive-logs/summary",
+        DECRYPT: (id) => `/api/sensitive-logs/${id}/decrypt`,
     }
 };

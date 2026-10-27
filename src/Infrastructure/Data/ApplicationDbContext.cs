@@ -53,6 +53,7 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>, 
     public virtual DbSet<PayoutTransaction> PayoutTransactions { get; set; }
     public virtual DbSet<SellerLevelCriteria> SellerLevelCriteria { get; set; }
     public virtual DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
+    public virtual DbSet<SensitiveDataLog> SensitiveDataLogs { get; set; }
 
 
     public new Task<int> SaveChangesAsync(CancellationToken cancellationToken)
@@ -511,6 +512,16 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>, 
             entity.Property(e => e.Status).HasMaxLength(50).HasConversion<string>();
             entity.HasOne(e => e.Seller).WithMany().HasForeignKey(e => e.SellerId).OnDelete(DeleteBehavior.Restrict);
             entity.HasOne(e => e.Processor).WithMany().HasForeignKey(e => e.ProcessedBy).OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<SensitiveDataLog>(entity =>
+        {
+            entity.HasKey(e => e.Id);
+            entity.ToTable("SensitiveDataLogs");
+            entity.Property(e => e.Action).HasMaxLength(100).IsRequired();
+            entity.Property(e => e.TargetEntity).HasMaxLength(100);
+            entity.Property(e => e.DataClassification).HasMaxLength(50);
+            entity.Property(e => e.EncryptionAlgorithm).HasMaxLength(50);
         });
 
         // NEW: Apply configurations from assembly for new entities
