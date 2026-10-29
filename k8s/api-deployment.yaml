@@ -38,6 +38,11 @@ spec:
 
           # ── Gộp toàn bộ Environment Variables vào đây ─────────────
           env:
+            - name: Security__EncryptionKey
+              valueFrom:
+                secretKeyRef:
+                  name: ebay-data-protection
+                  key: ENCRYPTION_KEY
             # 1. Lấy mật khẩu 123456 từ Secret (Key: SA_PASSWORD_ACTUAL)
             - name: SA_PASSWORD_VALUE
               valueFrom:

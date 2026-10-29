@@ -1,5 +1,11 @@
 # So sánh sau khi pull main — 28/10/2026
 
+> **Cập nhật triển khai W7-01 ngày 28/10/2026:** đã bổ sung code/test local sau merge `2c6511b`: AES-GCM không khóa mặc định, PII/bank encryption, hash CCCD, log nghiệp vụ thật, SuperAdmin decrypt có integrity/audit, migration tiếp nhận bảng cũ và lệnh dry-run/apply. Xem [phạm vi, phối hợp nhóm và quy trình chuyển DB](SensitiveDataProtection.md), [bằng chứng kiểm thử](evidence/W7-01/Verification.md). **Chưa nên đóng W7-01:** chưa chạy được SQL migration vì Docker không hoạt động, chưa diễn tập DB bản sao/cùng key nhiều instance. Chưa commit/push/đổi DB dùng chung/deploy. Phần so sánh bên dưới giữ mốc lịch sử; không dùng số test cũ để đánh giá bản W7-01 mới.
+>
+> **W7-02 vẫn ở bước kế hoạch:** [thiết kế](superpowers/specs/2026-10-28-w7-01-w7-02-design.md), [W7-01](superpowers/plans/2026-10-28-w7-01-sensitive-data.md), [W7-02](superpowers/plans/2026-10-28-w7-02-k8s-cd.md). Cluster chưa xác định. Cutover DB thật phải được thống nhất trước thực thi.
+
+> **Bổ sung sau khi đọc ClickUp thực tế:** xem [Đối chiếu task tuần 7–9 với code](ClickUp-Task-Code-Audit-2026-10-28.md) và [bảng CSV đủ 72 task/subtask](ClickUp-Task-Code-Audit-2026-10-28.csv). Báo cáo mới đọc DoD/status/người nhận của 44 task chính, phân biệt trạng thái ClickUp với bằng chứng trong origin/main `2c6511b`. Các mã TODO trong tài liệu này là backlog local, không phải mã task ClickUp. Với task có DoD cụ thể hơn nhận định ban đầu, ưu tiên kết luận trong báo cáo ClickUp; không suy “Complete” từ việc có code/test.
+
 ## Mốc so sánh
 
 - Bản đã được rà soát trước: nhánh `hoangnv`, commit `423648b` (commit lưu tài liệu đánh giá).
