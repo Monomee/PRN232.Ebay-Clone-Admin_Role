@@ -1,3 +1,5 @@
+using EbayClone.Infrastructure.Services;
+using EbayClone.Application.UnitTests.Security;
 using System;
 using System.Collections.Generic;
 using System.Threading;
@@ -51,8 +53,8 @@ public class UserManagementTests
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        var handler = new BanUserCommandHandler(_context, _sellerHubServiceMock.Object, _senderMock.Object);
-        var command = new BanUserCommand { UserId = 1, Reason = "Violation", AdminId = 99 };
+        var handler = new BanUserCommandHandler(_context, _sellerHubServiceMock.Object, _senderMock.Object, new SensitiveDataLogger(_context, EncryptionServiceTests.Create(), SensitiveLogTests.Actor("99", "SuperAdmin")), SensitiveLogTests.Actor("99", "SuperAdmin"));
+        var command = new BanUserCommand { UserId = 1, Reason = "Violation", AdminId = 123 };
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -66,6 +68,8 @@ public class UserManagementTests
 
         var action = await _context.AdminActions.FirstOrDefaultAsync(a => a.TargetId == 1 && a.Action == "BanUser");
         action.ShouldNotBeNull();
+        action.AdminId.ShouldBe(99);
+        (await _context.SensitiveDataLogs.SingleAsync()).ActorId.ShouldBe(99);
         
         var notifications = await _context.Notifications.Where(n => n.UserId == 1).ToListAsync();
         notifications.Count.ShouldBe(2); // InApp and Email
@@ -79,8 +83,8 @@ public class UserManagementTests
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        var handler = new UnbanUserCommandHandler(_context, _sellerHubServiceMock.Object, _senderMock.Object);
-        var command = new UnbanUserCommand { UserId = 2, AdminId = 99 };
+        var handler = new UnbanUserCommandHandler(_context, _sellerHubServiceMock.Object, _senderMock.Object, new SensitiveDataLogger(_context, EncryptionServiceTests.Create(), SensitiveLogTests.Actor("99", "SuperAdmin")), SensitiveLogTests.Actor("99", "SuperAdmin"));
+        var command = new UnbanUserCommand { UserId = 2, AdminId = 123 };
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -91,5 +95,8 @@ public class UserManagementTests
         updatedUser!.Status.ShouldBe("Active");
         updatedUser.BannedReason.ShouldBeNull();
         updatedUser.BannedBy.ShouldBeNull();
+        (await _context.SensitiveDataLogs.SingleAsync()).Action.ShouldBe("UnbanUser");
+        (await _context.SensitiveDataLogs.SingleAsync()).ActorId.ShouldBe(99);
+        (await _context.AdminActions.SingleAsync()).AdminId.ShouldBe(99);
     }
 }

@@ -20,9 +20,28 @@ public class AuditLogs : EndpointGroupBase
 
     public async Task<Ok<PaginatedList<AuditLogDto>>> GetAuditLogs(
         ISender sender,
-        [AsParameters] GetAuditLogsQuery query)
+        int pageNumber = 1,
+        int pageSize = 20,
+        int? adminId = null,
+        string? adminUsername = null,
+        string? targetType = null,
+        int? targetId = null,
+        string? action = null,
+        DateTime? fromDate = null,
+        DateTime? toDate = null)
     {
-        var result = await sender.Send(query);
+        var result = await sender.Send(new GetAuditLogsQuery
+        {
+            PageNumber = pageNumber,
+            PageSize = pageSize,
+            AdminId = adminId,
+            AdminUsername = adminUsername,
+            TargetType = targetType,
+            TargetId = targetId,
+            Action = action,
+            FromDate = fromDate,
+            ToDate = toDate
+        });
         return TypedResults.Ok(result);
     }
 

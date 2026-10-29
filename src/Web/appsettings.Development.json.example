@@ -1,4 +1,7 @@
 {
+  "DatabaseInitialization": { "RunMigrationsOnStartup": false },
+  "Seeding": { "Mode": "None" },
+  "BackgroundJobs": { "Enabled": false },
   "ConnectionStrings": {
     "MyCnn": "Server=(localdb)\\mssqllocaldb;Database=CloneEbayDB;Trusted_Connection=True;TrustServerCertificate=True"
   },

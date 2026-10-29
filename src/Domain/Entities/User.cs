@@ -63,6 +63,7 @@ public partial class User : BaseAuditableEntity
 
     // Auto-approval Tracking Fields
     public string? CCCD { get; set; } // Identifies a unique citizen
+    public string? CccdLookupHash { get; set; }
     public double? Latitude { get; set; } // Registration/Last Login Latitude
     public double? Longitude { get; set; } // Registration/Last Login Longitude
 

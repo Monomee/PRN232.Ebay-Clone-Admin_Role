@@ -42,8 +42,8 @@ public class UpdateReviewStatusTests
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
 
-        var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object);
-        var command = new UpdateReviewStatusCommand { Id = 1, Status = "Visible", Action = "Keep", AdminId = 99 };
+        var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object, EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("99", "SuperAdmin"));
+        var command = new UpdateReviewStatusCommand { Id = 1, Status = "Visible", Action = "Keep", AdminId = 123 };
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -70,7 +70,7 @@ public class UpdateReviewStatusTests
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
 
-        var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object);
+        var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object, EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("99", "SuperAdmin"));
         var command = new UpdateReviewStatusCommand { Id = 2, Status = "Hidden", Action = "Hide", AdminId = 99 };
 
         // Act
@@ -93,7 +93,7 @@ public class UpdateReviewStatusTests
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
 
-        var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object);
+        var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object, EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("99", "SuperAdmin"));
         var command = new UpdateReviewStatusCommand { Id = 3, Status = "Hidden", Action = "Hide", AdminId = 99 };
 
         // Act
@@ -118,7 +118,7 @@ public class UpdateReviewStatusTests
         _context.Reviews.Add(review);
         await _context.SaveChangesAsync();
 
-        var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object);
+        var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object, EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("99", "SuperAdmin"));
         var command = new UpdateReviewStatusCommand { Id = 4, Status = "Hidden", Action = "Hide", AdminId = 99 };
 
         // Act

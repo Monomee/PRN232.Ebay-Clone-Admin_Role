@@ -41,7 +41,8 @@ public class SendBroadcastTests
     }
 
     private SendBroadcastCommandHandler CreateHandler() =>
-        new(_context, _notifierMock.Object, _scopeFactoryMock.Object, NullLogger<SendBroadcastCommandHandler>.Instance);
+        new(_context, _notifierMock.Object, _scopeFactoryMock.Object, NullLogger<SendBroadcastCommandHandler>.Instance,
+            EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("99", "SuperAdmin"));
 
     // ── Happy path ──────────────────────────────────────────────────────────
 
@@ -55,7 +56,7 @@ public class SendBroadcastTests
             Content = "He thong bao tri luc 2h sang",
             TargetAudience = "All",
             Channels = new List<string> { "InApp" },
-            CreatedBy = AdminId
+            CreatedBy = 123
         };
 
         // Act

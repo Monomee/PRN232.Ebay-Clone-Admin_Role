@@ -15,18 +15,21 @@ public record UpdateUserStatusCommand : IRequest<bool>
 public class UpdateUserStatusCommandHandler : IRequestHandler<UpdateUserStatusCommand, bool>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUser _actor;
     private readonly ISellerHubService _sellerHubService;
     private readonly ISender _sender;
 
-    public UpdateUserStatusCommandHandler(IApplicationDbContext context, ISellerHubService sellerHubService, ISender sender)
+    public UpdateUserStatusCommandHandler(IApplicationDbContext context, ISellerHubService sellerHubService, ISender sender, IUser actor)
     {
         _context = context;
+        _actor = actor;
         _sellerHubService = sellerHubService;
         _sender = sender;
     }
 
     public async Task<bool> Handle(UpdateUserStatusCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _actor.GetRequiredActorId();
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
@@ -60,7 +63,7 @@ public class UpdateUserStatusCommandHandler : IRequestHandler<UpdateUserStatusCo
 
         _context.AdminActions.Add(new AdminAction
         {
-            AdminId = request.AdminId,
+            AdminId = actorId,
             Action = "UpdateUserStatus",
             TargetType = "User",
             TargetId = user.Id,
@@ -82,7 +85,7 @@ public class UpdateUserStatusCommandHandler : IRequestHandler<UpdateUserStatusCo
                 Type = "InApp",
                 Status = "Sent",
                 SentAt = DateTime.UtcNow,
-                CreatedBy = request.AdminId,
+                CreatedBy = actorId,
                 CreatedAt = DateTime.UtcNow
             });
         }

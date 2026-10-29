@@ -15,11 +15,17 @@ public record PushPayoutCommand : IRequest<PayoutEngineResult>
 public class PushPayoutCommandHandler : IRequestHandler<PushPayoutCommand, PayoutEngineResult>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IEncryptionService _encryption;
+    private readonly ISensitiveDataLogger _sensitiveLog;
+
     private readonly ISender _sender;
 
-    public PushPayoutCommandHandler(IApplicationDbContext context, ISender sender)
+    public PushPayoutCommandHandler(IApplicationDbContext context, ISender sender, IEncryptionService encryption, ISensitiveDataLogger sensitiveLog)
     {
         _context = context;
+        _encryption = encryption;
+        _sensitiveLog = sensitiveLog;
+
         _sender = sender;
     }
 
@@ -34,7 +40,8 @@ public class PushPayoutCommandHandler : IRequestHandler<PushPayoutCommand, Payou
         // 1. Ensure Bank Account is linked
         if (string.IsNullOrEmpty(seller.BankAccountMock))
         {
-            seller.BankAccountMock = "{\"bankName\": \"Manual Test Bank\", \"accountNumber\": \"TEST-999\", \"accountName\": \"" + seller.Username + "\"}";
+            seller.BankAccountMock = _encryption.Encrypt(System.Text.Json.JsonSerializer.Serialize(new { bankName = "Manual Test Bank", accountNumber = "TEST-999", accountName = seller.Username }));
+            _sensitiveLog.Add("LinkBankAccount", "User", seller.Id.ToString(), "Financial", new { seller.Id, source = "Mock" });
         }
 
         // 2. Inject Available Balance if needed

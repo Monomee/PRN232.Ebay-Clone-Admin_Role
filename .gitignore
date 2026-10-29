@@ -503,3 +503,28 @@ $RECYCLE.BIN/
 *.swp
 .azure
 env
+# Local W7 QA/rehearsal evidence and assistant planning (never hand off as source).
+# The optional test-reports harness is not referenced by the solution or CI.
+/test-reports/
+/docs/evidence/
+/docs/superpowers/
+/MEMORY.md
+/docs/ClickUp-Task-Code-Audit-*.md
+/docs/ClickUp-Task-Code-Audit-*.csv
+/docs/Requirement-Comparison-*.md
+/docs/Startup-Seeder-Safety-Results.md
+/docs/W7-01-Git-Plan.md
+/docs/W7-01-Team-Change-Manifest.csv
+/docs/W7-01-Team-Onboarding.md
+# Ignore rules do not hide modifications to files already tracked by Git.
+
+# Local secret stores, database backups and generated test output.
+*.kdbx
+*.bak
+**/secrets.json
+.env.*
+!.env.example
+!.env.*.example
+*.trx
+**/playwright-report/
+/tests/jmeter/results/

@@ -48,9 +48,9 @@ public class GetWithdrawalRequestsQueryHandler : IRequestHandler<GetWithdrawalRe
                 Amount = w.Amount,
                 Status = w.Status,
                 RequestedAt = w.RequestedAt,
-                BankName = w.BankName,
-                BankAccountNumber = w.BankAccountNumber,
-                BankAccountName = w.BankAccountName
+                BankName = w.BankName == null ? null : "[Protected]",
+                BankAccountNumber = w.BankAccountNumber == null ? null : "********",
+                BankAccountName = w.BankAccountName == null ? null : "[Protected]"
             })
             .OrderByDescending(w => w.RequestedAt)
             .ToListAsync(cancellationToken);

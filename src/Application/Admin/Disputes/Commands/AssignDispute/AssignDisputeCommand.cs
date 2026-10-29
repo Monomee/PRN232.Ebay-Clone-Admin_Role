@@ -37,6 +37,7 @@ public class AssignDisputeCommandHandler : IRequestHandler<AssignDisputeCommand,
 
     public async Task<bool> Handle(AssignDisputeCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _currentUser.GetRequiredActorId();
         var dispute = await _context.Disputes
             .FirstOrDefaultAsync(d => d.Id == request.DisputeId, cancellationToken);
 
@@ -94,7 +95,7 @@ public class AssignDisputeCommandHandler : IRequestHandler<AssignDisputeCommand,
         // Log admin action
         var adminAction = new AdminAction
         {
-            AdminId = adminId ?? 0,
+            AdminId = actorId,
             Action = "AssignDispute",
             TargetType = "Dispute",
             TargetId = dispute.Id,

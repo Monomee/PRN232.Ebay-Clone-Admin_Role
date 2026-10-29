@@ -36,9 +36,12 @@ public static class DependencyInjection
         builder.Services.AddHealthChecks()
             .AddDbContextCheck<ApplicationDbContext>(tags: ["ready"]);
 
-        builder.Services.AddHostedService<SellerEvaluationBackgroundService>();
-        builder.Services.AddHostedService<SettlementBackgroundService>();
-        builder.Services.AddHostedService<PayoutEngineBackgroundService>();
+        if (builder.Configuration.GetValue<bool>("BackgroundJobs:Enabled"))
+        {
+            builder.Services.AddHostedService<SellerEvaluationBackgroundService>();
+            builder.Services.AddHostedService<SettlementBackgroundService>();
+            builder.Services.AddHostedService<PayoutEngineBackgroundService>();
+        }
 
         builder.Services.AddExceptionHandler<CustomExceptionHandler>();
 

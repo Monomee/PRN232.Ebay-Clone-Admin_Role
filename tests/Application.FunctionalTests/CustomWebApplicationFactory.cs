@@ -1,4 +1,4 @@
-﻿using System.Data.Common;
+using System.Data.Common;
 using EbayClone.Application.Common.Interfaces;
 using EbayClone.Infrastructure.Data;
 using Microsoft.AspNetCore.Hosting;
@@ -31,6 +31,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             .UseEnvironment("Testing")
             .UseSetting("ConnectionStrings:MyCnn", _connectionString)
             .UseSetting("Jwt:Key", "functional-test-signing-key-32bytes!")
+            .UseSetting("Security:EncryptionKey", Convert.ToBase64String(Enumerable.Repeat((byte)7, 32).ToArray()))
             .UseSetting("Jwt:Issuer", "EbayCloneTest")
             .UseSetting("Jwt:Audience", "EbayCloneTest");
 

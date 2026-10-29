@@ -16,16 +16,20 @@ public class RequestWithdrawalCommandHandler : IRequestHandler<RequestWithdrawal
 {
     private readonly IApplicationDbContext _context;
     private readonly IUser _user;
+    private readonly IEncryptionService _encryption;
+    private readonly ISensitiveDataLogger _sensitiveLog;
 
-    public RequestWithdrawalCommandHandler(IApplicationDbContext context, IUser user)
+    public RequestWithdrawalCommandHandler(IApplicationDbContext context, IUser user, IEncryptionService encryption, ISensitiveDataLogger sensitiveLog)
     {
         _context = context;
         _user = user;
+        _encryption = encryption;
+        _sensitiveLog = sensitiveLog;
     }
 
     public async Task<int> Handle(RequestWithdrawalCommand request, CancellationToken cancellationToken)
     {
-        var sellerId = int.Parse(_user.Id ?? "0"); // Assume authenticated
+        if (!int.TryParse(_user.Id, out var sellerId) || sellerId <= 0) throw new UnauthorizedAccessException();
         var wallet = await _context.SellerWallets
             .FirstOrDefaultAsync(w => w.SellerId == sellerId, cancellationToken);
             
@@ -45,14 +49,16 @@ public class RequestWithdrawalCommandHandler : IRequestHandler<RequestWithdrawal
         {
             SellerId = sellerId,
             Amount = request.Amount,
-            BankName = request.BankName,
-            BankAccountNumber = request.BankAccountNumber,
-            BankAccountName = request.BankAccountName,
+            BankName = _encryption.Encrypt(request.BankName),
+            BankAccountNumber = _encryption.Encrypt(request.BankAccountNumber),
+            BankAccountName = _encryption.Encrypt(request.BankAccountName),
             Status = WithdrawalRequest.StatusPending, 
             RequestedAt = DateTime.UtcNow
         };
 
         _context.WithdrawalRequests.Add(withdrawal);
+        _sensitiveLog.Add("RequestWithdrawal", "Seller", sellerId.ToString(), "Financial",
+            new { sellerId, request.Amount, withdrawal.RequestedAt, request.BankName, request.BankAccountNumber, request.BankAccountName });
         
         await _context.SaveChangesAsync(cancellationToken);
 

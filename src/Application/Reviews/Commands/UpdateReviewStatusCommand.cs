@@ -15,16 +15,19 @@ public record UpdateReviewStatusCommand : IRequest<bool>
 public class UpdateReviewStatusCommandHandler : IRequestHandler<UpdateReviewStatusCommand, bool>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUser _actor;
     private readonly IEmailService _emailService;
 
-    public UpdateReviewStatusCommandHandler(IApplicationDbContext context, IEmailService emailService)
+    public UpdateReviewStatusCommandHandler(IApplicationDbContext context, IEmailService emailService, IUser actor)
     {
         _context = context;
+        _actor = actor;
         _emailService = emailService;
     }
 
     public async Task<bool> Handle(UpdateReviewStatusCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _actor.GetRequiredActorId();
         var review = await _context.Reviews
             .Include(r => r.Reviewer)
             .FirstOrDefaultAsync(r => r.Id == request.Id, cancellationToken);
@@ -33,7 +36,7 @@ public class UpdateReviewStatusCommandHandler : IRequestHandler<UpdateReviewStat
 
         review.Status = request.Status;
         review.ModerationAction = request.Action;
-        review.ModeratedBy = request.AdminId;
+        review.ModeratedBy = actorId;
         review.ModeratedAt = DateTime.UtcNow;
         
         // Staggered Penalty System for Reviews

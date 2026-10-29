@@ -1,3 +1,5 @@
+﻿> **W7-01:** Trước khi chạy backend, đọc [setup](docs/W7-01-SETUP.md) và [migration local](docs/W7-01-README.md); các yêu cầu key/startup mới thay cho hướng dẫn cũ.
+
 <div align="center">
   <h1> eBay Clone - Admin & Backend API</h1>
   <i>Hệ thống backend và nền tảng quản trị (Admin) cho dự án eBay Clone.</i>
@@ -116,7 +118,7 @@ dotnet ef database update --context ApplicationDbContext --startup-project ../We
 cd src/Web
 dotnet run
 ```
-Trang web sẽ tự động mở hoặc bạn có thể truy cập `https://localhost:5001`. Cơ sở dữ liệu sẽ được tự động seed dữ liệu mẫu trong lần chạy đầu tiên.
+Mở URL mà dotnet run in ra. W7-01 không tự seed mặc định; làm theo [setup](docs/W7-01-SETUP.md) và [migration](docs/W7-01-README.md) trước khi bật API hoặc chọn Demo.
 
 ---
 
@@ -154,3 +156,14 @@ Hệ thống tổ chức source code trong `src/Application` theo các Use Cases
 
 ---
 > *Template dự án gốc thuộc về [Clean.Architecture.Solution.Template](https://github.com/jasontaylordev/CleanArchitecture).*
+
+
+## W7-01 — setup, migration và phát triển tiếp
+
+Mỗi backend member dùng SQL local riêng. Trước khi chạy API trên database cũ, đọc theo thứ tự:
+
+1. [Setup backend/frontend, secrets và startup safety](docs/W7-01-SETUP.md).
+2. [Migration database cũ/mới, EF schema và CLI AES-GCM](docs/W7-01-README.md).
+3. [Tổng kết thay đổi, BUG-01/BUG-02 và quy tắc viết chức năng mới](docs/SensitiveDataProtection.md).
+
+Startup mặc định không migrate/seed/chạy writer jobs. Không commit keys, appsettings local hoặc DB backups; frontend không cần EncryptionKey/SQL credentials/JWT signing secret. Hướng dẫn W7-01 này thay cho mô tả startup/seed cũ ở trên.

@@ -18,14 +18,21 @@ public record CreateAdminUserCommand : IRequest<int>
 public class CreateAdminUserCommandHandler : IRequestHandler<CreateAdminUserCommand, int>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUser _user;
+    private readonly ISensitiveDataLogger _sensitiveLog;
 
-    public CreateAdminUserCommandHandler(IApplicationDbContext context)
+
+    public CreateAdminUserCommandHandler(IApplicationDbContext context, ISensitiveDataLogger sensitiveLog, IUser user)
     {
         _context = context;
+        _user = user;
+        _sensitiveLog = sensitiveLog;
+
     }
 
     public async Task<int> Handle(CreateAdminUserCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _user.GetRequiredActorId();
         var role = await _context.AdminRoles
             .FirstOrDefaultAsync(r => r.Id == request.RoleId, cancellationToken);
 
@@ -47,13 +54,14 @@ public class CreateAdminUserCommandHandler : IRequestHandler<CreateAdminUserComm
         {
             Username = request.Username,
             Email = request.Email,
-            Password = request.Password,
+            Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = Roles.Administrator,
             Status = "Active",
             ApprovalStatus = "Approved",
             IsVerified = true
         };
 
+        _sensitiveLog.Add("CreateAdminAccount", "AdminRole", role.Id.ToString(), "AdminPrivilege", new { adminUser.Username, adminUser.Email, roleId = role.Id });
         _context.Users.Add(adminUser);
         await _context.SaveChangesAsync(cancellationToken);
 
@@ -61,13 +69,13 @@ public class CreateAdminUserCommandHandler : IRequestHandler<CreateAdminUserComm
         {
             UserId = adminUser.Id,
             RoleId = request.RoleId,
-            AssignedBy = request.CreatedBy,
+            AssignedBy = actorId,
             AssignedAt = DateTime.UtcNow
         });
 
         _context.AdminActions.Add(new AdminAction
         {
-            AdminId = request.CreatedBy,
+            AdminId = actorId,
             Action = "CreateAdminUser",
             TargetType = "User",
             TargetId = adminUser.Id,
@@ -84,6 +92,7 @@ public class CreateAdminUserCommandHandler : IRequestHandler<CreateAdminUserComm
             CreatedAt = DateTime.UtcNow
         });
 
+        _sensitiveLog.Add("CreateAdminUser", "User", adminUser.Id.ToString(), "AdminPrivilege", new { adminUser.Username, roleId = role.Id });
         await _context.SaveChangesAsync(cancellationToken);
 
         return adminUser.Id;

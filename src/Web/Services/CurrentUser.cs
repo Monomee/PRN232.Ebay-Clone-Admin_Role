@@ -14,6 +14,8 @@ public class CurrentUser : IUser
     }
 
     public string? Id => _httpContextAccessor.HttpContext?.User?.FindFirstValue(ClaimTypes.NameIdentifier);
+    public string? Name => _httpContextAccessor.HttpContext?.User?.Identity?.Name;
+    public bool IsSystem => _httpContextAccessor.HttpContext == null;
     public List<string>? Roles => _httpContextAccessor.HttpContext?.User?.FindAll(ClaimTypes.Role).Select(x => x.Value).ToList();
 
 }

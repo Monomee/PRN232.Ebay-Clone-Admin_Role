@@ -7,7 +7,9 @@ using EbayClone.Web.Infrastructure; // <-- added for InternalIpMiddleware
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.EntityFrameworkCore;
 
-var builder = WebApplication.CreateBuilder(args);
+if (args.Contains("--apply") && !args.Contains("--migrate-sensitive-data"))
+    throw new ArgumentException("--apply requires --migrate-sensitive-data.");
+var builder = WebApplication.CreateBuilder(args.Where(a => a is not "--migrate-sensitive-data" and not "--apply").ToArray());
 
 
 // Add services to the container.
@@ -24,6 +26,19 @@ builder.Services.Configure<HostOptions>(options =>
 
 
 var app = builder.Build();
+
+// Resolve the durable key before any startup migration or seeder can write.
+_ = app.Services.GetRequiredService<IEncryptionService>();
+
+if (args.Contains("--migrate-sensitive-data"))
+{
+    using var scope = app.Services.CreateScope();
+    var result = await scope.ServiceProvider.GetRequiredService<SensitiveDataMigrationService>()
+        .RunAsync(args.Contains("--apply"));
+    app.Logger.LogInformation("Sensitive-data conversion: Apply={Apply}, PiiFields={Fields}, Logs={Logs}, LookupHashes={Hashes}",
+        args.Contains("--apply"), result.PiiFields, result.Logs, result.LookupHashes);
+    return;
+}
 
 // Run DB migration + seeder on startup if not in testing environment (idempotent — safe to run every time)
 if (!app.Environment.IsEnvironment("Testing"))

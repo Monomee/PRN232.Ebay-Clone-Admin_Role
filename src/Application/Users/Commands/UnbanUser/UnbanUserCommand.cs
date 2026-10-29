@@ -14,18 +14,25 @@ public record UnbanUserCommand : IRequest<bool>
 public class UnbanUserCommandHandler : IRequestHandler<UnbanUserCommand, bool>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUser _user;
+    private readonly ISensitiveDataLogger _sensitiveLog;
+
     private readonly ISellerHubService _sellerHubService;
     private readonly ISender _sender;
 
-    public UnbanUserCommandHandler(IApplicationDbContext context, ISellerHubService sellerHubService, ISender sender)
+    public UnbanUserCommandHandler(IApplicationDbContext context, ISellerHubService sellerHubService, ISender sender, ISensitiveDataLogger sensitiveLog, IUser user)
     {
         _context = context;
+        _user = user;
+        _sensitiveLog = sensitiveLog;
+
         _sellerHubService = sellerHubService;
         _sender = sender;
     }
 
     public async Task<bool> Handle(UnbanUserCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _user.GetRequiredActorId();
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
@@ -65,7 +72,7 @@ public class UnbanUserCommandHandler : IRequestHandler<UnbanUserCommand, bool>
             Type = "InApp",
             Status = "Sent",
             SentAt = DateTime.UtcNow,
-            CreatedBy = request.AdminId,
+            CreatedBy = actorId,
             CreatedAt = DateTime.UtcNow
         });
 
@@ -76,13 +83,13 @@ public class UnbanUserCommandHandler : IRequestHandler<UnbanUserCommand, bool>
             Content = "Tai khoan cua ban da duoc kich hoat lai.",
             Type = "Email",
             Status = "Pending",
-            CreatedBy = request.AdminId,
+            CreatedBy = actorId,
             CreatedAt = DateTime.UtcNow
         });
 
         _context.AdminActions.Add(new AdminAction
         {
-            AdminId = request.AdminId,
+            AdminId = actorId,
             Action = "UnbanUser",
             TargetType = "User",
             TargetId = user.Id,
@@ -90,6 +97,7 @@ public class UnbanUserCommandHandler : IRequestHandler<UnbanUserCommand, bool>
             CreatedAt = DateTime.UtcNow
         });
 
+        _sensitiveLog.Add("UnbanUser", "User", user.Id.ToString(), "PII", new { before, after });
         await _context.SaveChangesAsync(cancellationToken);
 
         if (user.Role == "Seller" || await _context.Stores.AnyAsync(s => s.SellerId == user.Id, cancellationToken))

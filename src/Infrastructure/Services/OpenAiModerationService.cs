@@ -55,8 +55,7 @@ public class OpenAiModerationService : IContentModerationService
             
             if (!response.IsSuccessStatusCode)
             {
-                var errorBody = await response.Content.ReadAsStringAsync(cancellationToken);
-                _logger.LogError("AI API Error ({StatusCode}): {ErrorBody}", response.StatusCode, errorBody);
+                _logger.LogError("AI API Error ({StatusCode})", response.StatusCode);
                 return (false, "AI Moderation Failed (API Error)");
             }
 
@@ -83,7 +82,7 @@ public class OpenAiModerationService : IContentModerationService
                 }
             }
 
-            _logger.LogInformation("AI Moderation Result for '{Content}': {Result}", content, result ?? "(null)");
+            _logger.LogInformation("AI moderation completed; result received: {HasResult}", !string.IsNullOrEmpty(result));
 
             if (result != null && result.Contains("TOXIC", StringComparison.OrdinalIgnoreCase))
             {
@@ -95,7 +94,7 @@ public class OpenAiModerationService : IContentModerationService
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error calling AI for content moderation.");
+            _logger.LogError("AI moderation failed: {ExceptionType}", ex.GetType().Name);
             return (false, "AI Moderation Failed (Exception)");
         }
     }

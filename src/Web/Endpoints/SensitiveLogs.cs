@@ -59,8 +59,10 @@ public class SensitiveLogs : EndpointGroupBase
 
     public async Task<Results<Ok<DecryptedSensitiveLogResult>, NotFound>> DecryptLog(
         ISender sender,
+        HttpContext context,
         int id)
     {
+        context.Response.Headers.CacheControl = "no-store";
         var result = await sender.Send(new DecryptSensitiveLogQuery(id));
 
         if (result == null) return TypedResults.NotFound();

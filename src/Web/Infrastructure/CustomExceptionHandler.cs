@@ -17,6 +17,8 @@ public class CustomExceptionHandler : IExceptionHandler
                 { typeof(NotFoundException), HandleNotFoundException },
                 { typeof(UnauthorizedAccessException), HandleUnauthorizedAccessException },
                 { typeof(ForbiddenAccessException), HandleForbiddenAccessException },
+                { typeof(System.Security.Cryptography.CryptographicException), HandleSensitiveDataException },
+                { typeof(System.Security.Cryptography.AuthenticationTagMismatchException), HandleSensitiveDataException },
             };
     }
 
@@ -31,6 +33,16 @@ public class CustomExceptionHandler : IExceptionHandler
         }
 
         return false;
+    }
+
+    private static async Task HandleSensitiveDataException(HttpContext context, Exception exception)
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        await context.Response.WriteAsJsonAsync(new ProblemDetails
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Sensitive data could not be verified or decrypted."
+        });
     }
 
     private async Task HandleValidationException(HttpContext httpContext, Exception ex)

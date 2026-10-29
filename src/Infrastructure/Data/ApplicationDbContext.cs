@@ -522,7 +522,17 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>, 
             entity.Property(e => e.TargetEntity).HasMaxLength(100);
             entity.Property(e => e.DataClassification).HasMaxLength(50);
             entity.Property(e => e.EncryptionAlgorithm).HasMaxLength(50);
+            entity.Property(e => e.ActorUsername).HasMaxLength(256);
+            entity.Property(e => e.ActorRole).HasMaxLength(100);
+            entity.Property(e => e.TargetId).HasMaxLength(100);
+            entity.Property(e => e.KeyIdentifier).HasMaxLength(50);
+            entity.Property(e => e.DataHash).HasMaxLength(256);
+            entity.Property(e => e.IpAddress).HasMaxLength(50);
+            entity.Property(e => e.UserAgent).HasMaxLength(500);
         });
+
+        modelBuilder.Entity<User>().Property(u => u.CccdLookupHash).HasMaxLength(64);
+        modelBuilder.Entity<User>().HasIndex(u => u.CccdLookupHash);
 
         // NEW: Apply configurations from assembly for new entities
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());

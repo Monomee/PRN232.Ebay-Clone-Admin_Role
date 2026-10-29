@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Net.Mail;
@@ -55,14 +55,14 @@ public class EmailService : IEmailService
             mailMessage.To.Add(to);
 
             // 4. Bắn Email
-            _logger.LogInformation($"[EmailService] Đang gửi cảnh báo tới {to}...");
+            _logger.LogInformation("Email delivery operation in progress.");
             await client.SendMailAsync(mailMessage);
-            _logger.LogInformation($"[EmailService] Gửi email thành công tới {to}!");
+            _logger.LogInformation("Email delivery operation in progress.");
         }
         catch (Exception ex)
         {
             // Bắt lỗi để nếu gửi mail xịt thì hệ thống (ví dụ API xóa sản phẩm) vẫn chạy bình thường
-            _logger.LogError($"[EmailService] Lỗi khi gửi email: {ex.Message}");
+            _logger.LogError("Email delivery failed: {ExceptionType}", ex.GetType().Name);
         }
     }
 }

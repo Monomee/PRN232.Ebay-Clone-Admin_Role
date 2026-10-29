@@ -22,13 +22,13 @@ public class WithdrawalRequestConfiguration : IEntityTypeConfiguration<Withdrawa
             .IsRequired();
 
         builder.Property(x => x.BankName)
-            .HasMaxLength(100);
+            .HasColumnType("nvarchar(max)");
 
         builder.Property(x => x.BankAccountNumber)
-            .HasMaxLength(50);
+            .HasColumnType("nvarchar(max)");
 
         builder.Property(x => x.BankAccountName)
-            .HasMaxLength(100);
+            .HasColumnType("nvarchar(max)");
 
         builder.Property(x => x.RejectionReason)
             .HasMaxLength(500);

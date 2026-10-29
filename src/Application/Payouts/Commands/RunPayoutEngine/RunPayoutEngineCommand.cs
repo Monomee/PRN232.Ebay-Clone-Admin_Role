@@ -1,4 +1,5 @@
 using EbayClone.Application.Common.Interfaces;
+using System.Security.Cryptography;
 using EbayClone.Domain.Entities;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -38,15 +39,21 @@ public record PayoutEngineResult(
 public class RunPayoutEngineCommandHandler : IRequestHandler<RunPayoutEngineCommand, PayoutEngineResult>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IEncryptionService _encryption;
+    private readonly ISensitiveDataLogger _sensitiveLog;
+
     private readonly IMockPaymentGateway _gateway;
     private readonly ILogger<RunPayoutEngineCommandHandler> _logger;
 
     public RunPayoutEngineCommandHandler(
         IApplicationDbContext context,
         IMockPaymentGateway gateway,
-        ILogger<RunPayoutEngineCommandHandler> logger)
+        ILogger<RunPayoutEngineCommandHandler> logger, IEncryptionService encryption, ISensitiveDataLogger sensitiveLog)
     {
         _context = context;
+        _encryption = encryption;
+        _sensitiveLog = sensitiveLog;
+
         _gateway = gateway;
         _logger = logger;
     }
@@ -168,6 +175,17 @@ public class RunPayoutEngineCommandHandler : IRequestHandler<RunPayoutEngineComm
                 continue;
             }
 
+            // Authenticate before persisting a lock; a damaged bank must not strand funds.
+            try { _encryption.Decrypt(seller.BankAccountMock); }
+            catch (CryptographicException)
+            {
+                failedCount++;
+                if (request.SellerId.HasValue) diagnosticMessage = "Bank details failed verification.";
+                _sensitiveLog.Add("PayoutRejected", "Seller", seller.Id.ToString(), "Financial", new { sessionId, code = "BankDataIntegrity" });
+                await _context.SaveChangesAsync(cancellationToken);
+                continue;
+            }
+
             // ── STEP 3: Lock funds → mark as Processing ───────────────────────
             _logger.LogCritical("[PAYOUT_DEBUG] LOCKING: Amount={A}, CurrentAvailable={Av}", amountToPay, wallet.AvailableBalance);
             wallet.LockAvailableFunds(amountToPay); // AvailableBalance → LockedBalance
@@ -183,6 +201,8 @@ public class RunPayoutEngineCommandHandler : IRequestHandler<RunPayoutEngineComm
                 CreatedAt = DateTime.UtcNow
             };
             _context.PayoutTransactions.Add(payoutTx);
+
+            _sensitiveLog.Add("PayoutStarted", "Seller", seller.Id.ToString(), "Financial", new { amount = amountToPay, sessionId });
 
             // Flush the lock to DB before calling gateway (ensures idempotency across concurrent runs)
             await _context.SaveChangesAsync(cancellationToken);
@@ -295,7 +315,15 @@ public class RunPayoutEngineCommandHandler : IRequestHandler<RunPayoutEngineComm
             ? seller.BankAccountMock
             : payoutTx.BankSnapshot;
 
-        var gatewayResult = await _gateway.ProcessAsync(amount, bank ?? string.Empty);
+        string? bankInfo = null;
+        try { if (bank != null) bankInfo = _encryption.Decrypt(bank); }
+        catch (CryptographicException)
+        {
+            _logger.LogWarning("Bank verification failed for payout #{PayoutId}; gateway will not be called.", payoutTx.Id);
+        }
+        var gatewayResult = bankInfo == null
+            ? new PaymentResult(false, "Bank details failed verification; gateway was not called.")
+            : await _gateway.ProcessAsync(amount, bankInfo);
         _logger.LogCritical("[PAYOUT_DEBUG] GATEWAY: Success={S}, Error={E}", gatewayResult.Success, gatewayResult.ErrorMessage);
 
         if (gatewayResult.Success)
@@ -329,6 +357,7 @@ public class RunPayoutEngineCommandHandler : IRequestHandler<RunPayoutEngineComm
                 seller.Id, seller.Username, amount, gatewayResult.ErrorMessage);
         }
 
+        _sensitiveLog.Add("PayoutResult", "PayoutTransaction", payoutTx.Id.ToString(), "Financial", new { payoutTx.SellerId, payoutTx.Amount, payoutTx.Status, sessionId });
         await _context.SaveChangesAsync(CancellationToken.None);
         return gatewayResult.Success;
     }

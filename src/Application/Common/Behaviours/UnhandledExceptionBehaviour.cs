@@ -1,4 +1,4 @@
-﻿using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging;
 
 namespace EbayClone.Application.Common.Behaviours;
 
@@ -22,7 +22,7 @@ public class UnhandledExceptionBehaviour<TRequest, TResponse> : IPipelineBehavio
         {
             var requestName = typeof(TRequest).Name;
 
-            _logger.LogError(ex, "EbayClone Request: Unhandled Exception for Request {Name} {@Request}", requestName, request);
+            _logger.LogError("EbayClone Request: Unhandled {ExceptionType} for Request {Name}", ex.GetType().Name, requestName);
 
             throw;
         }

@@ -21,6 +21,7 @@ public record SendBroadcastCommand : IRequest<int>
 public class SendBroadcastCommandHandler : IRequestHandler<SendBroadcastCommand, int>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUser _actor;
     private readonly INotificationNotifier _notificationNotifier;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly ILogger<SendBroadcastCommandHandler> _logger;
@@ -29,9 +30,10 @@ public class SendBroadcastCommandHandler : IRequestHandler<SendBroadcastCommand,
         IApplicationDbContext context, 
         INotificationNotifier notificationNotifier,
         IServiceScopeFactory scopeFactory,
-        ILogger<SendBroadcastCommandHandler> logger)
+        ILogger<SendBroadcastCommandHandler> logger, IUser actor)
     {
         _context = context;
+        _actor = actor;
         _notificationNotifier = notificationNotifier;
         _scopeFactory = scopeFactory;
         _logger = logger;
@@ -39,6 +41,7 @@ public class SendBroadcastCommandHandler : IRequestHandler<SendBroadcastCommand,
 
     public async Task<int> Handle(SendBroadcastCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _actor.GetRequiredActorId();
         var validChannels = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Email", "InApp" };
         if (request.Channels.Count == 0 || request.Channels.Any(c => !validChannels.Contains(c)))
         {
@@ -77,7 +80,7 @@ public class SendBroadcastCommandHandler : IRequestHandler<SendBroadcastCommand,
                 Status = request.ScheduleAt.HasValue ? "Scheduled" : "Sent",
                 ScheduledAt = request.ScheduleAt,
                 SentAt = request.ScheduleAt.HasValue ? null : now,
-                CreatedBy = request.CreatedBy,
+                CreatedBy = actorId,
                 CreatedAt = now
             };
 
@@ -86,7 +89,7 @@ public class SendBroadcastCommandHandler : IRequestHandler<SendBroadcastCommand,
 
         _context.AdminActions.Add(new AdminAction
         {
-            AdminId = request.CreatedBy,
+            AdminId = actorId,
             Action = request.ScheduleAt.HasValue ? "ScheduleBroadcast" : "SendBroadcast",
             TargetType = "Broadcast",
             Details = JsonSerializer.Serialize(new

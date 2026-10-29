@@ -29,7 +29,7 @@ public class SensitiveDataLog : BaseAuditableEntity
     public string EncryptedData { get; set; } = string.Empty;
 
     // Cryptographic metadata
-    public string EncryptionAlgorithm { get; set; } = "AES-256-CBC";
+    public string EncryptionAlgorithm { get; set; } = "AES-256-GCM";
 
     public string KeyIdentifier { get; set; } = "v1";
 
