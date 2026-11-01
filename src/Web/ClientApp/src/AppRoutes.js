@@ -81,7 +81,7 @@ const AppRoutes = [
   },
   {
     path: "/broadcasts",
-    element: protect(<BroadcastPage />, ["SuperAdmin"])
+    element: protect(<BroadcastPage />, ["SuperAdmin", "Support"])
   },
   {
     path: "/admin-roles",
@@ -115,7 +115,7 @@ const AppRoutes = [
 
   {
     path: "/sellers",
-    element: protect(<SellersPage />, ["SuperAdmin"])
+    element: protect(<SellersPage />, ["SuperAdmin", "Support"])
   },
 
   {
@@ -162,11 +162,11 @@ const AppRoutes = [
   },
   {
     path: "/active-connections",
-    element: protect(<ActiveConnectionsPage />)
+    element: protect(<ActiveConnectionsPage />, ["SuperAdmin"])
   },
   {
     path: "/orders",
-    element: protect(<OrdersPage />)
+    element: protect(<OrdersPage />, ["SuperAdmin", "Support", "Administrator"])
   }
 ];
 

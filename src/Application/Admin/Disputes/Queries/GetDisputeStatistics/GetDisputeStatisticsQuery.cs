@@ -111,16 +111,20 @@ public class GetDisputeStatisticsQueryHandler : IRequestHandler<GetDisputeStatis
             .Where(d => d.ResolvedAt >= thirtyDaysAgo && d.ResolvedAt != null)
             .ToListAsync(cancellationToken);
 
-        var avgResolutionTime = resolvedCases.Any()
-            ? resolvedCases
-                .Where(d => d.CreatedAt != default && d.ResolvedAt != null)
-                .Average(d => (d.ResolvedAt!.Value - d.CreatedAt).TotalHours)
+        var casesWithResolutionTime = resolvedCases
+            .Where(d => d.CreatedAt != default && d.ResolvedAt != null)
+            .ToList();
+
+        var avgResolutionTime = casesWithResolutionTime.Any()
+            ? casesWithResolutionTime.Average(d => (d.ResolvedAt!.Value - d.CreatedAt).TotalHours)
             : 0;
 
-        var avgResponseTime = resolvedCases.Any()
-            ? resolvedCases
-                .Where(d => d.FirstResponseAt != null)
-                .Average(d => (d.FirstResponseAt!.Value - d.CreatedAt).TotalHours)
+        var casesWithResponseTime = resolvedCases
+            .Where(d => d.FirstResponseAt != null)
+            .ToList();
+
+        var avgResponseTime = casesWithResponseTime.Any()
+            ? casesWithResponseTime.Average(d => (d.FirstResponseAt!.Value - d.CreatedAt).TotalHours)
             : 0;
 
         // Win rates

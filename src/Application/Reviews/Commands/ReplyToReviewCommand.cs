@@ -14,10 +14,12 @@ public record ReplyToReviewCommand : IRequest<bool>
 public class ReplyToReviewCommandHandler : IRequestHandler<ReplyToReviewCommand, bool>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUser? _user;
 
-    public ReplyToReviewCommandHandler(IApplicationDbContext context)
+    public ReplyToReviewCommandHandler(IApplicationDbContext context, IUser? user = null)
     {
         _context = context;
+        _user = user;
     }
 
     public async Task<bool> Handle(ReplyToReviewCommand request, CancellationToken cancellationToken)
@@ -29,9 +31,13 @@ public class ReplyToReviewCommandHandler : IRequestHandler<ReplyToReviewCommand,
         if (review == null)
             throw new Exception("Không tìm thấy đánh giá.");
 
+        var sellerId = (_user != null && int.TryParse(_user.Id, out var currentUserId) && currentUserId > 0)
+            ? currentUserId
+            : request.SellerId;
+
         // Ensure the person replying is the seller of the product
-        if (review.Product?.SellerId != request.SellerId)
-            throw new Exception("Chỉ người bán sản phẩm này mới có quyền phản hồi.");
+        if (review.Product?.SellerId != sellerId)
+            throw new EbayClone.Application.Common.Exceptions.ForbiddenAccessException();
 
         review.SellerReply = request.Reply;
         review.SellerReplyCreatedAt = DateTime.UtcNow;

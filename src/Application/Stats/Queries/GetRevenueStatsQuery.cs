@@ -26,6 +26,11 @@ public class GetRevenueStatsQueryHandler : IRequestHandler<GetRevenueStatsQuery,
 
     public async Task<RevenueStatsDto> Handle(GetRevenueStatsQuery request, CancellationToken cancellationToken)
     {
+        if (request.StartDate.HasValue && request.EndDate.HasValue && request.EndDate.Value < request.StartDate.Value)
+        {
+            throw new InvalidOperationException("End date must be greater than or equal to start date.");
+        }
+
         var query = _context.FinancialTransactions
             .AsNoTracking()
             .Where(t => t.Type == "FeeDeduction");

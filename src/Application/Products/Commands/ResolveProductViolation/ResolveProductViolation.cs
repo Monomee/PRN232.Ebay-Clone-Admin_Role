@@ -19,6 +19,7 @@ public record ResolveProductViolationCommand : IRequest
     public ViolationResolutionAction Action { get; init; }
     public string? AdminNote { get; init; }
     public string? ViolationType { get; init; }
+    public int? AdminId { get; init; }
 }
 
 public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProductViolationCommand>
@@ -26,12 +27,14 @@ public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProd
     private readonly IApplicationDbContext _context;
     private readonly IEmailService _emailService;
     private readonly INotificationNotifier _notifier;
+    private readonly IUser? _user;
 
-    public ResolveProductViolationCommandHandler(IApplicationDbContext context, IEmailService emailService, INotificationNotifier notifier)
+    public ResolveProductViolationCommandHandler(IApplicationDbContext context, IEmailService emailService, INotificationNotifier notifier, IUser? user = null)
     {
         _context = context;
         _emailService = emailService;
         _notifier = notifier;
+        _user = user;
     }
 
     public async Task Handle(ResolveProductViolationCommand request, CancellationToken cancellationToken)
@@ -43,12 +46,29 @@ public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProd
 
         if (product == null) throw new NotFoundException(nameof(Product), $"{request.ProductId}");
 
+        int? resolvedAdminId = null;
+        if (_user != null && int.TryParse(_user.Id, out var currentAdminId) && currentAdminId > 0)
+        {
+            resolvedAdminId = currentAdminId;
+        }
+        else if (request.AdminId.HasValue && request.AdminId.Value > 0)
+        {
+            resolvedAdminId = request.AdminId.Value;
+        }
+        else
+        {
+            var adminUser = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Role == "SuperAdmin" || u.Role == "Admin" || u.Role == "Support", cancellationToken);
+            resolvedAdminId = adminUser?.Id ?? 1;
+        }
+
         // 1. Cập nhật Trạng thái Sản phẩm & Report dựa trên Quyết định
         if (request.Action == ViolationResolutionAction.DeleteAndWarn)
         {
             product.Status = "Banned"; // Soft Delete
             product.ViolationType = request.ViolationType ?? "Other"; // Gắn cờ vi phạm bản quyền
-            MarkReportsAs(product.Reports, "Resolved");
+            MarkReportsAs(product.Reports, "Resolved", resolvedAdminId, request.AdminNote);
 
             var seller = product.Seller;
             if (seller != null)
@@ -63,10 +83,14 @@ public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProd
 
                     if (!string.IsNullOrEmpty(seller.Email))
                     {
-                        await _emailService.SendEmailAsync(
-                            seller.Email,
-                            "TÀI KHOẢN ĐÃ BỊ KHÓA VĨNH VIỄN",
-                            $"Tài khoản của bạn đã bị khóa do vi phạm bản quyền/hàng cấm nhiều lần. Sản phẩm '{product.Title}' là vi phạm thứ {seller.ViolationCount}. Vui lòng liên hệ Admin.");
+                        try
+                        {
+                            await _emailService.SendEmailAsync(
+                                seller.Email,
+                                "TÀI KHOẢN ĐÃ BỊ KHÓA VĨNH VIỄN",
+                                $"Tài khoản của bạn đã bị khóa do vi phạm bản quyền/hàng cấm nhiều lần. Sản phẩm '{product.Title}' là vi phạm thứ {seller.ViolationCount}. Vui lòng liên hệ Admin.");
+                        }
+                        catch { }
                     }
                 }
                 else
@@ -74,12 +98,29 @@ public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProd
                     // 2. Gửi Email tự động cho người bán
                     if (!string.IsNullOrEmpty(seller.Email))
                     {
-                        await _emailService.SendEmailAsync(
-                            seller.Email,
-                            "CẢNH BÁO VI PHẠM BẢN QUYỀN (VeRO)",
-                            $"Sản phẩm '{product.Title}' của bạn đã bị xóa do vi phạm sở hữu trí tuệ. Bạn đã vi phạm {seller.ViolationCount}/3 lần. Nếu chạm mốc 3 lần, tài khoản sẽ bị khóa.");
+                        try
+                        {
+                            await _emailService.SendEmailAsync(
+                                seller.Email,
+                                "CẢNH BÁO VI PHẠM BẢN QUYỀN (VeRO)",
+                                $"Sản phẩm '{product.Title}' của bạn đã bị xóa do vi phạm sở hữu trí tuệ. Bạn đã vi phạm {seller.ViolationCount}/3 lần. Nếu chạm mốc 3 lần, tài khoản sẽ bị khóa.");
+                        }
+                        catch { }
                     }
                 }
+
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = seller.Id,
+                    UserRole = "Seller",
+                    Title = "CẢNH BÁO VI PHẠM BẢN QUYỀN (VeRO)",
+                    Content = $"Sản phẩm '{product.Title}' của bạn đã bị xóa do vi phạm: {request.AdminNote ?? product.ViolationType}. Số lần vi phạm: {seller.ViolationCount}/3.",
+                    Type = "InApp",
+                    Status = "Sent",
+                    SentAt = DateTime.UtcNow,
+                    CreatedBy = resolvedAdminId,
+                    CreatedAt = DateTime.UtcNow
+                });
             }
         }
         else if (request.Action == ViolationResolutionAction.Hide)
@@ -87,15 +128,35 @@ public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProd
             product.Status = "Hidden";
             // 1. Ghi nhận lỗi nhẹ khiến sản phẩm bị ẩn
             product.ViolationType = request.ViolationType ?? "Minor Policy Violation";
-            MarkReportsAs(product.Reports, "Resolved");
+            MarkReportsAs(product.Reports, "Resolved", resolvedAdminId, request.AdminNote);
 
             // 2. [Tùy chọn] Gửi email yêu cầu Seller sửa lại
             if (!string.IsNullOrEmpty(product.Seller?.Email))
             {
-                await _emailService.SendEmailAsync(
-                    product.Seller.Email,
-                    "SẢN PHẨM BỊ TẠM ẨN",
-                    $"Sản phẩm '{product.Title}' của bạn đang bị tạm ẩn do: {product.ViolationType}. Vui lòng cập nhật lại thông tin cho đúng quy định.");
+                try
+                {
+                    await _emailService.SendEmailAsync(
+                        product.Seller.Email,
+                        "SẢN PHẨM BỊ TẠM ẨN",
+                        $"Sản phẩm '{product.Title}' của bạn đang bị tạm ẩn do: {product.ViolationType}. Vui lòng cập nhật lại thông tin cho đúng quy định.");
+                }
+                catch { }
+            }
+
+            if (product.Seller != null)
+            {
+                _context.Notifications.Add(new Notification
+                {
+                    UserId = product.Seller.Id,
+                    UserRole = "Seller",
+                    Title = "SẢN PHẨM BỊ TẠM ẨN",
+                    Content = $"Sản phẩm '{product.Title}' của bạn đang bị tạm ẩn do: {request.AdminNote ?? product.ViolationType}.",
+                    Type = "InApp",
+                    Status = "Sent",
+                    SentAt = DateTime.UtcNow,
+                    CreatedBy = resolvedAdminId,
+                    CreatedAt = DateTime.UtcNow
+                });
             }
         }
         else if (request.Action == ViolationResolutionAction.Reject)
@@ -103,7 +164,7 @@ public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProd
             product.Status = "Active";
             product.ReportCount = 0;
             product.ViolationType = null; 
-            MarkReportsAs(product.Reports, "Rejected");
+            MarkReportsAs(product.Reports, "Rejected", resolvedAdminId, request.AdminNote);
         }
         else if (request.Action == ViolationResolutionAction.Restore)
         {
@@ -117,19 +178,37 @@ public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProd
 
             if (!string.IsNullOrEmpty(product.Seller?.Email))
             {
-                await _emailService.SendEmailAsync(
-                    product.Seller.Email,
-                    "THÔNG BÁO KHÔI PHỤC SẢN PHẨM",
-                    $"Chào bạn, sau khi xem xét lại kháng cáo, chúng tôi đã khôi phục sản phẩm '{product.Title}'. Xin lỗi vì sự bất tiện này!");
+                try
+                {
+                    await _emailService.SendEmailAsync(
+                        product.Seller.Email,
+                        "THÔNG BÁO KHÔI PHỤC SẢN PHẨM",
+                        $"Chào bạn, sau khi xem xét lại kháng cáo, chúng tôi đã khôi phục sản phẩm '{product.Title}'. Xin lỗi vì sự bất tiện này!");
+                }
+                catch { }
             }
         }
 
         // Lưu vết Admin xử lý
         product.IsVerified = true;
-        // product.VerifiedBy = ... (Lấy từ CurrentUserService)
+        product.VerifiedBy = resolvedAdminId;
         product.VerifiedAt = DateTime.UtcNow;
         product.ModerationNotes = request.AdminNote;
         product.ReportCount = 0;
+
+        if (resolvedAdminId.HasValue)
+        {
+            _context.AdminActions.Add(new AdminAction
+            {
+                AdminId = resolvedAdminId.Value,
+                Action = $"ResolveProductViolation:{request.Action}",
+                TargetType = "Product",
+                TargetId = product.Id,
+                Details = request.AdminNote ?? product.ViolationType,
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+
         await _context.SaveChangesAsync(cancellationToken);
 
         // Broadcast real-time notification when product is banned/hidden
@@ -142,11 +221,17 @@ public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProd
         }
     }
 
-    private void MarkReportsAs(IEnumerable<ProductReport> reports, string status)
+    private void MarkReportsAs(IEnumerable<ProductReport> reports, string status, int? adminId, string? adminNote)
     {
         foreach (var report in reports)
         {
             report.Status = status;
+            report.ResolvedBy = adminId;
+            report.ResolvedAt = DateTime.UtcNow;
+            if (!string.IsNullOrEmpty(adminNote))
+            {
+                report.AdminReply = adminNote;
+            }
         }
     }
 }

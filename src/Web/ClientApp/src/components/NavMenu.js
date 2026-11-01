@@ -67,6 +67,8 @@ export const NavMenu = ({ isOpen, toggleSidebar, closeSidebar }) => {
 
                 <SidebarLink to="/disputes" icon="bi bi-shield-exclamation">Disputes</SidebarLink>
                 <SidebarLink to="/return-requests" icon="bi bi-cart">Return Requests</SidebarLink>
+                <SidebarLink to="/sellers" icon="bi bi-person-badge">Sellers Overview</SidebarLink>
+                <SidebarLink to="/broadcasts" icon="bi bi-megaphone">Broadcasts</SidebarLink>
               </>
             )}
 
@@ -74,13 +76,11 @@ export const NavMenu = ({ isOpen, toggleSidebar, closeSidebar }) => {
 
             {(user?.role === 'SuperAdmin' || user?.roles?.includes('SuperAdmin')) && (
               <>
-                <SidebarLink to="/sellers" icon="bi bi-person-badge">Sellers Overview</SidebarLink>
                 <SidebarLink to="/payout-engine" icon="bi bi-lightning-charge">Payout Engine</SidebarLink>
 
 
                 <SidebarLink to="/audit-logs" icon="bi bi-bar-chart-line">Audit Logs</SidebarLink>
                 <SidebarLink to="/sensitive-logs" icon="bi bi-shield-lock">Sensitive Logs</SidebarLink>
-                <SidebarLink to="/broadcasts" icon="bi bi-megaphone">Broadcasts</SidebarLink>
                 <SidebarLink to="/admin-roles" icon="bi bi-gear">Admin Roles</SidebarLink>
                 <SidebarLink to="/active-connections" icon="bi bi-hdd-network">Active Connections</SidebarLink>
               </>

@@ -2,6 +2,7 @@ import React from "react";
 import { LoadingIndicator } from "../components/LoadingIndicator";
 import { ToastMessage } from "../components/ToastMessage";
 import { useDashboardData } from "../hooks/useDashboardData";
+import { useAuth } from "../context/AuthContext";
 
 // Modular Components
 import { MetricTiles } from "../components/dashboard/MetricTiles";
@@ -33,6 +34,11 @@ ChartJS.register(
 );
 
 export function DashboardPage() {
+  const { user } = useAuth();
+  const hasRole = (...roles) => roles.includes(user?.role) || (Array.isArray(user?.roles) && user.roles.some((r) => roles.includes(r)));
+  const canViewReports = hasRole("SuperAdmin", "Monitor", "Administrator");
+  const canManagePlatformFees = hasRole("SuperAdmin", "Administrator");
+  const canManageSellerCriteria = hasRole("SuperAdmin", "Support", "Administrator");
   const {
     metrics,
     stats,
@@ -75,12 +81,12 @@ export function DashboardPage() {
         <div>
           <div className="d-flex align-items-center gap-3 mb-1">
             <h1 className="h3 fw-bold mb-0">Main Dashboard</h1>
-            <DashboardActions 
+            {canViewReports && <DashboardActions 
               metrics={metrics} 
               stats={stats} 
               dashboardId="dashboard-container" 
               dateRange={formatDateRange()} 
-            />
+            />}
           </div>
           <div className="d-flex align-items-center text-secondary small">
             <i className="bi bi-calendar3 me-2"></i>
@@ -107,7 +113,7 @@ export function DashboardPage() {
                 value={customStart}
                 onChange={(e) => setCustomStart(e.target.value)}
                 style={{ fontSize: '0.75rem', width: '130px', height: '32px' }}
-              />
+              />}
               <span className="text-secondary small">→</span>
               <input
                 type="date"
@@ -115,7 +121,7 @@ export function DashboardPage() {
                 value={customEnd}
                 onChange={(e) => setCustomEnd(e.target.value)}
                 style={{ fontSize: '0.75rem', width: '130px', height: '32px' }}
-              />
+              />}
             </div>
           )}
 
@@ -130,7 +136,7 @@ export function DashboardPage() {
             {/* Row 1: Revenue Trend & Action Center (Matched Height) */}
             <div className="row g-4">
               <div className="col-lg-8">
-                <RevenueChart revenueData={stats.revenue} />
+                {canViewReports && <RevenueChart revenueData={stats.revenue} />}
               </div>
               <div className="col-lg-4">
                 <ActionCenter metrics={metrics} />
@@ -140,13 +146,13 @@ export function DashboardPage() {
             {/* Row 2: Secondary Insights & Configurations (Equal Height) */}
             <div className="row g-4">
               <div className="col-lg-4">
-                <OrderDistribution orderStats={stats.orders} />
+                {canViewReports && <OrderDistribution orderStats={stats.orders} />}
               </div>
               <div className="col-lg-4">
-                <PlatformFeeWidget />
+                {canManagePlatformFees && <PlatformFeeWidget />}
               </div>
               <div className="col-lg-4">
-                <SellerLevelConfigWidget />
+                {canManageSellerCriteria && <SellerLevelConfigWidget />}
               </div>
             </div>
           </div>

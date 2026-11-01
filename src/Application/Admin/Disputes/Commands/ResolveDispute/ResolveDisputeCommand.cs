@@ -36,8 +36,9 @@ public class ResolveDisputeCommandValidator : AbstractValidator<ResolveDisputeCo
             .WithMessage("Refund amount cannot be negative.");
 
         RuleFor(v => v.RefundAmount)
-            .NotNull().When(v => v.Winner == DisputeWinners.Buyer || v.Winner == DisputeWinners.Split)
-            .WithMessage("Refund amount is required for Buyer or Split decisions.");
+            .NotNull().WithMessage("Refund amount is required for Buyer or Split decisions.")
+            .GreaterThan(0).WithMessage("Refund amount must be greater than 0 for Buyer or Split decisions.")
+            .When(v => v.Winner == DisputeWinners.Buyer || v.Winner == DisputeWinners.Split);
 
         RuleFor(v => v.AdminNotes)
             .NotEmpty().WithMessage("Admin notes are required.")
@@ -84,6 +85,12 @@ public class ResolveDisputeCommandHandler : IRequestHandler<ResolveDisputeComman
         if (dispute.Status == DisputeStatuses.Resolved || dispute.Status == DisputeStatuses.Closed)
         {
             throw new ValidationException("This dispute has already been resolved.");
+        }
+
+        if ((request.Winner == DisputeWinners.Buyer || request.Winner == DisputeWinners.Split) &&
+            (!request.RefundAmount.HasValue || request.RefundAmount.Value <= 0))
+        {
+            throw new ValidationException("Refund amount is required and must be greater than 0 for Buyer or Split decisions.");
         }
 
         // Get current admin ID - Handle mapping from Identity GUID to User table int ID

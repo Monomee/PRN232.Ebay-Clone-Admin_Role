@@ -32,12 +32,12 @@ public class Financials : EndpointGroupBase
              .RequireAuthorization(policy => policy.RequireRole(Roles.Administrator, Roles.SuperAdmin));
 
         // Maintenance/Settlement
-        group.MapPost("trigger-settlement", TriggerSettlement);
-        group.MapGet("settlement-orders", GetPendingSettlementOrders);
+        group.MapPost("trigger-settlement", TriggerSettlement).RequireAuthorization(policy => policy.RequireRole(Roles.Administrator, Roles.SuperAdmin));
+        group.MapGet("settlement-orders", GetPendingSettlementOrders).RequireAuthorization(policy => policy.RequireRole(Roles.Administrator, Roles.SuperAdmin));
         group.MapPost("settle-order/{id}", SettleOrder)
              .RequireAuthorization(policy => policy.RequireRole(Roles.Administrator, Roles.SuperAdmin));
 
-        group.MapGet("pending/{sellerId:int}", GetSellerPendingFunds);
+        group.MapGet("pending/{sellerId:int}", GetSellerPendingFunds).RequireAuthorization(policy => policy.RequireRole(Roles.Administrator, Roles.SuperAdmin));
 
         // ── Automated Payout Engine ───────────────────────────────────────────
         group.MapPost("payouts/run", RunPayoutEngine)
@@ -126,9 +126,10 @@ public class Financials : EndpointGroupBase
         return await sender.Send(new GetPayoutConfigQuery());
     }
 
-    public async Task<IResult> UpdatePayoutConfig(ISender sender, UpdatePayoutConfigCommand command)
+    public async Task<int> UpdatePayoutConfig(ISender sender, UpdatePayoutConfigCommand command)
     {
-        await sender.Send(command);
-        return Results.NoContent();
+        var result = await sender.Send(command);
+        EbayClone.Web.Services.PayoutEngineBackgroundService.TriggerReschedule();
+        return result;
     }
 }

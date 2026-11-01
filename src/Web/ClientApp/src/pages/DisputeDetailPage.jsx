@@ -89,12 +89,20 @@ export function DisputeDetailPage() {
   const handleResolveSubmit = async (e) => {
     e.preventDefault();
     setResolving(true);
+
+    if (resolveForm.winner === "Buyer" || resolveForm.winner === "Split") {
+      if (!resolveForm.refundAmount || isNaN(parseFloat(resolveForm.refundAmount)) || parseFloat(resolveForm.refundAmount) <= 0) {
+        setToast({ message: "Refund amount is required and must be greater than 0 for Buyer or Split decisions.", type: "error" });
+        setResolving(false);
+        return;
+      }
+    }
     
     try {
       const payload = {
         disputeId: parseInt(id),
         winner: resolveForm.winner,
-        refundAmount: resolveForm.refundAmount ? parseFloat(resolveForm.refundAmount) : 0,
+        refundAmount: resolveForm.refundAmount !== "" && resolveForm.refundAmount !== null ? parseFloat(resolveForm.refundAmount) : null,
         adminNotes: resolveForm.adminNotes,
         requireReturn: resolveForm.requireReturn,
         addSellerViolation: resolveForm.addSellerViolation,

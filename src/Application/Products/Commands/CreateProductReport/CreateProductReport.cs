@@ -1,4 +1,4 @@
-﻿namespace EbayClone.Application.Products.Commands.CreateProductReport;
+namespace EbayClone.Application.Products.Commands.CreateProductReport;
 using EbayClone.Application.Common.Interfaces;
 using EbayClone.Domain.Entities;
 
@@ -15,6 +15,8 @@ public record CreateProductReportCommand : IRequest<int>
     public string? Description { get; set; } // Mô tả chi tiết
 
     public string? EvidenceFiles { get; set; } // JSON: URLs ảnh/PDF bằng chứng (Quan trọng cho VeRO)
+
+    public string? EvidenceUrl { get; set; } // Alias cho EvidenceFiles nếu client gửi evidenceUrl
 
     public string Status { get; set; } = "Pending";
 
@@ -33,25 +35,37 @@ public class CreateProductReportCommandHandler : IRequestHandler<CreateProductRe
 
     public async Task<int> Handle(CreateProductReportCommand request, CancellationToken cancellationToken)
     {
+        var reporterType = string.IsNullOrWhiteSpace(request.ReporterType) ? "User" : request.ReporterType.Trim();
+        var priority = reporterType.Equals("VeRO", StringComparison.OrdinalIgnoreCase) ? "Critical" : (string.IsNullOrWhiteSpace(request.Priority)
+            ? (reporterType.Equals("VeRO", StringComparison.OrdinalIgnoreCase) ? "Critical" : "Low")
+            : request.Priority.Trim());
+        var evidence = !string.IsNullOrWhiteSpace(request.EvidenceFiles) ? request.EvidenceFiles : request.EvidenceUrl;
+
         var entity = new ProductReport
         {
             ProductId = request.ProductId,
             ReporterUserId = request.ReporterUserId,
 
-            ReporterType = "User",
+            ReporterType = reporterType,
 
             Reason = request.Reason,
 
             Description = request.Description, 
 
-            EvidenceFiles = request.EvidenceFiles,
+            EvidenceFiles = evidence,
 
             Status = "Pending",
 
-            Priority = request.Priority
-    };
+            Priority = priority
+        };
 
         _context.ProductReports.Add(entity);
+
+        var product = await _context.Products.FindAsync(new object[] { request.ProductId }, cancellationToken);
+        if (product != null)
+        {
+            product.ReportCount += 1;
+        }
 
         await _context.SaveChangesAsync(cancellationToken);
 

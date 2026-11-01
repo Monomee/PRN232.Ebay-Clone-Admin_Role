@@ -1,5 +1,6 @@
-﻿using EbayClone.Application.Common.Interfaces;
+using EbayClone.Application.Common.Interfaces;
 using EbayClone.Domain.Common;
+using EbayClone.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -49,6 +50,22 @@ public class AuditableEntityInterceptor : SaveChangesInterceptor
                 } 
                 entry.Entity.LastModifiedBy = _user.Id;
                 entry.Entity.LastModified = utcNow;
+            }
+        }
+
+        foreach (var entry in context.ChangeTracker.Entries<AdminAction>())
+        {
+            if (entry.State == EntityState.Added)
+            {
+                if (string.IsNullOrWhiteSpace(entry.Entity.IpAddress))
+                {
+                    entry.Entity.IpAddress = _user.IpAddress ?? "127.0.0.1";
+                }
+
+                if (entry.Entity.AdminId == 0 && int.TryParse(_user.Id, out var adminId) && adminId > 0)
+                {
+                    entry.Entity.AdminId = adminId;
+                }
             }
         }
     }

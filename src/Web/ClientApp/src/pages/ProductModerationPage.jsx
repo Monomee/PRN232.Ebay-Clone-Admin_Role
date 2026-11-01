@@ -234,12 +234,17 @@ export const ProductModerationPage = () => {
 
     const handleResolve = (id, decision) => {
         // Update UI based on decision
-        setProducts(prev => prev.map(p =>
-            p.id === id ? { ...p, status: decision === 'Approve' ? 'Resolved' : decision === 'Remove' ? 'Rejected' : 'Resolved' } : p
-        ));
+        if (activeTab === 'Reported') {
+            setProducts(prev => prev.filter(p => p.id !== id));
+            setTotalItems(prev => Math.max(0, prev - 1));
+        } else {
+            setProducts(prev => prev.map(p =>
+                p.id === id ? { ...p, status: decision === 1 ? 'Banned' : decision === 2 ? 'Hidden' : 'Active', reportReasons: [] } : p
+            ));
+        }
 
-        // Optional: You can also call fetchProducts() here for 100% synchronization with the server
-        // fetchProducts(); 
+        // Sync with server
+        fetchProducts();
     };
 
     const isFiltering = categoryFilter !== '' || shopFilter !== 'All' || search !== '';

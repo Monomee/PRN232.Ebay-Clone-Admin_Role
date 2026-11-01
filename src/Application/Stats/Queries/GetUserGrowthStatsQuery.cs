@@ -26,6 +26,11 @@ public class GetUserGrowthStatsQueryHandler : IRequestHandler<GetUserGrowthStats
 
     public async Task<UserGrowthStatsDto> Handle(GetUserGrowthStatsQuery request, CancellationToken cancellationToken)
     {
+        if (request.StartDate.HasValue && request.EndDate.HasValue && request.EndDate.Value < request.StartDate.Value)
+        {
+            throw new InvalidOperationException("End date must be greater than or equal to start date.");
+        }
+
         var query = _context.Users.AsNoTracking();
 
         if (request.StartDate.HasValue)

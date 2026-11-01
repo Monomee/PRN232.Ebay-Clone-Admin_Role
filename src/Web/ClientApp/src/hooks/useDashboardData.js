@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { dashboardService } from "../services/dashboardService";
 import reportService from "../services/reportService";
+import { useAuth } from "../context/AuthContext";
 
 function toIso(date) {
   if (!date) return null;
@@ -37,6 +38,8 @@ function getPresetRange(preset, customStart, customEnd) {
 }
 
 export function useDashboardData() {
+  const { user } = useAuth();
+  const canViewReports = user?.role === "SuperAdmin" || user?.role === "Monitor" || user?.role === "Administrator" || user?.roles?.some((r) => ["SuperAdmin", "Monitor", "Administrator"].includes(r));
   const [metrics, setMetrics] = useState(null);
   const [stats, setStats] = useState({ revenue: null, users: null, orders: null });
   const [loading, setLoading] = useState(true);
@@ -64,11 +67,11 @@ export function useDashboardData() {
       const currentMetrics = await dashboardService.getMetrics(start, end);
       setMetrics(currentMetrics);
 
-      const [rev, usr, ord] = await Promise.allSettled([
+      const [rev, usr, ord] = canViewReports ? await Promise.allSettled([
         reportService.getRevenue(start, end),
         reportService.getUserGrowth(start, end),
         reportService.getOrderStats(start, end),
-      ]);
+      ]) : [{ status: "rejected" }, { status: "rejected" }, { status: "rejected" }];
 
       setStats({
         revenue: rev.status === "fulfilled" ? rev.value : null,
@@ -81,7 +84,7 @@ export function useDashboardData() {
     } finally {
       setLoading(false);
     }
-  }, [preset, customStart, customEnd]);
+  }, [preset, customStart, customEnd, canViewReports]);
 
   useEffect(() => {
     fetchData();
