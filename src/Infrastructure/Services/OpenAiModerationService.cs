@@ -23,15 +23,36 @@ public class OpenAiModerationService : IContentModerationService
         _logger = logger;
     }
 
+    private static readonly (string Category, string[] Keywords)[] LocalRules =
+    [
+        ("Illegal drugs", ["ma tuy", "ma túy", "heroin", "cocaine", "illegal drugs", "weed", "cannabis", "meth"]),
+        ("Weapons", ["sung dan", "súng đạn", "vũ khí", "vu khi", "bom", "thuốc nổ", "weapon", "weapons", "gun", "explosive"]),
+        ("Counterfeit", ["hang gia", "hàng giả", "hàng nhái", "superfake", "replica", "counterfeit"]),
+        ("Spam link", ["http://", "https://", "bit.ly", "t.me", "zalo.me", "spam link", "scam"]),
+        ("Profanity", ["đồi trụy", "khiêu dâm", "chửi thề", "fuck", "shit", "profanity", "nsfw", "18+"])
+    ];
+
     public async Task<(bool IsFlagged, string? Reason)> ModerateContentAsync(string content, CancellationToken cancellationToken = default)
     {
-        if (string.IsNullOrWhiteSpace(_apiKey))
+        if (string.IsNullOrWhiteSpace(content)) return (false, null);
+
+        foreach (var (category, keywords) in LocalRules)
         {
-            _logger.LogWarning("OpenAI API Key is missing. Skipping AI moderation.");
-            return (false, null);
+            foreach (var kw in keywords)
+            {
+                if (content.Contains(kw, StringComparison.OrdinalIgnoreCase))
+                {
+                    _logger.LogInformation("Local Moderation flagged '{Content}' under category '{Category}' (keyword: '{Keyword}')", content, category, kw);
+                    return (true, category);
+                }
+            }
         }
 
-        if (string.IsNullOrWhiteSpace(content)) return (false, null);
+        if (string.IsNullOrWhiteSpace(_apiKey) || _apiKey.Contains("your_", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning("OpenAI API Key is missing or placeholder. Skipping AI moderation.");
+            return (false, null);
+        }
 
         try
         {

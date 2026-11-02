@@ -42,6 +42,17 @@ public class SendBroadcastCommandHandler : IRequestHandler<SendBroadcastCommand,
     public async Task<int> Handle(SendBroadcastCommand request, CancellationToken cancellationToken)
     {
         var actorId = _actor.GetRequiredActorId();
+
+        if (string.IsNullOrWhiteSpace(request.Title))
+        {
+            throw new ArgumentException("Broadcast title is required.");
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Content))
+        {
+            throw new ArgumentException("Broadcast content is required.");
+        }
+
         var validChannels = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "Email", "InApp" };
         if (request.Channels.Count == 0 || request.Channels.Any(c => !validChannels.Contains(c)))
         {
@@ -159,7 +170,7 @@ public class SendBroadcastCommandHandler : IRequestHandler<SendBroadcastCommand,
                     }
                     else if (string.Equals(targetAudience, "Group", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(targetGroup))
                     {
-                        query = query.Where(u => u.Role == targetGroup); 
+                        query = query.Where(u => u.SellerLevel == targetGroup || u.Role == targetGroup); 
                     }
 
                     var emails = await query.Select(u => u.Email).ToListAsync();

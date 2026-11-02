@@ -1,5 +1,6 @@
 
 using EbayClone.Application.Common.Models;
+using EbayClone.Domain.Constants;
 using EbayClone.Application.Products.Commands.CreateProduct;
 using EbayClone.Application.Products.Commands.CreateProductReport;
 using EbayClone.Application.Products.Commands.DeleteProduct;
@@ -28,12 +29,13 @@ public class Products : EndpointGroupBase
         group.MapPost(CreateProduct);           // Tự động thành: POST /api/products
         group.MapPut("{id}", UpdateProduct);
         group.MapDelete("{id}", DeleteProduct);
-        group.MapGet("managed/{id}/violation-details", GetViolationDetails);
-        group.MapPost("managed/{id}/resolve-violation", ResolveViolation);
+        group.MapGet("managed/{id}/violation-details", GetViolationDetails).RequireAuthorization(Policies.ManageProducts);
+        group.MapPost("managed/{id}/resolve-violation", ResolveViolation).RequireAuthorization(Policies.ManageProducts);
 
 
         // [MỚI] Màn hình 5: Lấy danh sách quản lý (có Lọc/Tab)
-        group.MapGet("managed", GetManagedProducts); // GET /api/products/managed
+        group.MapGet("managed", GetManagedProducts)
+             .RequireAuthorization(Policies.ManageProducts); // GET /api/products/managed
         group.MapPost("reports", CreateProductReport);
 
         // [MỚI] Lấy danh sách sản phẩm của Seller

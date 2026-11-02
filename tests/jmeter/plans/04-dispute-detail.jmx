@@ -150,8 +150,8 @@
         </ResponseAssertion>
         <hashTree/>
         <UniformRandomTimer guiclass="UniformRandomTimerGui" testclass="UniformRandomTimer" testname="Uniform Random Timer">
-          <stringProp name="ConstantTimer.delay">1000</stringProp>
-          <stringProp name="RandomTimer.range">2000</stringProp>
+          <stringProp name="ConstantTimer.delay">${__P(think_min,1000)}</stringProp>
+          <stringProp name="RandomTimer.range">${__P(think_range,2000)}</stringProp>
         </UniformRandomTimer>
         <hashTree/>
         <JSONPathAssertion guiclass="JSONPathAssertionGui" testclass="JSONPathAssertion" testname="JSON Assertion">

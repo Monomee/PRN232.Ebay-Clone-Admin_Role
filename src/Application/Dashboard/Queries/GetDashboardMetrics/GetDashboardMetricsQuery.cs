@@ -27,6 +27,11 @@ public class GetDashboardMetricsQueryHandler : IRequestHandler<GetDashboardMetri
 
     public async Task<DashboardMetricsDto> Handle(GetDashboardMetricsQuery request, CancellationToken cancellationToken)
     {
+        if (request.StartDate.HasValue && request.EndDate.HasValue && request.EndDate.Value < request.StartDate.Value)
+        {
+            throw new InvalidOperationException("End date must be greater than or equal to start date.");
+        }
+
         var now = DateTime.UtcNow;
         var today = now.Date;
         var sevenDaysAgo = today.AddDays(-6);

@@ -15,10 +15,12 @@ public record ReportReviewCommand : IRequest<bool>
 public class ReportReviewCommandHandler : IRequestHandler<ReportReviewCommand, bool>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUser? _user;
 
-    public ReportReviewCommandHandler(IApplicationDbContext context)
+    public ReportReviewCommandHandler(IApplicationDbContext context, IUser? user = null)
     {
         _context = context;
+        _user = user;
     }
 
     public async Task<bool> Handle(ReportReviewCommand request, CancellationToken cancellationToken)
@@ -29,9 +31,13 @@ public class ReportReviewCommandHandler : IRequestHandler<ReportReviewCommand, b
  
         if (review == null)
             throw new Exception("Không tìm thấy đánh giá.");
+
+        int? reporterUserId = (_user != null && int.TryParse(_user.Id, out var currentUserId) && currentUserId > 0)
+            ? currentUserId
+            : request.ReporterUserId;
  
         // If the reporter is the seller of the product, we maintain the legacy flags for quick access
-        bool isSeller = request.ReporterUserId.HasValue && review.Product?.SellerId == request.ReporterUserId;
+        bool isSeller = reporterUserId.HasValue && review.Product?.SellerId == reporterUserId;
         
         if (isSeller)
         {
@@ -43,7 +49,7 @@ public class ReportReviewCommandHandler : IRequestHandler<ReportReviewCommand, b
         var report = new Domain.Entities.ReviewReport
         {
             ReviewId = request.ReviewId,
-            ReporterUserId = request.ReporterUserId,
+            ReporterUserId = reporterUserId,
             Reason = request.Reason,
             Description = request.Description,
             CreatedAt = DateTime.UtcNow,

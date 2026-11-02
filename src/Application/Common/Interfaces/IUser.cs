@@ -1,4 +1,4 @@
-﻿namespace EbayClone.Application.Common.Interfaces;
+namespace EbayClone.Application.Common.Interfaces;
 
 public interface IUser
 {
@@ -6,5 +6,5 @@ public interface IUser
     string? Name => null;
     List<string>? Roles { get; }
     bool IsSystem => false;
-
+    string? IpAddress => null;
 }

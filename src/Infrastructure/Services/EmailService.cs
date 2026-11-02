@@ -33,7 +33,7 @@ public class EmailService : IEmailService
             if (string.IsNullOrEmpty(senderEmail) || string.IsNullOrEmpty(senderPassword))
             {
                 _logger.LogWarning("Chưa cấu hình EmailSettings trong appsettings.json. Hệ thống sẽ bỏ qua việc gửi mail.");
-                return;
+                throw new InvalidOperationException("Chưa cấu hình EmailSettings trong appsettings.json.");
             }
 
             // 2. Thiết lập cấu hình SMTP
@@ -61,8 +61,8 @@ public class EmailService : IEmailService
         }
         catch (Exception ex)
         {
-            // Bắt lỗi để nếu gửi mail xịt thì hệ thống (ví dụ API xóa sản phẩm) vẫn chạy bình thường
             _logger.LogError("Email delivery failed: {ExceptionType}", ex.GetType().Name);
+            throw;
         }
     }
 }

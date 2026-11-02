@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using EbayClone.Application.Common.Interfaces;
@@ -27,7 +27,6 @@ public class Enable2FACommandHandler : IRequestHandler<Enable2FACommand, string>
         var base32Secret = Base32Encoding.ToString(secretKey);
 
         user.TwoFactorSecret = base32Secret;
-        user.TwoFactorEnabled = true;
 
         await _context.SaveChangesAsync(cancellationToken);
 

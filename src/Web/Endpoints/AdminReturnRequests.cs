@@ -4,6 +4,7 @@ using EbayClone.Application.ReturRequests.Queries.GetReturnRequestDetail;
 using EbayClone.Application.ReturRequests.Queries.GetReturnRequests;
 using EbayClone.Application.ReturRequests.Commands.ProcessReturnLabel;
 using EbayClone.Application.ReturRequests.Queries.GetReturnRequestMessages;
+using EbayClone.Domain.Constants;
 
 namespace EbayClone.Web.Endpoints;
 
@@ -12,6 +13,7 @@ public class AdminReturnRequests : EndpointGroupBase
     public override void Map(RouteGroupBuilder group)
     {
         // GET /api/adminreturnrequests?status=Pending  → Bước 1: Danh sách chờ xử lý
+        group.RequireAuthorization(Policies.ManageOrders);
         group.MapGet(GetReturnRequests);
 
         // GET /api/adminreturnrequests/{id}           → Bước 3: Chi tiết yêu cầu

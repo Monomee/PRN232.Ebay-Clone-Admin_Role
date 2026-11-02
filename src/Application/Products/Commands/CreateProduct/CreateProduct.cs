@@ -87,8 +87,12 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
 
                         if (p != null)
                         {
+                            var normalizedReason = reason != null && reason.StartsWith("TOXIC:", StringComparison.OrdinalIgnoreCase)
+                                ? reason.Substring("TOXIC:".Length).Trim()
+                                : reason;
+
                             p.Status = "Hidden";
-                            p.ViolationType = reason;
+                            p.ViolationType = normalizedReason;
                             
                             var seller = p.Seller;
                             if (seller != null)
@@ -102,21 +106,21 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
                                 {
                                     // Lần 1: Xóa sản phẩm + warning
                                     emailSubject = "CẢNH BÁO VI PHẠM ĐĂNG BÁN SẢN PHẨM";
-                                    emailBody = $"Sản phẩm '{p.Title}' của bạn đã bị xóa do vi phạm: {reason}. Đây là vi phạm lần thứ 1. Vui lòng tuân thủ quy định.";
+                                    emailBody = $"Sản phẩm '{p.Title}' của bạn đã bị xóa do vi phạm: {normalizedReason}. Đây là vi phạm lần thứ 1. Vui lòng tuân thủ quy định.";
                                 }
                                 else if (seller.ViolationCount == 2)
                                 {
                                     // Lần 2: Khóa đăng sản phẩm 7 ngày
                                     seller.ProductBanUntil = DateTime.UtcNow.AddDays(7);
                                     emailSubject = "TẠM KHÓA CHỨC NĂNG ĐĂNG BÁN 7 NGÀY";
-                                    emailBody = $"Sản phẩm '{p.Title}' của bạn đã bị xóa do vi phạm: {reason}. Bạn đã vi phạm lần 2. Chức năng đăng sản phẩm bị tạm khóa trong 7 ngày.";
+                                    emailBody = $"Sản phẩm '{p.Title}' của bạn đã bị xóa do vi phạm: {normalizedReason}. Bạn đã vi phạm lần 2. Chức năng đăng sản phẩm bị tạm khóa trong 7 ngày.";
                                 }
                                 else if (seller.ViolationCount >= 3)
                                 {
                                     // Lần 3: Khóa đăng sản phẩm 30 ngày
                                     seller.ProductBanUntil = DateTime.UtcNow.AddDays(30);
                                     emailSubject = "TẠM KHÓA CHỨC NĂNG ĐĂNG BÁN 30 NGÀY";
-                                    emailBody = $"Sản phẩm '{p.Title}' của bạn đã bị xóa do vi phạm: {reason}. Bạn đã vi phạm lần {seller.ViolationCount}. Chức năng đăng sản phẩm bị tạm khóa liên tục trong 30 ngày. Tái phạm tài khoản sẽ bị khóa.";
+                                    emailBody = $"Sản phẩm '{p.Title}' của bạn đã bị xóa do vi phạm: {normalizedReason}. Bạn đã vi phạm lần {seller.ViolationCount}. Chức năng đăng sản phẩm bị tạm khóa liên tục trong 30 ngày. Tái phạm tài khoản sẽ bị khóa.";
                                 }
 
                                 if (!string.IsNullOrEmpty(seller.Email))

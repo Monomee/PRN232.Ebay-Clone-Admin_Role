@@ -528,3 +528,6 @@ env
 *.trx
 **/playwright-report/
 /tests/jmeter/results/
+
+# Nginx config sinh tự động cho load test W8-03
+nginx/nginx.loadtest.generated.conf

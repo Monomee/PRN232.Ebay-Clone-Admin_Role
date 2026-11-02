@@ -1,4 +1,4 @@
-﻿using EbayClone.Application.Common.Interfaces;
+using EbayClone.Application.Common.Interfaces;
 using EbayClone.Application.Common.Mappings;
 using EbayClone.Application.Common.Models; // Giả sử có PaginatedList
 using EbayClone.Application.Products.Queries.DTOs;
@@ -49,8 +49,8 @@ public class GetManagedProductsQueryHandler : IRequestHandler<GetManagedProducts
         // 3. SẮP XẾP: VeRO lên đầu -> Nhiều report -> Mới nhất
         if (request.Tab == "Reported")
         {
-            query = query.OrderByDescending(p => p.Reports.Any(r => r.ReporterType == "VeRO" && r.Status == "Pending")) // VeRO ưu tiên số 1
-                         .ThenByDescending(p => p.ReportCount)
+            query = query.OrderByDescending(p => p.Reports.Any(r => (r.ReporterType == "VeRO" || r.Priority == "Critical") && r.Status == "Pending")) // VeRO ưu tiên số 1
+                         .ThenByDescending(p => p.ReportCount > 0 ? p.ReportCount : p.Reports.Count(r => r.Status == "Pending"))
                          .ThenByDescending(p => p.CreatedAt); // Created từ BaseAuditableEntity
         }
         else
@@ -72,9 +72,9 @@ public class GetManagedProductsQueryHandler : IRequestHandler<GetManagedProducts
                          .Select(r => r.Reason!)
                          .ToList(),
             Status = p.Status,
-            ReportCount = p.ReportCount,
+            ReportCount = p.ReportCount > 0 ? p.ReportCount : p.Reports.Count(r => r.Status == "Pending"),
             IsVeroViolation = p.Reports.Any(r => r.ReporterType == "VeRO" && r.Status == "Pending"),
-            Priority = p.Reports.Any(r => r.ReporterType == "VeRO") ? "Critical" : "Medium"
+            Priority = p.Reports.Any(r => (r.ReporterType == "VeRO" || r.Priority == "Critical") && r.Status == "Pending") ? "Critical" : "Medium"
         })
         .PaginatedListAsync(request.PageNumber, request.PageSize, cancellationToken: cancellationToken);
     }

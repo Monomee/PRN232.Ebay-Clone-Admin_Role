@@ -1,0 +1,7 @@
+﻿ebay_nginx_lb	Up 3 minutes
+ebay_api_3	Up 3 minutes
+ebay_api_2	Up 22 minutes
+ebay_api_1	Up 22 minutes
+ebay_sqlserver	Up 23 minutes (healthy)
+ebay_api	Up 5 seconds
+ebay_redis	Up 23 minutes (healthy)
