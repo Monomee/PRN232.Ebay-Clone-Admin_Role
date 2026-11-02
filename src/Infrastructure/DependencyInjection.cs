@@ -79,6 +79,7 @@ public static class DependencyInjection
         {
             builder.Services.AddHostedService<AutoReviewUsersService>();
             builder.Services.AddHostedService<ReturnRequestEscalationService>();
+            builder.Services.AddHostedService<ScheduledBroadcastService>();
         }
 
         // Payout Engine
