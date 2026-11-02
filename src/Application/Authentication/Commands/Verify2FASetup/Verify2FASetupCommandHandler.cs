@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Text;
 using EbayClone.Application.Common.Interfaces;
@@ -33,6 +33,12 @@ public class Verify2FASetupCommandHandler
             out long _,
             window: VerificationWindow.RfcSpecifiedNetworkDelay
         );
+
+        if (isValid)
+        {
+            user.TwoFactorEnabled = true;
+            await _context.SaveChangesAsync(cancellationToken);
+        }
 
         return isValid;
     }

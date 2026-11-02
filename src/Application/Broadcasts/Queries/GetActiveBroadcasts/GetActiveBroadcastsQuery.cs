@@ -28,22 +28,48 @@ public class GetActiveBroadcastsQueryHandler : IRequestHandler<GetActiveBroadcas
             currentUserId = id;
         }
 
+        var allowedRoles = new HashSet<string>(StringComparer.OrdinalIgnoreCase) { "All" };
+        if (request.UserRoles != null)
+        {
+            foreach (var r in request.UserRoles)
+            {
+                if (!string.IsNullOrWhiteSpace(r))
+                {
+                    allowedRoles.Add(r);
+                }
+            }
+        }
+
+        if (currentUserId.HasValue)
+        {
+            var user = await _context.Users
+                .AsNoTracking()
+                .FirstOrDefaultAsync(u => u.Id == currentUserId.Value, cancellationToken);
+
+            if (user != null)
+            {
+                if (!string.IsNullOrWhiteSpace(user.Role))
+                {
+                    allowedRoles.Add(user.Role);
+                    allowedRoles.Add($"Group:{user.Role}");
+                }
+
+                if (!string.IsNullOrWhiteSpace(user.SellerLevel))
+                {
+                    allowedRoles.Add(user.SellerLevel);
+                    allowedRoles.Add($"Group:{user.SellerLevel}");
+                }
+            }
+        }
+
+        var allowedRoleList = allowedRoles.ToList();
+
         var query = _context.Notifications
             .Include(n => n.Creator)
             .Where(n => n.UserId == null || n.UserId == currentUserId) // Broadcasts OR for this user
             .Where(n => n.Status == "Sent" || (n.Status == "Scheduled" && n.ScheduledAt <= now))
+            .Where(n => n.UserId == currentUserId || string.IsNullOrEmpty(n.UserRole) || allowedRoleList.Contains(n.UserRole))
             .AsQueryable();
-
-        // If UserRoles is provided, return broadcasts for All or specifically for their roles
-        if (request.UserRoles != null && request.UserRoles.Any())
-        {
-            query = query.Where(n => n.UserId == currentUserId || string.IsNullOrEmpty(n.UserRole) || request.UserRoles.Contains(n.UserRole));
-        }
-        else
-        {
-            // If they have no role (or are logged out somehow but hitting this), only show "All"
-            query = query.Where(n => n.UserId == currentUserId || string.IsNullOrEmpty(n.UserRole));
-        }
 
         var broadcasts = await query
             .OrderByDescending(n => n.CreatedAt)

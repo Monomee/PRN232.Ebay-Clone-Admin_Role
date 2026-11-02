@@ -1,4 +1,5 @@
 using EbayClone.Application.Common.Models;
+using EbayClone.Domain.Constants;
 using EbayClone.Application.Reviews;
 using EbayClone.Application.Reviews.Commands;
 using EbayClone.Application.Reviews.Queries;
@@ -14,13 +15,13 @@ public class Reviews : EndpointGroupBase
 
     public override void Map(RouteGroupBuilder groupBuilder)
     {
-        groupBuilder.MapGet(GetFlaggedReviews, "flagged");
-        groupBuilder.MapGet(GetReviewStatistics, "statistics");
-        groupBuilder.MapGet(GetSellerFeedbacks, "seller-feedbacks");
-        groupBuilder.MapPut(UpdateReviewStatus, "{id:int}/status");
-        groupBuilder.MapPost(CreateReview);
-        groupBuilder.MapPost(ReplyToReview, "{id:int}/reply");
-        groupBuilder.MapPost(ReportReview, "{id:int}/report");
+        groupBuilder.MapGet(GetFlaggedReviews, "flagged").RequireAuthorization(Policies.ModerateReviews);
+        groupBuilder.MapGet(GetReviewStatistics, "statistics").RequireAuthorization(Policies.ModerateReviews);
+        groupBuilder.MapGet(GetSellerFeedbacks, "seller-feedbacks").RequireAuthorization(Policies.ModerateReviews);
+        groupBuilder.MapPut(UpdateReviewStatus, "{id:int}/status").RequireAuthorization(Policies.ModerateReviews);
+        groupBuilder.MapPost(CreateReview).RequireAuthorization();
+        groupBuilder.MapPost(ReplyToReview, "{id:int}/reply").RequireAuthorization();
+        groupBuilder.MapPost(ReportReview, "{id:int}/report").RequireAuthorization();
     }
 
     public async Task<Ok<int>> CreateReview(ISender sender, [FromBody] CreateReviewCommand command)

@@ -5,6 +5,7 @@ using EbayClone.Application.Admin.Disputes.Queries.GetDisputeDetail;
 using EbayClone.Application.Admin.Disputes.Queries.GetDisputeDocket;
 using EbayClone.Application.Admin.Disputes.Queries.GetDisputeStatistics;
 using EbayClone.Application.Common.Models;
+using EbayClone.Domain.Constants;
 using Microsoft.AspNetCore.Http.HttpResults;
 
 namespace EbayClone.Web.Endpoints;
@@ -13,7 +14,7 @@ public class Disputes : EndpointGroupBase
 {
     public override void Map(RouteGroupBuilder groupBuilder)
     {
-        groupBuilder.RequireAuthorization();
+        groupBuilder.RequireAuthorization(Policies.ManageDisputes);
 
         groupBuilder.MapGet("statistics", GetStatistics)
             .WithName("GetDisputeStatistics")
@@ -72,7 +73,11 @@ public class Disputes : EndpointGroupBase
             var dispute = await sender.Send(new GetDisputeDetailQuery(id));
             return TypedResults.Ok(dispute);
         }
-        catch (Exception)
+        catch (Ardalis.GuardClauses.NotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (Exception ex) when (ex.GetType().Name == "NotFoundException")
         {
             return TypedResults.NotFound();
         }
@@ -88,6 +93,22 @@ public class Disputes : EndpointGroupBase
             await sender.Send(new AssignDisputeCommand(id));
             return TypedResults.Ok();
         }
+        catch (Ardalis.GuardClauses.NotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (Exception ex) when (ex.GetType().Name == "NotFoundException")
+        {
+            return TypedResults.NotFound();
+        }
+        catch (EbayClone.Application.Common.Exceptions.ValidationException vex)
+        {
+            return TypedResults.BadRequest(string.Join("; ", vex.Errors.SelectMany(kv => kv.Value)));
+        }
+        catch (FluentValidation.ValidationException fvex)
+        {
+            return TypedResults.BadRequest(fvex.Message);
+        }
         catch (UnauthorizedAccessException ex)
         {
             return TypedResults.BadRequest(ex.Message);
@@ -96,9 +117,9 @@ public class Disputes : EndpointGroupBase
         {
             return TypedResults.BadRequest(ex.Message);
         }
-        catch (Exception)
+        catch (ArgumentException ex)
         {
-            return TypedResults.NotFound();
+            return TypedResults.BadRequest(ex.Message);
         }
     }
 
@@ -119,6 +140,22 @@ public class Disputes : EndpointGroupBase
             await sender.Send(command);
             return TypedResults.Ok();
         }
+        catch (Ardalis.GuardClauses.NotFoundException)
+        {
+            return TypedResults.NotFound();
+        }
+        catch (Exception ex) when (ex.GetType().Name == "NotFoundException")
+        {
+            return TypedResults.NotFound();
+        }
+        catch (EbayClone.Application.Common.Exceptions.ValidationException vex)
+        {
+            return TypedResults.BadRequest(string.Join("; ", vex.Errors.SelectMany(kv => kv.Value)));
+        }
+        catch (FluentValidation.ValidationException fvex)
+        {
+            return TypedResults.BadRequest(fvex.Message);
+        }
         catch (UnauthorizedAccessException ex)
         {
             return TypedResults.BadRequest(ex.Message);
@@ -127,9 +164,9 @@ public class Disputes : EndpointGroupBase
         {
             return TypedResults.BadRequest(ex.Message);
         }
-        catch (Exception)
+        catch (ArgumentException ex)
         {
-            return TypedResults.NotFound();
+            return TypedResults.BadRequest(ex.Message);
         }
     }
 }

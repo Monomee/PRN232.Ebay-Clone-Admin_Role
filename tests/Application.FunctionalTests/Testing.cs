@@ -1,4 +1,5 @@
-﻿using EbayClone.Domain.Constants;
+﻿using System.Linq.Expressions;
+using EbayClone.Domain.Constants;
 using EbayClone.Infrastructure.Data;
 using EbayClone.Infrastructure.Identity;
 using MediatR;
@@ -47,6 +48,12 @@ public partial class Testing
     public static string? GetUserId()
     {
         return _userId;
+    }
+
+    public static void RunAsDomainUser(int userId, params string[] roles)
+    {
+        _userId = userId.ToString();
+        _roles = roles.ToList();
     }
     
     public static List<string>? GetRoles()
@@ -140,6 +147,16 @@ public partial class Testing
         var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
 
         return await context.Set<TEntity>().CountAsync();
+    }
+
+    public static async Task<List<TEntity>> WhereAsync<TEntity>(Expression<Func<TEntity, bool>> predicate)
+        where TEntity : class
+    {
+        using var scope = _scopeFactory.CreateScope();
+
+        var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+
+        return await context.Set<TEntity>().Where(predicate).ToListAsync();
     }
 
     [OneTimeTearDown]

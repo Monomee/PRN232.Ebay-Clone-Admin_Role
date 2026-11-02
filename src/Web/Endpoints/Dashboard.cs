@@ -1,4 +1,5 @@
 using EbayClone.Application.Dashboard.Queries.GetDashboardMetrics;
+using EbayClone.Domain.Constants;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
 
@@ -8,7 +9,7 @@ public class Dashboard : EndpointGroupBase
 {
     public override void Map(RouteGroupBuilder group)
     {
-        group.RequireAuthorization();
+        group.RequireAuthorization(Policies.ViewDashboard);
 
         group.MapGet("metrics", GetDashboardMetrics)
             .WithName("GetDashboardMetrics")

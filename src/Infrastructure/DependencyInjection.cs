@@ -57,22 +57,22 @@ public static class DependencyInjection
                 policy.RequireRole(Roles.Monitor, Roles.SuperAdmin));
 
             options.AddPolicy(Policies.ManageUsers, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin));
+                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
 
             options.AddPolicy(Policies.ManageProducts, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin));
+                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
 
             options.AddPolicy(Policies.ManageOrders, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin));
+                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
 
             options.AddPolicy(Policies.ManageDisputes, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin));
+                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
 
             options.AddPolicy(Policies.ModerateReviews, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin));
+                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
 
             options.AddPolicy(Policies.ManageBroadcasts, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin));
+                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
 
             options.AddPolicy(Policies.ManageAdminRoles, policy =>
                 policy.RequireRole(Roles.SuperAdmin));

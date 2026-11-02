@@ -1,4 +1,5 @@
 using EbayClone.Application.Stats.Queries;
+using EbayClone.Domain.Constants;
 using EbayClone.Web.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.AspNetCore.Mvc;
@@ -11,10 +12,10 @@ public class Stats : EndpointGroupBase
     {
         groupBuilder.RequireAuthorization();
 
-        groupBuilder.MapGet("dashboard", GetDashboardStats);
-        groupBuilder.MapGet("reports/revenue", GetRevenueStats);
-        groupBuilder.MapGet("reports/users",   GetUserGrowthStats);
-        groupBuilder.MapGet("reports/orders",  GetOrderStats);
+        groupBuilder.MapGet("dashboard", GetDashboardStats).RequireAuthorization(Policies.ViewDashboard);
+        groupBuilder.MapGet("reports/revenue", GetRevenueStats).RequireAuthorization(Policies.ViewReports);
+        groupBuilder.MapGet("reports/users",   GetUserGrowthStats).RequireAuthorization(Policies.ViewReports);
+        groupBuilder.MapGet("reports/orders",  GetOrderStats).RequireAuthorization(Policies.ViewReports);
     }
 
     public async Task<Ok<AdminDashboardStatsDto>> GetDashboardStats(ISender sender)

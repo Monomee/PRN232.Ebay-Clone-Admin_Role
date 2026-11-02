@@ -13,7 +13,7 @@ public class Orders : EndpointGroupBase
 {
     public override void Map(RouteGroupBuilder group)
     {
-        group.RequireAuthorization(policy => policy.RequireRole(Roles.Administrator, Roles.SuperAdmin));
+        group.RequireAuthorization(Policies.ManageOrders);
 
         group.MapGet("", GetOrders);
         group.MapGet("{id:int}", GetOrderById);
