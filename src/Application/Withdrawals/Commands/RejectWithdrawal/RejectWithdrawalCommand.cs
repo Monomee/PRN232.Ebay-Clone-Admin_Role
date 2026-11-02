@@ -9,11 +9,15 @@ public record RejectWithdrawalCommand(int WithdrawalId, string Reason) : IReques
 public class RejectWithdrawalCommandHandler : IRequestHandler<RejectWithdrawalCommand>
 {
     private readonly IApplicationDbContext _context;
+    private readonly ISensitiveDataLogger _sensitiveLog;
+
     private readonly IUser _user;
 
-    public RejectWithdrawalCommandHandler(IApplicationDbContext context, IUser user)
+    public RejectWithdrawalCommandHandler(IApplicationDbContext context, IUser user, ISensitiveDataLogger sensitiveLog)
     {
         _context = context;
+        _sensitiveLog = sensitiveLog;
+
         _user = user;
     }
 
@@ -44,6 +48,7 @@ public class RejectWithdrawalCommandHandler : IRequestHandler<RejectWithdrawalCo
         withdrawal.ProcessedAt = DateTime.UtcNow;
         withdrawal.RejectionReason = request.Reason;
 
+        _sensitiveLog.Add("RejectWithdrawal", "WithdrawalRequest", withdrawal.Id.ToString(), "Financial", new { withdrawal.SellerId, withdrawal.Amount, withdrawal.Status });
         await _context.SaveChangesAsync(cancellationToken);
     }
 }

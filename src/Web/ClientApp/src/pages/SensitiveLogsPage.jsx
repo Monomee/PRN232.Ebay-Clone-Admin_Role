@@ -93,12 +93,14 @@ export const SensitiveLogsPage = () => {
     // Decrypt Action
     const handleDecrypt = async (logId) => {
         setDecryptingId(logId);
+        setDecryptedResult(null);
         try {
             const result = await sensitiveLogService.decryptLog(logId);
+            if (!result?.integrityVerified) throw new Error("Integrity verification failed");
             setDecryptedResult(result);
             showToast("AES-256 decryption successful!", "success");
         } catch (error) {
-            console.error("Error decrypting log:", error);
+            console.error("Sensitive log decryption failed");
             showToast("Unable to decrypt log or insufficient permissions", "danger");
         } finally {
             setDecryptingId(null);
@@ -158,7 +160,7 @@ export const SensitiveLogsPage = () => {
                                 <i className="bi bi-lock-fill me-1"></i>SUPERADMIN ONLY
                             </span>
                             <span className="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 rounded-pill px-2 py-1 fw-bold" style={{ fontSize: '0.7rem' }}>
-                                AES-256-CBC ENCRYPTED
+                                AES-256-GCM ENCRYPTED
                             </span>
                         </div>
                         <p className="text-secondary mb-0 small">

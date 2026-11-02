@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Threading.Tasks;
 using EbayClone.Application.Common.Interfaces;
 using EbayClone.Domain.Entities;
-using EbayClone.Infrastructure.Services;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace EbayClone.Infrastructure.Data.Seeders;
@@ -18,47 +16,15 @@ public class SensitiveDataLogsSeeder : ISeeder
 
     public int Order => 16; // Chạy sau Users và Payouts
 
-    public SensitiveDataLogsSeeder(ApplicationDbContext context, ILogger logger)
+    public SensitiveDataLogsSeeder(ApplicationDbContext context, ILogger logger, IEncryptionService encryptionService)
     {
         _context = context;
         _logger = logger;
-        _encryptionService = new AesEncryptionService(new ConfigurationBuilder().Build());
+        _encryptionService = encryptionService;
     }
 
     public async Task SeedAsync()
     {
-        // 1. Tự động kiểm tra và đảm bảo schema bảng SensitiveDataLogs chính xác
-        var ensureTableSql = @"
-            IF EXISTS (SELECT * FROM sys.tables WHERE name = 'SensitiveDataLogs' AND NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('SensitiveDataLogs') AND name = 'CreatedAt'))
-            BEGIN
-                DROP TABLE SensitiveDataLogs;
-            END
-
-            IF NOT EXISTS (SELECT * FROM sys.tables WHERE name = 'SensitiveDataLogs')
-            BEGIN
-                CREATE TABLE SensitiveDataLogs (
-                    Id INT IDENTITY(1,1) PRIMARY KEY,
-                    ActorId INT NOT NULL,
-                    ActorUsername NVARCHAR(256) NULL,
-                    ActorRole NVARCHAR(50) NULL,
-                    Action NVARCHAR(100) NOT NULL,
-                    TargetEntity NVARCHAR(100) NOT NULL,
-                    TargetId NVARCHAR(100) NULL,
-                    DataClassification NVARCHAR(50) NOT NULL,
-                    EncryptedData NVARCHAR(MAX) NOT NULL,
-                    EncryptionAlgorithm NVARCHAR(50) NOT NULL,
-                    KeyIdentifier NVARCHAR(50) NOT NULL,
-                    DataHash NVARCHAR(256) NULL,
-                    IpAddress NVARCHAR(50) NULL,
-                    UserAgent NVARCHAR(500) NULL,
-                    CreatedAt DATETIMEOFFSET NOT NULL DEFAULT SYSDATETIMEOFFSET(),
-                    CreatedBy NVARCHAR(256) NULL,
-                    LastModified DATETIMEOFFSET NULL,
-                    LastModifiedBy NVARCHAR(256) NULL
-                );
-            END";
-        await _context.Database.ExecuteSqlRawAsync(ensureTableSql);
-
         if (await _context.SensitiveDataLogs.AnyAsync())
         {
             return;
@@ -99,7 +65,7 @@ public class SensitiveDataLogsSeeder : ISeeder
                 ActorName = "superadmin@ebay.local",
                 ActorRole = "SuperAdmin",
                 Ip = "127.0.0.1",
-                Json = "{\"requestedBy\": \"AdminHelpdesk\", \"temporaryPasswordHash\": \"$2a$12$N9qo8uLOickgx2ZMRZoMye.I...\", \"mustChangeOnNextLogin\": true, \"channel\": \"SMS_OTP\"}"
+                Json = "{\"requestedBy\": \"AdminHelpdesk\", \"mustChangeOnNextLogin\": true, \"channel\": \"SMS_OTP\"}"
             },
             new {
                 Action = "ChangeAdminRole",
@@ -143,7 +109,7 @@ public class SensitiveDataLogsSeeder : ISeeder
                 ActorName = "tech_seller_pro",
                 ActorRole = "Seller",
                 Ip = "192.168.1.102",
-                Json = "{\"totpAlgorithm\": \"SHA1\", \"secretKey\": \"JBSWY3DPEHPK3PXP\", \"recoveryCodes\": [\"109-283\", \"482-910\", \"847-192\", \"503-847\"], \"createdAt\": \"2026-10-25T14:30:00Z\"}"
+                Json = "{\"totpAlgorithm\": \"SHA1\", \"recoveryCodeCount\": 4, \"createdAt\": \"2026-10-25T14:30:00Z\"}"
             },
             new {
                 Action = "IpWhitelistModified",
@@ -179,7 +145,7 @@ public class SensitiveDataLogsSeeder : ISeeder
                 TargetId = item.TargetId,
                 DataClassification = item.Classification,
                 EncryptedData = encrypted,
-                EncryptionAlgorithm = "AES-256-CBC",
+                EncryptionAlgorithm = "AES-256-GCM",
                 KeyIdentifier = "v1",
                 DataHash = hash,
                 IpAddress = item.Ip,

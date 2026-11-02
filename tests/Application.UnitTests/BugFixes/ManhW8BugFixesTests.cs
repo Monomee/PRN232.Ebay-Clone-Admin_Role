@@ -675,7 +675,8 @@ public class ManhW8BugFixesTests
         // Arrange
         var notifierMock = new Mock<INotificationNotifier>();
         var scopeFactoryMock = new Mock<IServiceScopeFactory>();
-        var handler = new SendBroadcastCommandHandler(_context, notifierMock.Object, scopeFactoryMock.Object, NullLogger<SendBroadcastCommandHandler>.Instance);
+        var handler = new SendBroadcastCommandHandler(_context, notifierMock.Object, scopeFactoryMock.Object, NullLogger<SendBroadcastCommandHandler>.Instance,
+            EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("1", "SuperAdmin"));
 
         var command = new SendBroadcastCommand
         {
@@ -698,7 +699,8 @@ public class ManhW8BugFixesTests
         // Arrange
         var notifierMock = new Mock<INotificationNotifier>();
         var scopeFactoryMock = new Mock<IServiceScopeFactory>();
-        var handler = new SendBroadcastCommandHandler(_context, notifierMock.Object, scopeFactoryMock.Object, NullLogger<SendBroadcastCommandHandler>.Instance);
+        var handler = new SendBroadcastCommandHandler(_context, notifierMock.Object, scopeFactoryMock.Object, NullLogger<SendBroadcastCommandHandler>.Instance,
+            EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("1", "SuperAdmin"));
 
         var command = new SendBroadcastCommand
         {
@@ -721,7 +723,8 @@ public class ManhW8BugFixesTests
         // Arrange
         var notifierMock = new Mock<INotificationNotifier>();
         var scopeFactoryMock = new Mock<IServiceScopeFactory>();
-        var sendHandler = new SendBroadcastCommandHandler(_context, notifierMock.Object, scopeFactoryMock.Object, NullLogger<SendBroadcastCommandHandler>.Instance);
+        var sendHandler = new SendBroadcastCommandHandler(_context, notifierMock.Object, scopeFactoryMock.Object, NullLogger<SendBroadcastCommandHandler>.Instance,
+            EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("1", "SuperAdmin"));
 
         var broadcastCommand = new SendBroadcastCommand
         {

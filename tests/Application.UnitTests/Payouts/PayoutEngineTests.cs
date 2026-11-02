@@ -1,3 +1,5 @@
+using EbayClone.Infrastructure.Services;
+using EbayClone.Application.UnitTests.Security;
 using EbayClone.Application.Common.Interfaces;
 using EbayClone.Application.Payouts.Commands.ReleaseHold;
 using EbayClone.Application.Payouts.Commands.RunPayoutEngine;
@@ -41,7 +43,7 @@ public class PayoutEngineTests
     }
 
     private RunPayoutEngineCommandHandler CreateHandler() =>
-        new(_context, _gatewayMock.Object, NullLogger<RunPayoutEngineCommandHandler>.Instance);
+        new(_context, _gatewayMock.Object, NullLogger<RunPayoutEngineCommandHandler>.Instance, EncryptionServiceTests.Create(), new SensitiveDataLogger(_context, EncryptionServiceTests.Create(), SensitiveLogTests.Actor("42", "SuperAdmin")));
 
     private void SetupGateway(bool success, string? error = null) =>
         _gatewayMock
@@ -51,12 +53,53 @@ public class PayoutEngineTests
     private async Task SeedSellerAsync(string status = "Active", string? bank = BankJson, decimal available = 500m, bool engineEnabled = true)
     {
         _context.PayoutConfigs.Add(new PayoutConfig { Id = 1, MinimumThreshold = 10m, IsEnabled = engineEnabled });
-        _context.Users.Add(new User { Id = SellerId, Username = "seller", Role = "Seller", Status = status, BankAccountMock = bank });
+        _context.Users.Add(new User { Id = SellerId, Username = "seller", Role = "Seller", Status = status, BankAccountMock = bank == null ? null : EncryptionServiceTests.Create().Encrypt(bank) });
         _context.SellerWallets.Add(new SellerWallet { SellerId = SellerId, AvailableBalance = available });
         await _context.SaveChangesAsync();
     }
 
     // ── RunPayoutEngine: happy path ─────────────────────────────────────────
+
+    [Test]
+    public async Task TamperedNewBank_DoesNotLockFundsOrCallGateway()
+    {
+        await SeedSellerAsync();
+        (await _context.Users.SingleAsync()).BankAccountMock = "gcm:v1:AAAA";
+        await _context.SaveChangesAsync();
+        var result = await CreateHandler().Handle(new RunPayoutEngineCommand(), default);
+        result.Failed.ShouldBe(1);
+        var wallet = await _context.SellerWallets.SingleAsync();
+        wallet.AvailableBalance.ShouldBe(500m);
+        wallet.LockedBalance.ShouldBe(0m);
+        (await _context.PayoutTransactions.CountAsync()).ShouldBe(0);
+        (await _context.SensitiveDataLogs.SingleAsync()).Action.ShouldBe("PayoutRejected");
+        _gatewayMock.Verify(g => g.ProcessAsync(It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+    }
+
+    [Test]
+    public async Task TamperedStaleSnapshot_UnlocksWithoutGateway_AndOtherSellersContinue()
+    {
+        await SeedSellerAsync(available: 300m);
+        var wallet = await _context.SellerWallets.SingleAsync();
+        wallet.LockedBalance = 200;
+        (await _context.Users.SingleAsync()).BankAccountMock = "gcm:v1:AAAA";
+        _context.PayoutTransactions.Add(new PayoutTransaction { SellerId = SellerId, Amount = 200,
+            Status = PayoutTransaction.StatusProcessing, CreatedAt = DateTime.UtcNow.AddMinutes(-2), BankSnapshot = "gcm:v1:AAAA" });
+        _context.Users.Add(new User { Id = 6, Username = "healthy", Role = "Seller", BankAccountMock = EncryptionServiceTests.Create().Encrypt(BankJson) });
+        _context.SellerWallets.Add(new SellerWallet { SellerId = 6, AvailableBalance = 100 });
+        await _context.SaveChangesAsync();
+        SetupGateway(true);
+        var result = await CreateHandler().Handle(new RunPayoutEngineCommand(), default);
+        result.Success.ShouldBe(1);
+        wallet.AvailableBalance.ShouldBe(500m);
+        wallet.LockedBalance.ShouldBe(0m);
+        var stale = await _context.PayoutTransactions.SingleAsync(p => p.SellerId == SellerId);
+        stale.Status.ShouldBe(PayoutTransaction.StatusFailed);
+        stale.ErrorLog.ShouldBe("Bank details failed verification; gateway was not called.");
+        (await _context.SensitiveDataLogs.CountAsync(l => l.Action == "PayoutResult")).ShouldBe(2);
+        _gatewayMock.Verify(g => g.ProcessAsync(200, It.IsAny<string>()), Times.Never);
+        _gatewayMock.Verify(g => g.ProcessAsync(100, BankJson), Times.Once);
+    }
 
     [Test]
     public async Task Run_GatewaySuccess_ShouldTransferAllAvailableFunds()
@@ -82,7 +125,9 @@ public class PayoutEngineTests
         var payout = await _context.PayoutTransactions.SingleAsync();
         payout.Status.ShouldBe(PayoutTransaction.StatusSuccess);
         payout.Amount.ShouldBe(500m);
-        payout.BankSnapshot.ShouldBe(BankJson);
+        payout.BankSnapshot.ShouldNotBe(BankJson);
+        EncryptionServiceTests.Create().Decrypt(payout.BankSnapshot!).ShouldBe(BankJson);
+        (await _context.SensitiveDataLogs.CountAsync()).ShouldBe(2);
 
         (await _context.FinancialTransactions.CountAsync(t => t.Type == "AutoPayout")).ShouldBe(1);
         _gatewayMock.Verify(g => g.ProcessAsync(500m, BankJson), Times.Once);

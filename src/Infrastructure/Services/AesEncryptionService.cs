@@ -1,86 +1,98 @@
-using System;
-using System.IO;
-using System.Security.Cryptography;
+﻿using System.Security.Cryptography;
 using System.Text;
 using EbayClone.Application.Common.Interfaces;
 using Microsoft.Extensions.Configuration;
 
 namespace EbayClone.Infrastructure.Services;
 
-public class AesEncryptionService : IEncryptionService
+public sealed class AesEncryptionService : IEncryptionService
 {
+    private const string Prefix = "gcm:v1:";
+    private static readonly byte[] AssociatedData = Encoding.UTF8.GetBytes(Prefix);
     private readonly byte[] _key;
+    private readonly byte[] _hmacKey;
+    private readonly byte[]? _legacyKey;
 
     public AesEncryptionService(IConfiguration configuration)
     {
-        // Lấy secret key từ cấu hình (Security:EncryptionKey) hoặc fallback chuẩn xác
-        var secret = configuration["Security:EncryptionKey"] 
-                     ?? "DefaultSuperSecretKeyForEbayClone2026AES256Encryption!";
-
-        // Dùng SHA-256 để luôn đảm bảo khóa có độ dài chính xác 256-bit (32 bytes)
-        using var sha256 = SHA256.Create();
-        _key = sha256.ComputeHash(Encoding.UTF8.GetBytes(secret));
+        try
+        {
+            _key = Convert.FromBase64String(configuration["Security:EncryptionKey"] ?? "");
+            if (_key.Length != 32) throw new FormatException();
+        }
+        catch (FormatException)
+        {
+            throw new InvalidOperationException("Security:EncryptionKey must be a persistent Base64-encoded 32-byte key.");
+        }
+        _hmacKey = HKDF.DeriveKey(HashAlgorithmName.SHA256, _key, 32,
+            info: Encoding.UTF8.GetBytes("ebay-sensitive-data:hmac:v1"));
+        var legacy = configuration["Security:LegacyEncryptionKey"];
+        if (!string.IsNullOrEmpty(legacy)) _legacyKey = SHA256.HashData(Encoding.UTF8.GetBytes(legacy));
     }
 
     public string Encrypt(string plainText)
     {
-        if (string.IsNullOrEmpty(plainText)) return string.Empty;
-
-        using var aes = Aes.Create();
-        aes.Key = _key;
-        aes.GenerateIV(); // Tạo IV ngẫu nhiên cho mỗi lần mã hóa (16 bytes)
-
-        using var encryptor = aes.CreateEncryptor(aes.Key, aes.IV);
-        using var ms = new MemoryStream();
-
-        // Ghi IV vào đầu stream để khi giải mã lấy lại được IV
-        ms.Write(aes.IV, 0, aes.IV.Length);
-
-        using (var cs = new CryptoStream(ms, encryptor, CryptoStreamMode.Write))
-        using (var sw = new StreamWriter(cs, Encoding.UTF8))
-        {
-            sw.Write(plainText);
-        }
-
-        return Convert.ToBase64String(ms.ToArray());
+        ArgumentNullException.ThrowIfNull(plainText);
+        var plain = Encoding.UTF8.GetBytes(plainText);
+        var buffer = new byte[28 + plain.Length];
+        RandomNumberGenerator.Fill(buffer.AsSpan(0, 12));
+        using var aes = new AesGcm(_key, 16);
+        aes.Encrypt(buffer.AsSpan(0, 12), plain, buffer.AsSpan(28), buffer.AsSpan(12, 16), AssociatedData);
+        return Prefix + Convert.ToBase64String(buffer);
     }
 
     public string Decrypt(string cipherText)
     {
-        if (string.IsNullOrEmpty(cipherText)) return string.Empty;
-
         try
         {
-            var fullCipher = Convert.FromBase64String(cipherText);
-
-            using var aes = Aes.Create();
-            aes.Key = _key;
-
-            // Đọc 16 bytes đầu tiên làm IV
-            var iv = new byte[aes.BlockSize / 8];
-            Array.Copy(fullCipher, 0, iv, 0, iv.Length);
-            aes.IV = iv;
-
-            using var decryptor = aes.CreateDecryptor(aes.Key, aes.IV);
-            using var ms = new MemoryStream(fullCipher, iv.Length, fullCipher.Length - iv.Length);
-            using var cs = new CryptoStream(ms, decryptor, CryptoStreamMode.Read);
-            using var sr = new StreamReader(cs, Encoding.UTF8);
-
-            return sr.ReadToEnd();
+            if (!cipherText.StartsWith(Prefix, StringComparison.Ordinal))
+                throw new CryptographicException("Unsupported sensitive-data format. Run the data migration first.");
+            var buffer = Convert.FromBase64String(cipherText[Prefix.Length..]);
+            if (buffer.Length < 28) throw new CryptographicException("Invalid sensitive-data payload.");
+            var plain = new byte[buffer.Length - 28];
+            using var aes = new AesGcm(_key, 16);
+            aes.Decrypt(buffer.AsSpan(0, 12), buffer.AsSpan(28), buffer.AsSpan(12, 16), plain, AssociatedData);
+            return Encoding.UTF8.GetString(plain);
         }
-        catch
-        {
-            // Nếu giải mã lỗi, trả về thông báo lỗi an toàn
-            return "[DECRYPTION_ERROR: Invalid key or corrupted payload]";
-        }
+        catch (FormatException) { throw new CryptographicException("Invalid sensitive-data payload."); }
     }
 
-    public string ComputeHmac(string data)
-    {
-        if (string.IsNullOrEmpty(data)) return string.Empty;
+    public string ComputeHmac(string data) =>
+        Convert.ToHexString(HMACSHA256.HashData(_hmacKey, Encoding.UTF8.GetBytes(data))).ToLowerInvariant();
 
-        using var hmac = new HMACSHA256(_key);
-        var hash = hmac.ComputeHash(Encoding.UTF8.GetBytes(data));
-        return Convert.ToHexString(hash).ToLowerInvariant();
+    public bool VerifyIntegrity(string plainText, string? hash, string algorithm)
+    {
+        var key = algorithm switch
+        {
+            "AES-256-GCM" => _hmacKey,
+            "AES-256-CBC" => _legacyKey,
+            _ => null
+        };
+        if (key == null || hash == null) return false;
+        try
+        {
+            return CryptographicOperations.FixedTimeEquals(Convert.FromHexString(hash),
+                HMACSHA256.HashData(key, Encoding.UTF8.GetBytes(plainText)));
+        }
+        catch (FormatException) { return false; }
+    }
+
+    public string DecryptLegacyLog(string cipherText, string? hash)
+    {
+        if (_legacyKey == null) throw new CryptographicException("Security:LegacyEncryptionKey is required to convert CBC logs.");
+        try
+        {
+            var buffer = Convert.FromBase64String(cipherText);
+            if (buffer.Length < 32 || buffer.Length % 16 != 0) throw new CryptographicException("Invalid legacy log.");
+            using var aes = Aes.Create();
+            aes.Key = _legacyKey;
+            var bytes = aes.DecryptCbc(buffer.AsSpan(16), buffer.AsSpan(0, 16));
+            // The old StreamWriter emitted a UTF-8 BOM; StreamReader removed it before hashing.
+            using var reader = new StreamReader(new MemoryStream(bytes), Encoding.UTF8);
+            var plain = reader.ReadToEnd();
+            if (!VerifyIntegrity(plain, hash, "AES-256-CBC")) throw new CryptographicException("Legacy log integrity verification failed.");
+            return plain;
+        }
+        catch (FormatException) { throw new CryptographicException("Invalid legacy log."); }
     }
 }

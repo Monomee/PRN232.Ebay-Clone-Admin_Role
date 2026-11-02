@@ -1,4 +1,4 @@
-﻿using EbayClone.Application.Common.Interfaces;
+using EbayClone.Application.Common.Interfaces;
 using MediatR.Pipeline;
 using Microsoft.Extensions.Logging;
 
@@ -29,7 +29,7 @@ public class LoggingBehaviour<TRequest> : IRequestPreProcessor<TRequest>
             userName = await _identityService.GetUserNameAsync(userId);
         }
 
-        _logger.LogInformation("EbayClone Request: {Name} {@UserId} {@UserName} {@Request}",
-            requestName, userId, userName, request);
+        _logger.LogInformation("EbayClone Request: {Name} {@UserId} {@UserName}",
+            requestName, userId, userName);
     }
 }

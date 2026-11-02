@@ -1,3 +1,4 @@
+using EbayClone.Application.Common.Interfaces;
 using EbayClone.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
@@ -20,13 +21,15 @@ namespace EbayClone.Infrastructure.Data.Seeders;
 public class PayoutEngineDemoSeeder : ISeeder
 {
     private readonly ApplicationDbContext _context;
+    private readonly IEncryptionService _encryption;
     private readonly ILogger<PayoutEngineDemoSeeder> _logger;
 
     public int Order => 15; // Run last — needs Users, Wallets, Disputes to exist
 
-    public PayoutEngineDemoSeeder(ApplicationDbContext context, ILogger<PayoutEngineDemoSeeder> logger)
+    public PayoutEngineDemoSeeder(ApplicationDbContext context, ILogger<PayoutEngineDemoSeeder> logger, IEncryptionService encryption)
     {
         _context = context;
+        _encryption = encryption;
         _logger = logger;
     }
 
@@ -67,7 +70,7 @@ public class PayoutEngineDemoSeeder : ISeeder
                 Password = BCrypt.Net.BCrypt.HashPassword("Test123!"),
                 Role = "Seller", Status = "Active", ApprovalStatus = "Approved",
                 IsVerified = true, SellerLevel = "TopRated",
-                BankAccountMock = bankVCB
+                BankAccountMock = _encryption.Encrypt(bankVCB)
             },
             // Scenario 2: Balance below threshold → SKIP
             new User
@@ -77,7 +80,7 @@ public class PayoutEngineDemoSeeder : ISeeder
                 Password = BCrypt.Net.BCrypt.HashPassword("Test123!"),
                 Role = "Seller", Status = "Active", ApprovalStatus = "Approved",
                 IsVerified = true,
-                BankAccountMock = bankVCB
+                BankAccountMock = _encryption.Encrypt(bankVCB)
             },
             // Scenario 3: No bank linked → SKIP
             new User
@@ -97,7 +100,7 @@ public class PayoutEngineDemoSeeder : ISeeder
                 Password = BCrypt.Net.BCrypt.HashPassword("Test123!"),
                 Role = "Seller", Status = "Suspended", ApprovalStatus = "Approved",
                 IsVerified = true,
-                BankAccountMock = bankTCB
+                BankAccountMock = _encryption.Encrypt(bankTCB)
             },
             // Scenario 5: Dispute hold → HOLD
             new User
@@ -107,7 +110,7 @@ public class PayoutEngineDemoSeeder : ISeeder
                 Password = BCrypt.Net.BCrypt.HashPassword("Test123!"),
                 Role = "Seller", Status = "Active", ApprovalStatus = "Approved",
                 IsVerified = true,
-                BankAccountMock = bankTCB
+                BankAccountMock = _encryption.Encrypt(bankTCB)
             },
             // Scenario 6: Normal balance + bank → SUCCESS or FAILED (random 90/10)
             new User
@@ -117,7 +120,7 @@ public class PayoutEngineDemoSeeder : ISeeder
                 Password = BCrypt.Net.BCrypt.HashPassword("Test123!"),
                 Role = "Seller", Status = "Active", ApprovalStatus = "Approved",
                 IsVerified = true,
-                BankAccountMock = bankTCB
+                BankAccountMock = _encryption.Encrypt(bankTCB)
             },
         };
 
@@ -256,7 +259,7 @@ public class PayoutEngineDemoSeeder : ISeeder
         }
     }
 
-    private static List<PayoutTransaction> BuildHistoricalTransactions(int sellerId1, int sellerId2)
+    private List<PayoutTransaction> BuildHistoricalTransactions(int sellerId1, int sellerId2)
     {
         var list = new List<PayoutTransaction>();
         var now = DateTime.UtcNow;
@@ -277,7 +280,7 @@ public class PayoutEngineDemoSeeder : ISeeder
                     SellerId = sellerId1,
                     Amount = amounts[6 - i],
                     Status = PayoutTransaction.StatusSuccess,
-                    BankSnapshot = @"{""bankName"":""Vietcombank"",""accountNumber"":""0011223344"",""accountName"":""PAYOUT RICH SELLER""}",
+                    BankSnapshot = _encryption.Encrypt(@"{""bankName"":""Vietcombank"",""accountNumber"":""0011223344"",""accountName"":""PAYOUT RICH SELLER""}"),
                     SessionId = session,
                     CreatedAt = day.AddHours(2),
                     CompletedAt = day.AddHours(2).AddSeconds(1)
@@ -291,7 +294,7 @@ public class PayoutEngineDemoSeeder : ISeeder
                     SellerId = sellerId2,
                     Amount = amounts2[6 - i],
                     Status = PayoutTransaction.StatusSuccess,
-                    BankSnapshot = @"{""bankName"":""Techcombank"",""accountNumber"":""9988776655"",""accountName"":""PAYOUT SELLER B""}",
+                    BankSnapshot = _encryption.Encrypt(@"{""bankName"":""Techcombank"",""accountNumber"":""9988776655"",""accountName"":""PAYOUT SELLER B""}"),
                     SessionId = session,
                     CreatedAt = day.AddHours(2),
                     CompletedAt = day.AddHours(2).AddSeconds(2)
@@ -306,7 +309,7 @@ public class PayoutEngineDemoSeeder : ISeeder
             Amount = 45m,
             Status = PayoutTransaction.StatusFailed,
             ErrorLog = "Bank connection timeout",
-            BankSnapshot = @"{""bankName"":""Techcombank"",""accountNumber"":""9988776655"",""accountName"":""PAYOUT SELLER B""}",
+            BankSnapshot = _encryption.Encrypt(@"{""bankName"":""Techcombank"",""accountNumber"":""9988776655"",""accountName"":""PAYOUT SELLER B""}"),
             SessionId = now.AddDays(-1).ToString("yyyy-MM-dd") + "T02:00:00.0000000Z",
             CreatedAt = now.AddDays(-1).AddHours(2),
             CompletedAt = now.AddDays(-1).AddHours(2).AddSeconds(3)
@@ -317,7 +320,7 @@ public class PayoutEngineDemoSeeder : ISeeder
             Amount = 200m,
             Status = PayoutTransaction.StatusFailed,
             ErrorLog = "Destination account closed",
-            BankSnapshot = @"{""bankName"":""Vietcombank"",""accountNumber"":""0011223344"",""accountName"":""PAYOUT RICH SELLER""}",
+            BankSnapshot = _encryption.Encrypt(@"{""bankName"":""Vietcombank"",""accountNumber"":""0011223344"",""accountName"":""PAYOUT RICH SELLER""}"),
             SessionId = now.AddDays(-3).ToString("yyyy-MM-dd") + "T02:00:00.0000000Z",
             CreatedAt = now.AddDays(-3).AddHours(2),
             CompletedAt = now.AddDays(-3).AddHours(2).AddSeconds(2)

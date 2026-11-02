@@ -55,13 +55,13 @@ public class EmailService : IEmailService
             mailMessage.To.Add(to);
 
             // 4. Bắn Email
-            _logger.LogInformation($"[EmailService] Đang gửi cảnh báo tới {to}...");
+            _logger.LogInformation("Email delivery operation in progress.");
             await client.SendMailAsync(mailMessage);
-            _logger.LogInformation($"[EmailService] Gửi email thành công tới {to}!");
+            _logger.LogInformation("Email delivery operation in progress.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "[EmailService] Lỗi khi gửi email: {Message}", ex.Message);
+            _logger.LogError("Email delivery failed: {ExceptionType}", ex.GetType().Name);
             throw;
         }
     }

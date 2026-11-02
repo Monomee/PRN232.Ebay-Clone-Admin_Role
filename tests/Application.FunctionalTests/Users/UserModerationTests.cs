@@ -13,6 +13,7 @@ public class UserModerationTests : BaseTestFixture
     public async Task Approve_SetsActiveAndWritesAudit()
     {
         var admin = await AddBuyerAsync("approve-admin", "Active", "Approved");
+        RunAsDomainUser(admin.Id, "SuperAdmin");
         var user = await AddBuyerAsync("pending-user", "Pending", "PendingApproval");
 
         var approved = await SendAsync(new ApproveUserCommand
@@ -38,6 +39,7 @@ public class UserModerationTests : BaseTestFixture
     public async Task Ban_ThenUnban_RestoresActiveUser()
     {
         var admin = await AddBuyerAsync("ban-admin", "Active", "Approved");
+        RunAsDomainUser(admin.Id, "SuperAdmin");
         var user = await AddBuyerAsync("active-user", "Active", "Approved");
 
         var banned = await SendAsync(new BanUserCommand
@@ -79,6 +81,7 @@ public class UserModerationTests : BaseTestFixture
     public async Task Ban_WhenUserHasOpenOrder_ThrowsAndLeavesUserActive()
     {
         var admin = await AddBuyerAsync("order-admin", "Active", "Approved");
+        RunAsDomainUser(admin.Id, "SuperAdmin");
         var user = await AddBuyerAsync("buyer-with-order", "Active", "Approved");
 
         await AddAsync(new OrderTable

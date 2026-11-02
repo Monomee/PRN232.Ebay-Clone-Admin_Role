@@ -10,11 +10,17 @@ public record GetUserByIdQuery(int Id) : IRequest<UserDto?>;
 public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto?>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IEncryptionService _encryption;
+    private readonly ISensitiveDataLogger _sensitiveLog;
+
     private readonly IUser _currentUser;
 
-    public GetUserByIdQueryHandler(IApplicationDbContext context, IUser currentUser)
+    public GetUserByIdQueryHandler(IApplicationDbContext context, IUser currentUser, IEncryptionService encryption, ISensitiveDataLogger sensitiveLog)
     {
         _context = context;
+        _encryption = encryption;
+        _sensitiveLog = sensitiveLog;
+
         _currentUser = currentUser;
     }
 
@@ -30,6 +36,9 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
             return null;
         }
 
+        if (!int.TryParse(_currentUser.Id, out var actorId) || actorId <= 0) throw new UnauthorizedAccessException();
+        if (_currentUser.Roles?.Any(r => r is "Support" or "SuperAdmin") != true) throw new EbayClone.Application.Common.Exceptions.ForbiddenAccessException();
+
         var dto = user.ToDto();
 
         dto.MaskedPhone = MaskPhone(user.Addresses
@@ -38,7 +47,9 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
             .Select(a => a.Phone)
             .FirstOrDefault());
 
-        dto.MaskedNationalId = MaskNationalId(ExtractNationalId(user.VerificationDocuments));
+        var documents = user.VerificationDocuments == null ? null : _encryption.Decrypt(user.VerificationDocuments);
+        var nationalId = ExtractNationalId(documents) ?? (user.CCCD == null ? null : _encryption.Decrypt(user.CCCD));
+        dto.MaskedNationalId = MaskNationalId(nationalId);
 
         dto.OrderHistory = user.OrderTables
             .OrderByDescending(o => o.OrderDate)
@@ -83,6 +94,7 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
                 CreatedAt = DateTime.UtcNow
             });
 
+            _sensitiveLog.Add("ViewUserProfile", "User", user.Id.ToString(), "PII", new { fields = new[] { "MaskedNationalId", "MaskedPhone" } });
             await _context.SaveChangesAsync(cancellationToken);
         }
 

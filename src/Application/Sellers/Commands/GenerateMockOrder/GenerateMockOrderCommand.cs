@@ -18,12 +18,18 @@ public record GenerateMockOrderCommand : IRequest<bool>
 public class GenerateMockOrderCommandHandler : IRequestHandler<GenerateMockOrderCommand, bool>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IEncryptionService _encryption;
+    private readonly ISensitiveDataLogger _sensitiveLog;
+
     private readonly ISender _sender;
     private readonly ISellerHubService _sellerHubService;
 
-    public GenerateMockOrderCommandHandler(IApplicationDbContext context, ISender sender, ISellerHubService sellerHubService)
+    public GenerateMockOrderCommandHandler(IApplicationDbContext context, ISender sender, ISellerHubService sellerHubService, IEncryptionService encryption, ISensitiveDataLogger sensitiveLog)
     {
         _context = context;
+        _encryption = encryption;
+        _sensitiveLog = sensitiveLog;
+
         _sender = sender;
         _sellerHubService = sellerHubService;
     }
@@ -95,7 +101,8 @@ public class GenerateMockOrderCommandHandler : IRequestHandler<GenerateMockOrder
 
         if (request.EnsureBankLinked && string.IsNullOrEmpty(seller.BankAccountMock))
         {
-            seller.BankAccountMock = "{\"bankName\": \"Mock Test Bank\", \"accountNumber\": \"123456789\", \"accountName\": \"" + seller.Username + "\"}";
+            seller.BankAccountMock = _encryption.Encrypt(System.Text.Json.JsonSerializer.Serialize(new { bankName = "Mock Test Bank", accountNumber = "123456789", accountName = seller.Username }));
+            _sensitiveLog.Add("LinkBankAccount", "User", seller.Id.ToString(), "Financial", new { seller.Id, source = "Mock" });
         }
 
         var order = new OrderTable

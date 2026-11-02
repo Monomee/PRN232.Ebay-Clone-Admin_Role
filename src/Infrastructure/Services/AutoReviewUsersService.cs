@@ -54,6 +54,7 @@ public class AutoReviewUsersService : BackgroundService
     {
         using var scope = _serviceProvider.CreateScope();
         var context = scope.ServiceProvider.GetRequiredService<IApplicationDbContext>();
+        var sensitiveLog = scope.ServiceProvider.GetRequiredService<ISensitiveDataLogger>();
 
         var pendingUsers = await context.Users
             .Where(u => u.ApprovalStatus == "PendingApproval")
@@ -73,7 +74,7 @@ public class AutoReviewUsersService : BackgroundService
                     existing.Id != pendingUser.Id &&
                     (
                         // Check CCCD
-                        (pendingUser.CCCD != null && existing.CCCD == pendingUser.CCCD) ||
+                        (pendingUser.CccdLookupHash != null && existing.CccdLookupHash == pendingUser.CccdLookupHash) ||
                         // Check IP + Coordinates (must match all for a likely clone)
                         (pendingUser.LastLoginIp != null && existing.LastLoginIp == pendingUser.LastLoginIp &&
                          pendingUser.Latitude != null && existing.Latitude == pendingUser.Latitude &&
@@ -119,6 +120,8 @@ public class AutoReviewUsersService : BackgroundService
                     CreatedAt = DateTime.UtcNow
                 });
             }
+            sensitiveLog.Add("AutoReviewUser", "User", pendingUser.Id.ToString(), "PII",
+                new { pendingUser.ApprovalStatus, pendingUser.Status, duplicateDetected = isDuplicate });
         }
 
         await context.SaveChangesAsync(cancellationToken);

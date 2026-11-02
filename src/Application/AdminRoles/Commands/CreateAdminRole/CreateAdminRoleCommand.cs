@@ -15,14 +15,17 @@ public record CreateAdminRoleCommand : IRequest<int>
 public class CreateAdminRoleCommandHandler : IRequestHandler<CreateAdminRoleCommand, int>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUser _actor;
 
-    public CreateAdminRoleCommandHandler(IApplicationDbContext context)
+    public CreateAdminRoleCommandHandler(IApplicationDbContext context, IUser actor)
     {
         _context = context;
+        _actor = actor;
     }
 
     public async Task<int> Handle(CreateAdminRoleCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _actor.GetRequiredActorId();
         var role = new AdminRole
         {
             RoleName = request.RoleName,
@@ -35,7 +38,7 @@ public class CreateAdminRoleCommandHandler : IRequestHandler<CreateAdminRoleComm
 
         _context.AdminActions.Add(new AdminAction
         {
-            AdminId = request.CreatedBy,
+            AdminId = actorId,
             Action = "CreateAdminRole",
             TargetType = "AdminRole",
             Details = JsonSerializer.Serialize(new

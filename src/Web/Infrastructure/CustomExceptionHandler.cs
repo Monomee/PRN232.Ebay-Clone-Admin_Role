@@ -35,6 +35,11 @@ public class CustomExceptionHandler : IExceptionHandler
                 await HandleForbiddenAccessException(httpContext, forbiddenAccessException);
                 return true;
 
+            // W7-01: crypto failures must not echo exception text (may hint at key/ciphertext state)
+            case System.Security.Cryptography.CryptographicException:
+                await HandleSensitiveDataException(httpContext);
+                return true;
+
             case InvalidOperationException invalidOperationException:
                 await HandleBadRequestException(httpContext, invalidOperationException);
                 return true;
@@ -51,6 +56,16 @@ public class CustomExceptionHandler : IExceptionHandler
                 await HandleBadRequestException(httpContext, exception);
                 return true;
         }
+    }
+
+    private static async Task HandleSensitiveDataException(HttpContext context)
+    {
+        context.Response.StatusCode = StatusCodes.Status400BadRequest;
+        await context.Response.WriteAsJsonAsync(new ProblemDetails
+        {
+            Status = StatusCodes.Status400BadRequest,
+            Title = "Sensitive data could not be verified or decrypted."
+        });
     }
 
     private async Task HandleCustomValidationException(HttpContext httpContext, EbayClone.Application.Common.Exceptions.ValidationException exception)

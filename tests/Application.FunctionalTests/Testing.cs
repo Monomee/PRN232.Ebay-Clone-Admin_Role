@@ -116,6 +116,7 @@ public partial class Testing
         }
 
         _userId = null;
+        _roles = null;
     }
 
     public static async Task<TEntity?> FindAsync<TEntity>(params object[] keyValues)

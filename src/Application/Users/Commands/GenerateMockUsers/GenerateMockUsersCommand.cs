@@ -11,10 +11,12 @@ public record GenerateMockUsersCommand : IRequest<bool>
 public class GenerateMockUsersCommandHandler : IRequestHandler<GenerateMockUsersCommand, bool>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IEncryptionService _encryption;
 
-    public GenerateMockUsersCommandHandler(IApplicationDbContext context)
+    public GenerateMockUsersCommandHandler(IApplicationDbContext context, IEncryptionService encryption)
     {
         _context = context;
+        _encryption = encryption;
     }
 
     public async Task<bool> Handle(GenerateMockUsersCommand request, CancellationToken cancellationToken)
@@ -84,6 +86,11 @@ public class GenerateMockUsersCommandHandler : IRequestHandler<GenerateMockUsers
             }
         };
 
+        foreach (var user in mockUsers.Where(u => u.CCCD != null))
+        {
+            user.CccdLookupHash = _encryption.ComputeHmac("cccd:" + user.CCCD!.Trim());
+            user.CCCD = _encryption.Encrypt(user.CCCD.Trim());
+        }
         _context.Users.AddRange(mockUsers);
         await _context.SaveChangesAsync(cancellationToken);
 

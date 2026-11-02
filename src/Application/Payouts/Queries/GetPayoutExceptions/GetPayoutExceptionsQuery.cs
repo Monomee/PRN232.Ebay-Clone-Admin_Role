@@ -40,7 +40,7 @@ public class GetPayoutExceptionsQueryHandler : IRequestHandler<GetPayoutExceptio
                 t.Amount,
                 t.Status,
                 t.ErrorLog,
-                t.BankSnapshot,
+                t.BankSnapshot == null ? null : "[Protected bank details]",
                 t.SessionId,
                 t.CreatedAt))
             .ToListAsync(cancellationToken);

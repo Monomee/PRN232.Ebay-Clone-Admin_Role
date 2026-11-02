@@ -15,34 +15,31 @@ public record UpdateReviewStatusCommand : IRequest<bool>
 public class UpdateReviewStatusCommandHandler : IRequestHandler<UpdateReviewStatusCommand, bool>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUser _actor;
     private readonly IEmailService _emailService;
-    private readonly IUser? _user;
 
-    public UpdateReviewStatusCommandHandler(IApplicationDbContext context, IEmailService emailService, IUser? user = null)
+    public UpdateReviewStatusCommandHandler(IApplicationDbContext context, IEmailService emailService, IUser actor)
     {
         _context = context;
+        _actor = actor;
         _emailService = emailService;
-        _user = user;
     }
 
     public async Task<bool> Handle(UpdateReviewStatusCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _actor.GetRequiredActorId();
         var review = await _context.Reviews
             .Include(r => r.Reviewer)
             .FirstOrDefaultAsync(r => r.Id == request.Id, cancellationToken);
 
         if (review == null) return false;
 
-        var adminId = (_user != null && int.TryParse(_user.Id, out var currentAdminId) && currentAdminId > 0)
-            ? currentAdminId
-            : request.AdminId;
-
         bool wasAlreadyHidden = string.Equals(review.Status, "Hidden", StringComparison.OrdinalIgnoreCase)
             || string.Equals(review.ModerationAction, "Hide", StringComparison.OrdinalIgnoreCase);
 
         review.Status = request.Status;
         review.ModerationAction = request.Action;
-        review.ModeratedBy = adminId;
+        review.ModeratedBy = actorId;
         review.ModeratedAt = DateTime.UtcNow;
         
         // Staggered Penalty System for Reviews
@@ -55,11 +52,11 @@ public class UpdateReviewStatusCommandHandler : IRequestHandler<UpdateReviewStat
             {
                 _context.AdminActions.Add(new Domain.Entities.AdminAction
                 {
-                    AdminId = adminId,
+                    AdminId = actorId,
                     Action = "HideReview",
                     TargetType = "Review",
                     TargetId = review.Id,
-                    Details = $"Review #{review.Id} hidden by Admin #{adminId}",
+                    Details = $"Review #{review.Id} hidden by Admin #{actorId}",
                     CreatedAt = DateTime.UtcNow
                 });
 

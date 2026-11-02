@@ -24,6 +24,7 @@ public class ApplySellerPenaltyCommandHandler : IRequestHandler<ApplySellerPenal
 
     public async Task<Unit> Handle(ApplySellerPenaltyCommand request, CancellationToken cancellationToken)
     {
+        var adminId = _currentUser.GetRequiredActorId();
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
@@ -60,11 +61,6 @@ public class ApplySellerPenaltyCommandHandler : IRequestHandler<ApplySellerPenal
             user.Status,
             user.BannedReason
         };
-
-        // Determine acting admin — prefer injected IUser, fallback to command field
-        var adminId = int.TryParse(_currentUser.Id, out var parsedId) && parsedId > 0
-            ? parsedId
-            : request.AdminId;
 
         _context.AdminActions.Add(new AdminAction
         {

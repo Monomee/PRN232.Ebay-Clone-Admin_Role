@@ -16,7 +16,7 @@ public record SensitiveLogDto
     // The encrypted ciphertext stored in DB (Base64)
     public string EncryptedData { get; init; } = string.Empty;
 
-    public string EncryptionAlgorithm { get; init; } = "AES-256-CBC";
+    public string EncryptionAlgorithm { get; init; } = "AES-256-GCM";
     public string KeyIdentifier { get; init; } = "v1";
     public string? DataHash { get; init; }
     public string? IpAddress { get; init; }
@@ -34,7 +34,7 @@ public record DecryptedSensitiveLogResult
     public string DataClassification { get; init; } = string.Empty;
     public string EncryptedData { get; init; } = string.Empty;
     public string DecryptedData { get; init; } = string.Empty;
-    public string EncryptionAlgorithm { get; init; } = "AES-256-CBC";
+    public string EncryptionAlgorithm { get; init; } = "AES-256-GCM";
     public string? DataHash { get; init; }
     public bool IntegrityVerified { get; init; }
     public DateTimeOffset DecryptedAt { get; init; }

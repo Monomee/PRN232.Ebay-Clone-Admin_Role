@@ -49,7 +49,7 @@ export const sensitiveLogService = {
             const response = await axios.post(ENDPOINTS.SENSITIVE_LOGS.DECRYPT(id));
             return response.data;
         } catch (error) {
-            console.error("Error decrypting sensitive data log:", error);
+            console.error("Sensitive log decryption request failed");
             throw error;
         }
     }

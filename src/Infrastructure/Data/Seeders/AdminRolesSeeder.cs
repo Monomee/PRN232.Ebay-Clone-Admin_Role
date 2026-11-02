@@ -51,14 +51,6 @@ public class AdminRolesSeeder : ISeeder
             {
                 _context.AdminRoles.Add(role);
                 changed = true;
-                continue;
-            }
-
-            if (existingRole.Description != role.Description || existingRole.Permissions != role.Permissions)
-            {
-                existingRole.Description = role.Description;
-                existingRole.Permissions = role.Permissions;
-                changed = true;
             }
         }
 

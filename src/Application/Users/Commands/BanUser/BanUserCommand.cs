@@ -15,18 +15,25 @@ public record BanUserCommand : IRequest<bool>
 public class BanUserCommandHandler : IRequestHandler<BanUserCommand, bool>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUser _user;
+    private readonly ISensitiveDataLogger _sensitiveLog;
+
     private readonly ISellerHubService _sellerHubService;
     private readonly ISender _sender;
 
-    public BanUserCommandHandler(IApplicationDbContext context, ISellerHubService sellerHubService, ISender sender)
+    public BanUserCommandHandler(IApplicationDbContext context, ISellerHubService sellerHubService, ISender sender, ISensitiveDataLogger sensitiveLog, IUser user)
     {
         _context = context;
+        _user = user;
+        _sensitiveLog = sensitiveLog;
+
         _sellerHubService = sellerHubService;
         _sender = sender;
     }
 
     public async Task<bool> Handle(BanUserCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _user.GetRequiredActorId();
         var user = await _context.Users
             .FirstOrDefaultAsync(u => u.Id == request.UserId, cancellationToken);
 
@@ -62,7 +69,7 @@ public class BanUserCommandHandler : IRequestHandler<BanUserCommand, bool>
 
         user.Status = "Banned";
         user.BannedReason = request.Reason;
-        user.BannedBy = request.AdminId;
+        user.BannedBy = actorId;
         user.BannedAt = DateTime.UtcNow;
 
         var after = new
@@ -82,7 +89,7 @@ public class BanUserCommandHandler : IRequestHandler<BanUserCommand, bool>
             Type = "InApp",
             Status = "Sent",
             SentAt = DateTime.UtcNow,
-            CreatedBy = request.AdminId,
+            CreatedBy = actorId,
             CreatedAt = DateTime.UtcNow
         });
 
@@ -93,13 +100,13 @@ public class BanUserCommandHandler : IRequestHandler<BanUserCommand, bool>
             Content = $"Tai khoan cua ban da bi khoa. Ly do: {request.Reason}",
             Type = "Email",
             Status = "Pending",
-            CreatedBy = request.AdminId,
+            CreatedBy = actorId,
             CreatedAt = DateTime.UtcNow
         });
 
         _context.AdminActions.Add(new AdminAction
         {
-            AdminId = request.AdminId,
+            AdminId = actorId,
             Action = "BanUser",
             TargetType = "User",
             TargetId = user.Id,
@@ -112,6 +119,7 @@ public class BanUserCommandHandler : IRequestHandler<BanUserCommand, bool>
             CreatedAt = DateTime.UtcNow
         });
 
+        _sensitiveLog.Add("BanUser", "User", user.Id.ToString(), "PII", new { before, after, request.Reason });
         await _context.SaveChangesAsync(cancellationToken);
 
         if (user.Role == "Seller" || await _context.Stores.AnyAsync(s => s.SellerId == user.Id, cancellationToken))

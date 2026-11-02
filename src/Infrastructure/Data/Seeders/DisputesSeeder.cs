@@ -20,11 +20,9 @@ public class DisputesSeeder : ISeeder
 
     public async Task SeedAsync()
     {
-        int currentDisputeCount = await _context.Disputes.CountAsync();
-        if (currentDisputeCount >= 10)
+        if (await _context.Disputes.AnyAsync() || await _context.DisputeMessages.AnyAsync())
         {
-            _logger.LogInformation("Disputes already seeded with 10+ records, skipping...");
-            await PatchWalletDisputedBalancesAsync();
+            _logger.LogInformation("Existing disputes/messages found; skipping demo disputes.");
             return;
         }
 
@@ -37,15 +35,6 @@ public class DisputesSeeder : ISeeder
         {
             _logger.LogWarning("Required users not found for dispute seeding");
             return;
-        }
-
-        // Wipe out any existing orphaned dummy disputes from old partial seeds if we are regenerating
-        if (currentDisputeCount > 0)
-        {
-            _logger.LogInformation("Dropping old boring disputes to replace with new immersive data...");
-            _context.DisputeMessages.RemoveRange(await _context.DisputeMessages.ToListAsync());
-            _context.Disputes.RemoveRange(await _context.Disputes.ToListAsync());
-            await _context.SaveChangesAsync();
         }
 
         _logger.LogInformation("Generating 10 highly immersive E-commerce Dispute scenarios...");
@@ -163,65 +152,5 @@ public class DisputesSeeder : ISeeder
         _context.DisputeMessages.AddRange(messages);
         await _context.SaveChangesAsync();
         _logger.LogInformation("Added intense chat histories to disputes.");
-
-        // Unconditionally patch newly seeded disputes so wallet balances match the UI requirements
-        await PatchWalletDisputedBalancesAsync();
-    }
-
-    private async Task PatchWalletDisputedBalancesAsync()
-    {
-        var activeDisputes = await _context.Disputes
-            .Include(d => d.Order).ThenInclude(o => o!.OrderItems).ThenInclude(oi => oi.Product)
-            .Where(d => d.Status != DisputeStatuses.Resolved && d.Status != DisputeStatuses.Closed)
-            .ToListAsync();
-            
-        var sellerWallets = await _context.SellerWallets.ToListAsync();
-        
-        foreach (var wallet in sellerWallets)
-        {
-            var sellerDisputes = activeDisputes.Where(d => d.Order?.OrderItems.FirstOrDefault()?.Product?.SellerId == wallet.SellerId);
-            var expectedDisputedSum = sellerDisputes.Sum(d => d.Amount ?? d.Order?.TotalPrice ?? 0);
-            
-            if (wallet.DisputedBalance != expectedDisputedSum)
-            {
-                var diff = expectedDisputedSum - wallet.DisputedBalance;
-                wallet.DisputedBalance = expectedDisputedSum;
-                
-                if (diff > 0)
-                {
-                    if (wallet.AvailableBalance >= diff) 
-                    {
-                        wallet.AvailableBalance -= diff;
-                    }
-                    else if (wallet.PendingBalance >= diff) 
-                    {
-                        wallet.PendingBalance -= diff;
-                    }
-                    else 
-                    {
-                        var remaining = diff;
-                        if (wallet.PendingBalance > 0)
-                        {
-                            remaining -= wallet.PendingBalance;
-                            wallet.PendingBalance = 0;
-                        }
-                        // To prevent negative balances in demo data, simulate that this money was just earned from the order
-                        // This keeps the accounting equation true: TotalEarnings = Pending + Available + Locked + Disputed + Withdrawn + Refunded
-                        wallet.CreditPending(remaining);
-                        wallet.PendingBalance -= remaining; // Instantly deduct it because it goes to DisputedBalance
-                    }
-                }
-            }
-            
-            // Rescue any pre-existing negative PendingBalances from legacy seeds
-            if (wallet.PendingBalance < 0)
-            {
-                var absNegative = Math.Abs(wallet.PendingBalance);
-                wallet.CreditPending(absNegative);
-                // CreditPending naturally brings PendingBalance back to 0 and fixes TotalEarnings
-            }
-        }
-        await _context.SaveChangesAsync();
-        _logger.LogInformation("Auto-Patched SellerWallet DisputedBalances to align with realistic Data.");
     }
 }

@@ -86,6 +86,7 @@ public class AssignDisputeTests
         var dispute = await _context.Disputes.SingleAsync(d => d.Id == 1);
         dispute.AssignedTo.ShouldBe(7);
         dispute.Status.ShouldBe(DisputeStatuses.Open);
+        (await _context.AdminActions.SingleAsync()).AdminId.ShouldBe(42);
     }
 
     [Test]
@@ -114,7 +115,7 @@ public class AssignDisputeTests
         _userMock.Setup(u => u.Id).Returns((string?)null);
 
         // Act + Assert
-        await Should.ThrowAsync<ValidationException>(
+        await Should.ThrowAsync<UnauthorizedAccessException>(
             () => CreateHandler().Handle(new AssignDisputeCommand(1), CancellationToken.None));
 
         var dispute = await _context.Disputes.SingleAsync(d => d.Id == 1);

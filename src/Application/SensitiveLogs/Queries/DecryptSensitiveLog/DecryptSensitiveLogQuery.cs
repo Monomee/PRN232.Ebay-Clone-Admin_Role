@@ -1,4 +1,7 @@
 using System;
+using System.Security.Cryptography;
+using System.Text.Json;
+using EbayClone.Application.Common.Exceptions;
 using System.Threading;
 using System.Threading.Tasks;
 using EbayClone.Application.Common.Interfaces;
@@ -28,27 +31,33 @@ public class DecryptSensitiveLogQueryHandler : IRequestHandler<DecryptSensitiveL
 
     public async Task<DecryptedSensitiveLogResult?> Handle(DecryptSensitiveLogQuery request, CancellationToken cancellationToken)
     {
+        if (!int.TryParse(_currentUser.Id, out var currentUserId) || currentUserId <= 0)
+            throw new UnauthorizedAccessException();
+        if (_currentUser.Roles?.Contains("SuperAdmin") != true)
+            throw new ForbiddenAccessException();
+
         var log = await _context.SensitiveDataLogs
             .FirstOrDefaultAsync(l => l.Id == request.Id, cancellationToken);
 
         if (log == null) return null;
 
         // Giải mã dữ liệu từ AES-256 ciphertext
-        string decryptedText = _encryptionService.Decrypt(log.EncryptedData);
+        string decryptedText = log.EncryptionAlgorithm == "AES-256-CBC"
+            ? _encryptionService.DecryptLegacyLog(log.EncryptedData, log.DataHash)
+            : _encryptionService.Decrypt(log.EncryptedData);
 
         // Kiểm tra tính toàn vẹn (HMAC-SHA256)
-        string computedHash = _encryptionService.ComputeHmac(decryptedText);
-        bool integrityVerified = !string.IsNullOrEmpty(log.DataHash) && log.DataHash.Equals(computedHash, StringComparison.OrdinalIgnoreCase);
+        bool integrityVerified = _encryptionService.VerifyIntegrity(decryptedText, log.DataHash, log.EncryptionAlgorithm);
+        if (!integrityVerified) throw new CryptographicException("Sensitive log integrity verification failed.");
 
         // Ghi lại Audit Trail về hành động giải mã dữ liệu nhạy cảm của SuperAdmin
-        int currentUserId = int.TryParse(_currentUser.Id, out var parsedId) ? parsedId : 1;
         _context.AdminActions.Add(new AdminAction
         {
             AdminId = currentUserId,
             Action = "DecryptSensitiveDataLog",
             TargetType = "SensitiveDataLog",
             TargetId = log.Id,
-            Details = $"{{\"logId\":{log.Id},\"action\":\"{log.Action}\",\"classification\":\"{log.DataClassification}\"}}",
+            Details = JsonSerializer.Serialize(new { logId = log.Id, action = log.Action, classification = log.DataClassification }),
             CreatedAt = DateTime.UtcNow
         });
         await _context.SaveChangesAsync(cancellationToken);

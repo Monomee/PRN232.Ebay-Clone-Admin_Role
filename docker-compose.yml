@@ -62,6 +62,8 @@ services:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__MyCnn: "Server=db,1433;Database=CloneEbayDB;User Id=sa;Password=${SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
       Jwt__Key: "${JWT_KEY}"
+      Security__EncryptionKey: "${ENCRYPTION_KEY:?Set a persistent 32-byte Base64 ENCRYPTION_KEY}"
+      Security__LegacyEncryptionKey: "${LEGACY_ENCRYPTION_KEY:-}"
       Jwt__Issuer: "EbayClone"
       Jwt__Audience: "EbayCloneUsers"
       EmailSettings__SenderEmail: "${EMAIL_SENDER}"

@@ -89,6 +89,9 @@ public class BroadcastFlowTests : BaseTestFixture
 
     private static async Task<User> AddAdminAsync()
     {
+        GetUserId().ShouldBeNull();
+        GetRoles().ShouldBeNull();
+
         var admin = new User
         {
             Username = "broadcast-admin",
@@ -98,6 +101,7 @@ public class BroadcastFlowTests : BaseTestFixture
             ApprovalStatus = "Approved"
         };
         await AddAsync(admin);
+        RunAsDomainUser(admin.Id);
         return admin;
     }
 }

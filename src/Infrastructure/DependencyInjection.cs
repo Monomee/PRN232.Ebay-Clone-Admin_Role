@@ -33,6 +33,8 @@ public static class DependencyInjection
         builder.Services.AddScoped<IJwtService, JwtService>();
         builder.Services.AddScoped<IEmailService, EmailService>();
         builder.Services.AddSingleton<IEncryptionService, AesEncryptionService>();
+        builder.Services.AddScoped<ISensitiveDataLogger, SensitiveDataLogger>();
+        builder.Services.AddScoped<SensitiveDataMigrationService>();
 
         builder.Services.AddScoped<IApplicationDbContext>(provider => provider.GetRequiredService<ApplicationDbContext>());
 
@@ -83,8 +85,11 @@ public static class DependencyInjection
 
         builder.Services.AddHttpClient<IContentModerationService, OpenAiModerationService>();
 
-        builder.Services.AddHostedService<AutoReviewUsersService>();
-        builder.Services.AddHostedService<ReturnRequestEscalationService>();
+        if (builder.Configuration.GetValue<bool>("BackgroundJobs:Enabled"))
+        {
+            builder.Services.AddHostedService<AutoReviewUsersService>();
+            builder.Services.AddHostedService<ReturnRequestEscalationService>();
+        }
 
         // Payout Engine
         builder.Services.AddScoped<IMockPaymentGateway, MockPaymentGatewayService>();

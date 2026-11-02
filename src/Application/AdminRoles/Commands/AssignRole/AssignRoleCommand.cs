@@ -15,14 +15,21 @@ public record AssignRoleCommand : IRequest<bool>
 public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, bool>
 {
     private readonly IApplicationDbContext _context;
+    private readonly IUser _user;
+    private readonly ISensitiveDataLogger _sensitiveLog;
 
-    public AssignRoleCommandHandler(IApplicationDbContext context)
+
+    public AssignRoleCommandHandler(IApplicationDbContext context, ISensitiveDataLogger sensitiveLog, IUser user)
     {
         _context = context;
+        _user = user;
+        _sensitiveLog = sensitiveLog;
+
     }
 
     public async Task<bool> Handle(AssignRoleCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _user.GetRequiredActorId();
         // Check if user exists
         var user = await _context.Users.FindAsync(new object[] { request.UserId }, cancellationToken);
         if (user == null)
@@ -50,7 +57,7 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, bool>
         {
             // Update existing assignment
             existingAssignment.RoleId = request.RoleId;
-            existingAssignment.AssignedBy = request.AssignedBy;
+            existingAssignment.AssignedBy = actorId;
             existingAssignment.AssignedAt = DateTime.UtcNow;
         }
         else
@@ -60,7 +67,7 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, bool>
             {
                 UserId = request.UserId,
                 RoleId = request.RoleId,
-                AssignedBy = request.AssignedBy,
+                AssignedBy = actorId,
                 AssignedAt = DateTime.UtcNow
             };
             _context.AdminUserRoles.Add(assignment);
@@ -77,13 +84,13 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, bool>
             Type = "InApp",
             Status = "Sent",
             SentAt = DateTime.UtcNow,
-            CreatedBy = request.AssignedBy,
+            CreatedBy = actorId,
             CreatedAt = DateTime.UtcNow
         });
 
         _context.AdminActions.Add(new AdminAction
         {
-            AdminId = request.AssignedBy,
+            AdminId = actorId,
             Action = "AssignAdminRole",
             TargetType = "User",
             TargetId = request.UserId,
@@ -94,12 +101,13 @@ public class AssignRoleCommandHandler : IRequestHandler<AssignRoleCommand, bool>
                 {
                     roleId = request.RoleId,
                     roleName = role.RoleName,
-                    assignedBy = request.AssignedBy
+                    assignedBy = actorId
                 }
             }),
             CreatedAt = DateTime.UtcNow
         });
 
+        _sensitiveLog.Add("AssignAdminRole", "User", user.Id.ToString(), "AdminPrivilege", new { before, roleId = role.Id, role.RoleName });
         await _context.SaveChangesAsync(cancellationToken);
         return true;
     }
