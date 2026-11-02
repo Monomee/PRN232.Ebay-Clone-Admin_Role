@@ -44,7 +44,7 @@ public class Verify2FATests
         var totp = new Totp(Base32Encoding.ToBytes(secret));
         var code = totp.ComputeTotp();
 
-        _jwtMock.Setup(j => j.GenerateToken(It.IsAny<User>())).Returns("TestToken");
+        _jwtMock.Setup(j => j.GenerateToken(It.IsAny<User>(), It.IsAny<IEnumerable<string>?>())).Returns("TestToken");
 
         var handler = new Verify2FACommandHandler(_context, _jwtMock.Object);
         var command = new Verify2FACommand(1, code);

@@ -17,7 +17,7 @@ public class JwtService : IJwtService
         _configuration = configuration;
     }
 
-    public string GenerateToken(User user)
+    public string GenerateToken(User user, IEnumerable<string>? permissions = null)
     {
         var jwtSettings = _configuration.GetSection("Jwt");
         var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
@@ -30,6 +30,7 @@ public class JwtService : IJwtService
             new Claim(ClaimTypes.Role, user.Role!),
             new Claim("twoFactorEnabled", user.TwoFactorEnabled.ToString().ToLower())
         };
+        claims.AddRange((permissions ?? []).Select(p => new Claim(AdminPermissions.ClaimType, p)));
 
         var credentials = new SigningCredentials(
             new SymmetricSecurityKey(key),

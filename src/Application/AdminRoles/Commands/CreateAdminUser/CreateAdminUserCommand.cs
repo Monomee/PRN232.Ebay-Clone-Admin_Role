@@ -15,6 +15,17 @@ public record CreateAdminUserCommand : IRequest<int>
     public int CreatedBy { get; init; }
 }
 
+public class CreateAdminUserCommandValidator : AbstractValidator<CreateAdminUserCommand>
+{
+    public CreateAdminUserCommandValidator()
+    {
+        RuleFor(v => v.Username).NotEmpty().WithMessage("Username is required.");
+        RuleFor(v => v.Email).NotEmpty().EmailAddress().WithMessage("A valid email is required.");
+        RuleFor(v => v.Password).MinimumLength(8).WithMessage("Password must be at least 8 characters.");
+        RuleFor(v => v.RoleId).GreaterThan(0).WithMessage("Role is required.");
+    }
+}
+
 public class CreateAdminUserCommandHandler : IRequestHandler<CreateAdminUserCommand, int>
 {
     private readonly IApplicationDbContext _context;
@@ -55,7 +66,7 @@ public class CreateAdminUserCommandHandler : IRequestHandler<CreateAdminUserComm
             Username = request.Username,
             Email = request.Email,
             Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
-            Role = Roles.Administrator,
+            Role = role.RoleName,
             Status = "Active",
             ApprovalStatus = "Approved",
             IsVerified = true
