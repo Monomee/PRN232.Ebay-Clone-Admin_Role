@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { LoadingIndicator } from "../components/LoadingIndicator";
 import { ToastMessage } from "../components/ToastMessage";
 import { getCurrentAdminId } from "../services/adminSession";
-import { approveUser, banUser, getUsers, rejectUser, unbanUser, generateMockUsers } from "../services/userService";
+import { approveUser, banUser, getUsers, rejectUser, unbanUser, generateMockUsers, userService } from "../services/userService";
 
 const tabDefinitions = [
   { label: "All Users", value: "All" },
@@ -17,6 +17,7 @@ export function UsersPage() {
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize] = useState(10);
   const [usersData, setUsersData] = useState({ items: [], totalCount: 0, totalPages: 0 });
+  const [summary, setSummary] = useState({ pendingApproval: 0, banned: 0 });
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "success" });
   const [modalConfig, setModalConfig] = useState({ isOpen: false, type: "", userId: null });
@@ -36,6 +37,8 @@ export function UsersPage() {
         isDescending: false,
       });
       setUsersData(result);
+      // Card totals over all users, not the loaded page (z8rp3fchqy)
+      setSummary(await userService.getSummary());
     } catch (error) {
       setToast({ message: error.message, type: "error" });
     } finally {
@@ -97,8 +100,6 @@ export function UsersPage() {
     }
   };
 
-  const bannedCount = (usersData.items || []).filter(u => u.status === "Banned").length;
-  const pendingCount = (usersData.items || []).filter(u => u.approvalStatus === "PendingApproval").length;
 
   return (
     <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: "'Inter', sans-serif", padding: '28px 20px' }}>
@@ -121,8 +122,8 @@ export function UsersPage() {
         <div className="row g-3 mb-5 justify-content-center">
           {[
             { label: 'Total Registered', value: usersData.totalCount, icon: 'bi-people-fill', color: 'primary' },
-            { label: 'Pending Approval', value: tab === "PendingApproval" ? usersData.items.length : pendingCount, icon: 'bi-person-badge-fill', color: 'warning' },
-            { label: 'Recently Banned', value: tab === "Banned" ? usersData.items.length : bannedCount, icon: 'bi-person-x-fill', color: 'danger' },
+            { label: 'Pending Approval', value: summary.pendingApproval, icon: 'bi-person-badge-fill', color: 'warning' },
+            { label: 'Recently Banned', value: summary.banned, icon: 'bi-person-x-fill', color: 'danger' },
             { label: 'Platform Admins', value: 'Active', icon: 'bi-shield-check', color: 'success' },
           ].map((stat, idx) => (
             <div key={idx} className="col-12 col-sm-6 col-lg-3">

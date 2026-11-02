@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { LoadingIndicator } from "../components/LoadingIndicator";
 import { ToastMessage } from "../components/ToastMessage";
 import { getCurrentAdminId } from "../services/adminSession";
@@ -40,11 +40,13 @@ const sortOptions = [
 ];
 
 export function DisputesPage() {
-  const [status, setStatus] = useState("");
-  const [priority, setPriority] = useState("");
-  const [type, setType] = useState("");
-  const [onlyMyDisputes, setOnlyMyDisputes] = useState(false);
-  const [onlyUrgent, setOnlyUrgent] = useState(false);
+  // Links from the dashboards open a pre-filtered list, e.g. /disputes?status=Open or ?onlyMyDisputes=true
+  const [searchParams] = useSearchParams();
+  const [status, setStatus] = useState(searchParams.get("status") || "");
+  const [priority, setPriority] = useState(searchParams.get("priority") || "");
+  const [type, setType] = useState(searchParams.get("type") || "");
+  const [onlyMyDisputes, setOnlyMyDisputes] = useState(searchParams.get("onlyMyDisputes") === "true");
+  const [onlyUrgent, setOnlyUrgent] = useState(searchParams.get("onlyUrgent") === "true");
   const [searchTerm, setSearchTerm] = useState("");
   const [sortBy, setSortBy] = useState("Deadline");
   const [descending, setDescending] = useState(false);

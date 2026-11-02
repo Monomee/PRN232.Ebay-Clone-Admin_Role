@@ -6,6 +6,11 @@ const orderService = {
     return apiRequest(endpoints.orders, { query });
   },
 
+  // Cards over every order matching the same filter: { totalOrders, totalRevenue, activeOrders, completedOrders, successRate }
+  getSummary: (query) => {
+    return apiRequest(`${endpoints.orders}/summary`, { query });
+  },
+
   getOrderById: (id) => {
     return apiRequest(`${endpoints.orders}/${id}`);
   }

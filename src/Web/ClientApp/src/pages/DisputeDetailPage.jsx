@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback, useRef } from "react";
-import { Link, useParams, useNavigate } from "react-router-dom";
+import { Link, useParams } from "react-router-dom";
 import { LoadingIndicator } from "../components/LoadingIndicator";
 import { ToastMessage } from "../components/ToastMessage";
 import { getCurrentAdminId } from "../services/adminSession";
@@ -8,7 +8,6 @@ import { useDisputeHub } from "../hooks/useDisputeHub";
 
 export function DisputeDetailPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const [dispute, setDispute] = useState(null);
   const [loading, setLoading] = useState(true);
   const [resolving, setResolving] = useState(false);
@@ -61,13 +60,13 @@ export function DisputeDetailPage() {
         }));
       }
     } catch (error) {
-      setToast({ 
-        message: error.message || "Failed to load dispute details", 
-        type: "error" 
-      });
-      
-      if (error.response?.status === 404) {
-        navigate("/disputes");
+      // 404: stay here; the "Dispute not found." block below links back to the list
+      setDispute(null);
+      if (error.response?.status !== 404) {
+        setToast({
+          message: error.message || "Failed to load dispute details",
+          type: "error"
+        });
       }
     } finally {
       setLoading(false);

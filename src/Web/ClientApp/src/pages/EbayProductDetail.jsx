@@ -201,6 +201,8 @@ const EbayProductDetail = () => {
         );
     }
 
+    // /api/Auth/me gives userId as a string, the product gives sellerId as a number (z8rp3fcgj9)
+    const isOwner = !!user && String(user.userId) === String(product.sellerId);
     const images = parseImages(product.images || product.image);
     const primaryImage = activeImage || images[0] || '/images/default-product.png';
 
@@ -321,7 +323,9 @@ const EbayProductDetail = () => {
                                 <span className="seller-username">
                                     <Link to={`/seller/${product.sellerId}`}>{product.sellerName}</Link>
                                 </span>
-                                <span className="seller-feedback">(100% positive feedback)</span>
+                                {product.sellerPositiveRate != null && (
+                                    <span className="seller-feedback">({product.sellerPositiveRate}% positive feedback)</span>
+                                )}
                             </div>
                             <div className="seller-actions">
                                 <button className="btn-save-seller"><i className="bi bi-heart"></i> Save this seller</button>
@@ -340,7 +344,7 @@ const EbayProductDetail = () => {
                                         alert("Please login to report this product.");
                                         return;
                                     }
-                                    if (user.userId === product.sellerId) {
+                                    if (isOwner) {
                                         alert("You cannot report your own product.");
                                         return;
                                     }
@@ -408,7 +412,7 @@ const EbayProductDetail = () => {
                         <div className="reviews-section" style={{ marginTop: '40px' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
                                 <h3>Customer Reviews</h3>
-                                {isAuth && user.userId !== product.sellerId && (
+                                {isAuth && !isOwner && (
                                     <button 
                                         className="btn-write-review"
                                         onClick={() => setShowReviewForm(!showReviewForm)}
@@ -482,7 +486,7 @@ const EbayProductDetail = () => {
 
                                             {/* Action Buttons */}
                                             <div className="review-actions" style={{ marginTop: '15px', display: 'flex', gap: '15px', alignItems: 'center' }}>
-                                                {isAuth && user.userId === product.sellerId && !review.sellerReply && (
+                                                {isAuth && isOwner && !review.sellerReply && (
                                                     <button 
                                                         className="link-action" 
                                                         style={{ background: 'none', border: 'none', color: '#3665f3', cursor: 'pointer', padding: 0 }}

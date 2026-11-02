@@ -76,6 +76,10 @@ export default function ReturnRequestsPage() {
     if (activeTab === 'InProgress') {
       return requests.filter(r => ['WaitingForReturnLabel', 'ReturnLabelProvided', 'AwaitingShipment', 'InTransit', 'Delivered'].includes(r.status));
     }
+    if (activeTab === 'Approved') {
+      // Same group as the "Refunded / Finished" card (z8rp3fcxzh)
+      return requests.filter(r => r.status === 'Approved' || r.status === 'Completed');
+    }
     return requests.filter((r) => r.status === activeTab);
   };
 

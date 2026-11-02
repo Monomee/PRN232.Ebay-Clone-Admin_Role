@@ -6,6 +6,17 @@ import { categoryService } from '../services/categoryService';
 
 // Substituted by .status-indicator from PayoutEnginePage.css
 
+// imageUrl holds Product.Images: a JSON array of file names/URLs, or a single URL (same as the product page)
+const firstImage = (imageUrl) => {
+    if (!imageUrl || imageUrl === '[]') return '/images/default-product.png';
+    try {
+        const parsed = JSON.parse(imageUrl);
+        return Array.isArray(parsed) && parsed.length > 0 ? parsed[0] : '/images/default-product.png';
+    } catch {
+        return imageUrl;
+    }
+};
+
 // ─── Review Modal ─────────────────────────────────────────────────────────────
 const ReviewModal = ({ product, onClose, onResolve }) => {
     // decision will now store a number (1, 2, or 3) instead of a string
@@ -87,7 +98,7 @@ const ReviewModal = ({ product, onClose, onResolve }) => {
                     {/* Product Info */}
                     <div style={{ display: 'flex', gap: 12, marginBottom: 20, padding: 14, background: '#F8FAFC', borderRadius: 10, border: '1px solid #E2E8F0' }}>
                         <img 
-                            src={product.image || '/images/default-product.png'} 
+                            src={firstImage(product.imageUrl)} 
                             alt="" 
                             style={{ width: 52, height: 52, borderRadius: 8, objectFit: 'cover' }} 
                             onError={(e) => { e.target.onerror = null; e.target.src = '/images/default-product.png'; }}
@@ -189,7 +200,7 @@ export const ProductModerationPage = () => {
     const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [categoryFilter, setCategoryFilter] = useState('');
-    const [shopFilter, setShopFilter] = useState('All');
+    const [summary, setSummary] = useState({ reported: 0, resolved: 0, rejected: 0 });
     const [search, setSearch] = useState('');
     const [selectedProduct, setSelectedProduct] = useState(null);
     const [page, setPage] = useState(1);
@@ -201,14 +212,19 @@ export const ProductModerationPage = () => {
         try {
             // Option 3: Run both APIs in parallel
             // Promise.all takes an array of Promises and returns corresponding results
-            const [productData, categoriesData] = await Promise.all([
+            // Search and category are filtered by the API across all pages (z8rp3fchta)
+            const [productData, categoriesData, summaryData] = await Promise.all([
                 productService.getManagedProducts({
                     pageNumber: page,
                     pageSize: PER_PAGE,
-                    tab: activeTab
+                    tab: activeTab,
+                    search: search.trim() || undefined,
+                    categoryId: categoryFilter || undefined
                 }),
-                categoryService.getAllCategories()
+                categoryService.getAllCategories(),
+                productService.getManagedSummary()
             ]);
+            setSummary(summaryData);
 
             // Process Products data
             // Assuming API returns { items: [], totalCount: 0 } or just an array []
@@ -228,7 +244,7 @@ export const ProductModerationPage = () => {
         } finally {
             setLoading(false);
         }
-    }, [activeTab, page]);
+    }, [activeTab, page, search, categoryFilter]);
 
     useEffect(() => { fetchProducts(); }, [fetchProducts]);
 
@@ -247,30 +263,11 @@ export const ProductModerationPage = () => {
         fetchProducts();
     };
 
-    const isFiltering = categoryFilter !== '' || shopFilter !== 'All' || search !== '';
-    // If filtering via API, this client-side filter can be skipped or left if you fetch everything
-    const filtered = products.filter(p => {
-        // 1. Check Category (Note: check if p.category exists)
-        const matchCat = categoryFilter === '' || p.categoryName === categoryFilter;
-        // 2. Check Shop
-        const matchShop = shopFilter === 'All' || shopFilter.includes('All') || p.shopName === shopFilter;
-
-        // 3. Check Search (Use optional chaining ?. to avoid error if title is null)
-        const matchSearch = search === '' ||
-            p.title?.toLowerCase().includes(search.toLowerCase()) ||
-            String(p.id).includes(search);
-
-        // 4. IMPORTANT: Skip checking p.status === 'Pending Review' 
-        // because the Server already filtered by activeTab for you.
-        return matchCat && matchShop && matchSearch;
-    });
-
-    const pendingCount = products.filter(p => p.status === 'Pending Review').length;
-    const displayTotalItems = isFiltering ? filtered.length : totalItems;
-    const filteredTotalPages = Math.ceil(displayTotalItems / PER_PAGE) || 1;
-
-    // Decide which product array to display in the table
-    const displayProducts = isFiltering ? filtered : products;
+    // Cards count every product (GET /api/products/managed/summary), not the loaded page (z8rp3fchtc)
+    const pendingCount = summary.reported;
+    const displayTotalItems = totalItems;
+    const filteredTotalPages = totalPages;
+    const displayProducts = products;
     return (
         <>
             <style>{`
@@ -331,7 +328,7 @@ export const ProductModerationPage = () => {
                             </div>
                             <div>
                                 <div className="text-secondary small fw-medium text-uppercase ls-1" style={{ fontSize: '0.65rem' }}>Resolved</div>
-                                <div className="h5 mb-0 fw-bold text-dark">{products.filter(p => p.status === 'Resolved').length}</div>
+                                <div className="h5 mb-0 fw-bold text-dark">{summary.resolved}</div>
                             </div>
                         </div>
 
@@ -341,7 +338,7 @@ export const ProductModerationPage = () => {
                             </div>
                             <div>
                                 <div className="text-secondary small fw-medium text-uppercase ls-1" style={{ fontSize: '0.65rem' }}>Rejected</div>
-                                <div className="h5 mb-0 fw-bold text-dark">{products.filter(p => p.status === 'Rejected').length}</div>
+                                <div className="h5 mb-0 fw-bold text-dark">{summary.rejected}</div>
                             </div>
                         </div>
                     </div>
@@ -378,7 +375,7 @@ export const ProductModerationPage = () => {
                                         <input 
                                             className="form-control ps-5 rounded-pill border-0 bg-light shadow-none"
                                             value={search} 
-                                            onChange={e => setSearch(e.target.value)} 
+                                            onChange={e => { setSearch(e.target.value); setPage(1); }} 
                                             placeholder="Search product ID or name..."
                                             style={{ height: '42px' }}
                                         />
@@ -393,13 +390,13 @@ export const ProductModerationPage = () => {
                                     >
                                         <option value="">All Categories</option>
                                         {categories.map((c) => (
-                                            <option key={c.tagId || c.id} value={c.tagName || c.name}>{c.tagName || c.name}</option>
+                                            <option key={c.tagId || c.id} value={c.tagId || c.id}>{c.tagName || c.name}</option>
                                         ))}
                                     </select>
 
                                     <button 
                                         className="btn btn-light rounded-circle shadow-sm d-flex align-items-center justify-content-center"
-                                        onClick={() => { setSearch(""); setCategoryFilter(""); fetchProducts(); }}
+                                        onClick={() => { setSearch(""); setCategoryFilter(""); setPage(1); fetchProducts(); }}
                                         style={{ width: '42px', height: '42px' }}
                                         title="Reset filters"
                                     >
@@ -459,7 +456,7 @@ export const ProductModerationPage = () => {
                                                 <td>
                                                     <div className="d-flex align-items-center gap-3">
                                                         <img 
-                                                            src={product.image || '/images/default-product.png'} 
+                                                            src={firstImage(product.imageUrl)} 
                                                             alt="" 
                                                             className="rounded-3 border shadow-sm" 
                                                             style={{ width: '42px', height: '42px', objectFit: 'cover' }} 
@@ -472,7 +469,7 @@ export const ProductModerationPage = () => {
                                                     <div className="small fw-medium text-dark">{product.shopName}</div>
                                                 </td>
                                                 <td style={{ maxWidth: '200px' }}>
-                                                    <div className="small text-truncate" title={product.reason}>{product.reason}</div>
+                                                    <div className="small text-truncate" title={(product.reportReasons || []).join(', ')}>{(product.reportReasons || []).join(', ')}</div>
                                                 </td>
                                                 <td>
                                                     <div className="status-indicator">
@@ -481,7 +478,8 @@ export const ProductModerationPage = () => {
                                                     </div>
                                                 </td>
                                                 <td className="text-center">
-                                                    {product.reportReasons.length > 0 ? (
+                                                    {/* Hidden products can still be reviewed to restore them */}
+                                                    {product.reportReasons.length > 0 || product.status === 'Hidden' ? (
                                                         <button 
                                                             className="btn btn-primary btn-sm px-3 rounded-pill shadow-sm fw-bold"
                                                             onClick={() => setSelectedProduct(product)}

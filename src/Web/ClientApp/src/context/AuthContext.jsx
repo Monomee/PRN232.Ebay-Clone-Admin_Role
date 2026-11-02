@@ -1,4 +1,5 @@
 
+import { setCurrentAdminId } from "../services/adminSession";
 import { createContext, useContext, useEffect, useState } from "react";
 
 const AuthContext = createContext(null);
@@ -14,7 +15,11 @@ export function AuthProvider({ children }) {
         if (!res.ok) throw new Error();
         return res.json();
       })
-      .then((data) => { setUser(data); setIsAuth(true); })
+      .then((data) => {
+        if (data?.userId) setCurrentAdminId(data.userId);
+        setUser(data);
+        setIsAuth(true);
+      })
       .catch(()    => { setUser(null); setIsAuth(false); })
       .finally(()  => setLoading(false));
   }, []); // ✅ chỉ gọi 1 lần khi app khởi động
