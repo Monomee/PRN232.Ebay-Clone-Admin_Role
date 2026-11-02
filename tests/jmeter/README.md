@@ -273,3 +273,23 @@ DoD W7-19: IP ngoài whitelist → 403 ✅ · thiếu/sai 2FA không có cookie 
 | SEC-05 | **Nghiêm trọng** | `AdminReturnRequests`, `Products`, `Reviews` không có `RequireAuthorization` → người chưa đăng nhập gọi được API admin | Plan 12 A1: 400 (đã vào endpoint) | Thêm `RequireAuthorization(...)` cho cả group |
 | SEC-06 | Trung bình | `verify-2fa` chỉ nhận `UserId` + `Code`, không ràng buộc với bước mật khẩu → có mã 2FA là đăng nhập được, bỏ qua mật khẩu | Đọc code `Verify2FACommand` | Cấp token tạm sau bước mật khẩu, verify-2fa bắt buộc token này |
 | SEC-07 | Thấp | Môi trường Development trả stack trace đầy đủ khi lỗi | Plan 03 (thiếu `IsDescending`) | Chạy `ASPNETCORE_ENVIRONMENT=Production` khi demo/deploy |
+
+## Load test cụm 1 vs 2 vs 3 replica (W8-03)
+
+Script dựng cụm bằng `docker-compose.yml` + `docker-compose.loadtest.yml`, mỗi replica giới hạn **1 CPU / 768 MB**.
+Nginx dùng config load test (`nginx/nginx.loadtest.conf.template`, sinh ra `nginx.loadtest.generated.conf`), giữ round-robin
+nhưng **bỏ `limit_req`**, vì JMeter bắn từ 1 IP sẽ bị 429 ở 25 r/s. Profile `config/cluster.properties` đặt 200 threads, 120 s,
+think time 0–200 ms (biến `think_min`/`think_range`, mặc định trong `.jmx` vẫn là 1–3 s như baseline).
+
+```powershell
+cd tests\jmeter
+.\scripts\run-cluster.ps1                              # 1,2,3 replica x plan 02/03/04 (~30 phút)
+.\scripts\run-cluster.ps1 -Replicas 1,3 -Plans 04-dispute-detail -NoBuild
+.\scripts\compare-cluster.ps1 -RunDir results\cluster\<thời gian>   # tạo lại bảng so sánh
+```
+
+Kết quả: `results/cluster/<thời gian>/summary.md` (+ `summary.csv`), HTML report ở `r<N>/<plan>-*/report/index.html`,
+kèm `r<N>-docker-stats.txt` (CPU/RAM từng container sau mỗi plan).
+
+Lưu ý: SQL Server của cụm map ra cổng **14333** (không đụng SQL Server trên Windows); JMeter chạy cùng máy nên cũng chiếm CPU;
+DB chỉ có 1 instance nên là giới hạn chung khi tăng replica.

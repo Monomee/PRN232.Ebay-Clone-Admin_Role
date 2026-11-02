@@ -2,6 +2,7 @@
 results/*
 !results/baseline/
 !results/security/
+!results/cluster/
 !results/.gitkeep
 # Log của JMeter
 jmeter.log

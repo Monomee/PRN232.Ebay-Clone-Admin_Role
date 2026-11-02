@@ -1,0 +1,43 @@
+# ============================================================
+# Template Nginx cho LOAD TEST (W8-03). Script run-cluster.ps1 thay chỗ đánh dấu trong upstream
+# bằng danh sách replica đang bật và ghi ra nginx.loadtest.generated.conf.
+# Giống nginx.conf (round-robin, cùng header) nhưng KHÔNG có limit_req,
+# để đo năng lực xử lý của API chứ không đo rate limit.
+# ============================================================
+user  nginx;
+worker_processes  auto;
+
+events {
+    worker_connections  4096;
+}
+
+http {
+    access_log  off;
+    error_log   /var/log/nginx/error.log warn;
+    sendfile    on;
+    keepalive_timeout  65;
+
+    upstream backend_api {
+__UPSTREAMS__
+        keepalive 64;
+    }
+
+    server {
+        listen 80;
+
+        location /nginx-health {
+            return 200 "healthy\n";
+        }
+
+        location / {
+            proxy_pass         http://backend_api;
+            proxy_http_version 1.1;
+            proxy_set_header   Connection "";
+            proxy_set_header   Host $host;
+            proxy_set_header   X-Real-IP $remote_addr;
+            proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header   X-Forwarded-Proto $scheme;
+            add_header X-Backend-Server $upstream_addr always;
+        }
+    }
+}

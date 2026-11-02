@@ -1,0 +1,63 @@
+# ============================================================
+# Override cho LOAD TEST cụm (task W8-03) — KHÔNG dùng cho chạy thật
+#
+#   docker compose -f docker-compose.yml -f docker-compose.loadtest.yml ...
+#   (script tests/jmeter/scripts/run-cluster.ps1 tự gọi, không cần gõ tay)
+#
+# Khác với docker-compose.yml:
+#   - Mỗi replica API bị giới hạn 1 CPU / 768 MB -> 1 vs 2 vs 3 replica so sánh công bằng
+#     (không giới hạn thì 1 container .NET cũng ăn hết CPU của máy, scale ra không thấy khác).
+#   - Thêm api3 (profile "r3") để thử 3 replica.
+#   - Nginx dùng nginx/nginx.loadtest.generated.conf (sinh từ template, KHÔNG có limit_req),
+#     vì JMeter bắn từ 1 IP sẽ dính rate limit 25 r/s của Nginx -> toàn 429.
+#   - SQL Server map ra cổng 14333 thay vì 1433 để không đụng SQL Server cài trên Windows.
+#   - Bỏ cổng 80 của Nginx, chỉ giữ 5000.
+# Cần Docker Compose >= 2.24 (hỗ trợ !override).
+# ============================================================
+services:
+  db:
+    ports: !override
+      - "14333:1433"
+
+  api1:
+    image: ebayclone-api:loadtest
+    cpus: "1.0"
+    mem_limit: 768m
+
+  api2:
+    image: ebayclone-api:loadtest
+    cpus: "1.0"
+    mem_limit: 768m
+
+  # Replica thứ 3 — chỉ bật khi COMPOSE_PROFILES=r3 hoặc gọi đích danh
+  api3:
+    image: ebayclone-api:loadtest
+    container_name: ebay_api_3
+    profiles: ["r3"]
+    cpus: "1.0"
+    mem_limit: 768m
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
+      ConnectionStrings__MyCnn: "Server=db,1433;Database=CloneEbayDB;User Id=sa;Password=${SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
+      Jwt__Key: "${JWT_KEY}"
+      Jwt__Issuer: "EbayClone"
+      Jwt__Audience: "EbayCloneUsers"
+      EmailSettings__SenderEmail: "${EMAIL_SENDER}"
+      EmailSettings__SenderPassword: "${EMAIL_PASSWORD}"
+      EmailSettings__SmtpServer: "smtp.gmail.com"
+      EmailSettings__Port: "587"
+      Redis__ConnectionString: "redis:6379"
+    restart: unless-stopped
+
+  nginx:
+    ports: !override
+      - "5000:80"
+    volumes: !override
+      - ./nginx/nginx.loadtest.generated.conf:/etc/nginx/nginx.conf:ro
