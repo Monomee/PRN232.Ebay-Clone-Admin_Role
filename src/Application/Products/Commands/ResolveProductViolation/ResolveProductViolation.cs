@@ -19,7 +19,6 @@ public record ResolveProductViolationCommand : IRequest
     public ViolationResolutionAction Action { get; init; }
     public string? AdminNote { get; init; }
     public string? ViolationType { get; init; }
-    public int? AdminId { get; init; }
 }
 
 public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProductViolationCommand>
@@ -27,9 +26,9 @@ public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProd
     private readonly IApplicationDbContext _context;
     private readonly IEmailService _emailService;
     private readonly INotificationNotifier _notifier;
-    private readonly IUser? _user;
+    private readonly IUser _user;
 
-    public ResolveProductViolationCommandHandler(IApplicationDbContext context, IEmailService emailService, INotificationNotifier notifier, IUser? user = null)
+    public ResolveProductViolationCommandHandler(IApplicationDbContext context, IEmailService emailService, INotificationNotifier notifier, IUser user)
     {
         _context = context;
         _emailService = emailService;
@@ -39,29 +38,14 @@ public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProd
 
     public async Task Handle(ResolveProductViolationCommand request, CancellationToken cancellationToken)
     {
+        var resolvedAdminId = _user.GetRequiredActorId();
+
         var product = await _context.Products
             .Include(p => p.Seller)
             .Include(p => p.Reports.Where(r => r.Status == "Pending"))
             .FirstOrDefaultAsync(p => p.Id == request.ProductId, cancellationToken);
 
         if (product == null) throw new NotFoundException(nameof(Product), $"{request.ProductId}");
-
-        int? resolvedAdminId = null;
-        if (_user != null && int.TryParse(_user.Id, out var currentAdminId) && currentAdminId > 0)
-        {
-            resolvedAdminId = currentAdminId;
-        }
-        else if (request.AdminId.HasValue && request.AdminId.Value > 0)
-        {
-            resolvedAdminId = request.AdminId.Value;
-        }
-        else
-        {
-            var adminUser = await _context.Users
-                .AsNoTracking()
-                .FirstOrDefaultAsync(u => u.Role == "SuperAdmin" || u.Role == "Admin" || u.Role == "Support", cancellationToken);
-            resolvedAdminId = adminUser?.Id ?? 1;
-        }
 
         // 1. Cập nhật Trạng thái Sản phẩm & Report dựa trên Quyết định
         if (request.Action == ViolationResolutionAction.DeleteAndWarn)
@@ -196,18 +180,15 @@ public class ResolveProductViolationCommandHandler : IRequestHandler<ResolveProd
         product.ModerationNotes = request.AdminNote;
         product.ReportCount = 0;
 
-        if (resolvedAdminId.HasValue)
+        _context.AdminActions.Add(new AdminAction
         {
-            _context.AdminActions.Add(new AdminAction
-            {
-                AdminId = resolvedAdminId.Value,
-                Action = $"ResolveProductViolation:{request.Action}",
-                TargetType = "Product",
-                TargetId = product.Id,
-                Details = request.AdminNote ?? product.ViolationType,
-                CreatedAt = DateTime.UtcNow
-            });
-        }
+            AdminId = resolvedAdminId,
+            Action = $"ResolveProductViolation:{request.Action}",
+            TargetType = "Product",
+            TargetId = product.Id,
+            Details = request.AdminNote ?? product.ViolationType,
+            CreatedAt = DateTime.UtcNow
+        });
 
         await _context.SaveChangesAsync(cancellationToken);
 

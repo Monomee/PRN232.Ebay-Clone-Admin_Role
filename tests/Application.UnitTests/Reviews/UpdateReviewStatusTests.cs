@@ -43,7 +43,7 @@ public class UpdateReviewStatusTests
         await _context.SaveChangesAsync();
 
         var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object, EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("99", "SuperAdmin"));
-        var command = new UpdateReviewStatusCommand { Id = 1, Status = "Visible", Action = "Keep", AdminId = 123 };
+        var command = new UpdateReviewStatusCommand { Id = 1, Status = "Visible", Action = "Keep" };
 
         // Act
         var result = await handler.Handle(command, CancellationToken.None);
@@ -71,7 +71,7 @@ public class UpdateReviewStatusTests
         await _context.SaveChangesAsync();
 
         var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object, EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("99", "SuperAdmin"));
-        var command = new UpdateReviewStatusCommand { Id = 2, Status = "Hidden", Action = "Hide", AdminId = 99 };
+        var command = new UpdateReviewStatusCommand { Id = 2, Status = "Hidden", Action = "Hide" };
 
         // Act
         await handler.Handle(command, CancellationToken.None);
@@ -94,7 +94,7 @@ public class UpdateReviewStatusTests
         await _context.SaveChangesAsync();
 
         var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object, EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("99", "SuperAdmin"));
-        var command = new UpdateReviewStatusCommand { Id = 3, Status = "Hidden", Action = "Hide", AdminId = 99 };
+        var command = new UpdateReviewStatusCommand { Id = 3, Status = "Hidden", Action = "Hide" };
 
         // Act
         await handler.Handle(command, CancellationToken.None);
@@ -119,7 +119,7 @@ public class UpdateReviewStatusTests
         await _context.SaveChangesAsync();
 
         var handler = new UpdateReviewStatusCommandHandler(_context, _emailMock.Object, EbayClone.Application.UnitTests.Security.SensitiveLogTests.Actor("99", "SuperAdmin"));
-        var command = new UpdateReviewStatusCommand { Id = 4, Status = "Hidden", Action = "Hide", AdminId = 99 };
+        var command = new UpdateReviewStatusCommand { Id = 4, Status = "Hidden", Action = "Hide" };
 
         // Act
         await handler.Handle(command, CancellationToken.None);

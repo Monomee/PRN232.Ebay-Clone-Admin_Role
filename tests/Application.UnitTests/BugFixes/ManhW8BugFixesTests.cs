@@ -75,7 +75,7 @@ public class ManhW8BugFixesTests
         userMock.Setup(u => u.Id).Returns("1");
 
         var handler = new ProcessReturnLabelCommandHandler(_context, notifierMock.Object, userMock.Object);
-        var command = new ProcessReturnLabelCommand(1, "", 1);
+        var command = new ProcessReturnLabelCommand(1, "");
 
         // Act & Assert
         var ex = await Should.ThrowAsync<ArgumentException>(() =>
@@ -85,7 +85,7 @@ public class ManhW8BugFixesTests
     }
 
     [Test]
-    public async Task ProcessReturnLabel_MissingAdminId_ResolvesFromIUserAndCreatesAdminAction()
+    public async Task ProcessReturnLabel_ResolvesAdminFromIUserAndCreatesAdminAction()
     {
         // Arrange
         const int expectedAdminId = 77;
@@ -105,7 +105,7 @@ public class ManhW8BugFixesTests
         await _context.SaveChangesAsync();
 
         var handler = new ProcessReturnLabelCommandHandler(_context, notifierMock.Object, userMock.Object);
-        var command = new ProcessReturnLabelCommand(10, "https://shipping.carrier.com/labels/LBL-10.pdf", AdminId: null);
+        var command = new ProcessReturnLabelCommand(10, "https://shipping.carrier.com/labels/LBL-10.pdf");
 
         // Act
         await handler.Handle(command, CancellationToken.None);
@@ -126,17 +126,16 @@ public class ManhW8BugFixesTests
     }
 
     [Test]
-    public async Task ProcessReturnLabel_MissingAdminIdAndNoUser_ResolvesFromDbFallbackAdmin()
+    public async Task ProcessReturnLabel_NoAuthenticatedUser_ThrowsAndDoesNotPickAnotherAdmin()
     {
-        // Arrange
-        const int fallbackAdminId = 88;
-        var fallbackAdmin = new User
+        // Arrange: an admin exists in DB, but must never be borrowed as the actor
+        var otherAdmin = new User
         {
-            Id = fallbackAdminId,
-            Username = "fallbackAdmin",
+            Id = 88,
+            Username = "otherAdmin",
             Role = Roles.Administrator
         };
-        _context.Users.Add(fallbackAdmin);
+        _context.Users.Add(otherAdmin);
 
         var returnRequest = new ReturnRequest
         {
@@ -154,21 +153,17 @@ public class ManhW8BugFixesTests
         userMock.Setup(u => u.Id).Returns((string?)null);
 
         var handler = new ProcessReturnLabelCommandHandler(_context, notifierMock.Object, userMock.Object);
-        var command = new ProcessReturnLabelCommand(11, "https://carrier.com/label11.pdf", AdminId: null);
+        var command = new ProcessReturnLabelCommand(11, "https://carrier.com/label11.pdf");
 
-        // Act
-        await handler.Handle(command, CancellationToken.None);
+        // Act & Assert
+        await Should.ThrowAsync<UnauthorizedAccessException>(() =>
+            handler.Handle(command, CancellationToken.None));
 
-        // Assert
-        var updated = await _context.ReturnRequests.FindAsync(11);
-        updated.ShouldNotBeNull();
-        updated.ResolvedByAdminId.ShouldBe(fallbackAdminId);
-
-        var action = await _context.AdminActions
-            .FirstOrDefaultAsync(a => a.TargetType == "ReturnRequest" && a.TargetId == 11);
-        action.ShouldNotBeNull();
-        action.AdminId.ShouldBe(fallbackAdminId);
-        action.AdminId.ShouldBeGreaterThan(0);
+        var unchanged = await _context.ReturnRequests.FindAsync(11);
+        unchanged.ShouldNotBeNull();
+        unchanged.Status.ShouldBe(ReturnStatuses.WaitingForReturnLabel);
+        unchanged.ResolvedByAdminId.ShouldBeNull();
+        (await _context.AdminActions.AnyAsync(a => a.TargetType == "ReturnRequest" && a.TargetId == 11)).ShouldBeFalse();
     }
 
     // =========================================================================
@@ -401,8 +396,7 @@ public class ManhW8BugFixesTests
             ProductId = 41,
             Action = ViolationResolutionAction.DeleteAndWarn,
             ViolationType = "Counterfeit",
-            AdminNote = "VeRO verified counterfeit goods",
-            AdminId = adminId
+            AdminNote = "VeRO verified counterfeit goods"
         };
 
         // Act
@@ -899,8 +893,7 @@ public class ManhW8BugFixesTests
         {
             Id = 901,
             Status = "Hidden",
-            Action = "Hide",
-            AdminId = 1
+            Action = "Hide"
         };
 
         // Act 1: First hide call

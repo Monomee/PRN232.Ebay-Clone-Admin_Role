@@ -23,6 +23,8 @@ public class ApproveWithdrawalCommandHandler : IRequestHandler<ApproveWithdrawal
 
     public async Task Handle(ApproveWithdrawalCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _user.GetRequiredActorId();
+
         var withdrawal = await _context.WithdrawalRequests
             .FirstOrDefaultAsync(w => w.Id == request.WithdrawalId, cancellationToken);
 
@@ -41,7 +43,7 @@ public class ApproveWithdrawalCommandHandler : IRequestHandler<ApproveWithdrawal
         wallet.ConfirmWithdrawal(withdrawal.Amount);
 
         withdrawal.Status = WithdrawalRequest.StatusApproved;
-        withdrawal.ProcessedBy = int.Parse(_user.Id ?? "0");
+        withdrawal.ProcessedBy = actorId;
         withdrawal.ProcessedAt = DateTime.UtcNow;
         withdrawal.TransactionId = request.TransactionId;
 
