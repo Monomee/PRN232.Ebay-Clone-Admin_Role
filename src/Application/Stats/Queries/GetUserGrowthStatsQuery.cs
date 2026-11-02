@@ -1,3 +1,4 @@
+using EbayClone.Application.Common.Models;
 using EbayClone.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -35,14 +36,14 @@ public class GetUserGrowthStatsQueryHandler : IRequestHandler<GetUserGrowthStats
 
         if (request.StartDate.HasValue)
         {
-            var start = request.StartDate.Value.ToUniversalTime();
+            var start = DateRange.ToUtc(request.StartDate.Value);
             query = query.Where(u => u.CreatedAt >= start);
         }
 
         if (request.EndDate.HasValue)
         {
-            var end = request.EndDate.Value.ToUniversalTime();
-            query = query.Where(u => u.CreatedAt <= end);
+            var end = DateRange.ExclusiveEnd(request.EndDate.Value);
+            query = query.Where(u => u.CreatedAt < end);
         }
 
         // Use CreatedAt for temporal filtering

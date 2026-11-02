@@ -10,6 +10,7 @@ public record GetManagedProductsQuery : IRequest<PaginatedList<ManagedProductDto
     public string Tab { get; set; } = "All"; // "All" hoặc "Reported"
     public int? CategoryId { get; set; }
     public string? ShopName { get; set; }
+    public string? Search { get; set; } // Title or product id
     public int PageNumber { get; set; } = 1;
     public int PageSize { get; set; } = 10;
 }
@@ -45,6 +46,12 @@ public class GetManagedProductsQueryHandler : IRequestHandler<GetManagedProducts
             query = query.Where(p => p.Seller != null &&
                                    ((p.Seller.Username != null && p.Seller.Username.Contains(request.ShopName)) ||
                                     (p.Seller.Email != null && p.Seller.Email.Contains(request.ShopName))));
+
+        if (!string.IsNullOrWhiteSpace(request.Search))
+        {
+            var search = request.Search.Trim().ToLower();
+            query = query.Where(p => (p.Title != null && p.Title.ToLower().Contains(search)) || p.Id.ToString().Contains(search));
+        }
 
         // 3. SẮP XẾP: VeRO lên đầu -> Nhiều report -> Mới nhất
         if (request.Tab == "Reported")

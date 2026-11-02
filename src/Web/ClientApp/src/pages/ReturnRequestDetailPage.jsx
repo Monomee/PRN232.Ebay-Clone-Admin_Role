@@ -80,8 +80,9 @@ export default function ReturnRequestDetailPage() {
                          : 'Return label provided!';
 
       navigate('/return-requests', { state: { toast: successMsg } });
-    } catch {
-      setSubmitError('Action failed. Please try again.');
+    } catch (err) {
+      // Show the API's reason (e.g. wrong status) instead of a generic message
+      setSubmitError(err?.message || 'Action failed. Please try again.');
     } finally {
       setSubmitting(false);
     }

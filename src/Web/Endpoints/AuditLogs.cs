@@ -1,5 +1,6 @@
 using EbayClone.Application.AuditLogs;
 using EbayClone.Application.AuditLogs.Queries.GetAuditLogs;
+using EbayClone.Application.AuditLogs.Queries.GetAuditLogSummary;
 using EbayClone.Application.Common.Models;
 using EbayClone.Domain.Constants;
 using EbayClone.Web.Infrastructure;
@@ -14,6 +15,7 @@ public class AuditLogs : EndpointGroupBase
         groupBuilder.RequireAuthorization(Policies.ViewAuditLogs);
 
         groupBuilder.MapGet("", GetAuditLogs);
+        groupBuilder.MapGet("summary", (ISender sender) => sender.Send(new GetAuditLogSummaryQuery()));
         groupBuilder.MapGet("admin/{adminId:int}", GetAuditLogsByAdmin);
         groupBuilder.MapGet("entity/{targetType}/{targetId:int}", GetAuditLogsByEntity);
     }

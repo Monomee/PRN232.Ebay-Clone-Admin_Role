@@ -3,9 +3,13 @@ import { dashboardService } from "../services/dashboardService";
 import reportService from "../services/reportService";
 import { useAuth } from "../context/AuthContext";
 
+// Local calendar date (yyyy-MM-dd). toISOString() converts to UTC first, which shifts the day back in UTC+7.
 function toIso(date) {
   if (!date) return null;
-  return date.toISOString().split("T")[0];
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
 }
 
 function getPresetRange(preset, customStart, customEnd) {
@@ -14,8 +18,9 @@ function getPresetRange(preset, customStart, customEnd) {
   switch (preset) {
     case "custom":
       return {
-        start: customStart ? new Date(customStart) : today,
-        end: customEnd ? new Date(customEnd) : today
+        // "yyyy-MM-dd" alone parses as UTC midnight; add a time so it is read as a local date
+        start: customStart ? new Date(`${customStart}T00:00`) : today,
+        end: customEnd ? new Date(`${customEnd}T00:00`) : today
       };
     case "all":
       return { start: null, end: null };
@@ -46,8 +51,8 @@ export function useDashboardData() {
   const [preset, setPreset] = useState("month");
 
   // Custom date state (defaults)
-  const todayStr = new Date().toISOString().split('T')[0];
-  const weekAgoStr = new Date(new Date().setDate(new Date().getDate() - 7)).toISOString().split('T')[0];
+  const todayStr = toIso(new Date());
+  const weekAgoStr = toIso(new Date(new Date().setDate(new Date().getDate() - 7)));
 
   const [customStart, setCustomStart] = useState(weekAgoStr);
   const [customEnd, setCustomEnd] = useState(todayStr);

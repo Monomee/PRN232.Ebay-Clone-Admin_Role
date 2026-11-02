@@ -252,6 +252,25 @@ public class HoangW8BugFixesTests
         metrics.WeeklyRevenue.Sum(d => d.Revenue).ShouldBe(5);
     }
 
+    // z8rp3fcgje + z8rp3fcghe: the tester's call was startDate=endDate=today (date only)
+    [Test]
+    public async Task DateOnlyRange_IncludesTheWholeEndDay()
+    {
+        var today = DateTime.UtcNow.Date;
+        var at = today.AddHours(DateTime.UtcNow.Hour).AddMinutes(1);
+        _db.FinancialTransactions.Add(new FinancialTransaction { Type = "FeeDeduction", Amount = 20, Date = at });
+        _db.OrderTables.Add(new OrderTable { Status = "Delivered", OrderDate = at });
+        await _db.SaveChangesAsync();
+        var dateOnly = DateTime.SpecifyKind(today, DateTimeKind.Unspecified); // how "2026-10-28" binds
+
+        (await new GetRevenueStatsQueryHandler(_db).Handle(new GetRevenueStatsQuery(dateOnly, dateOnly), CancellationToken.None))
+            .TotalRevenue.ShouldBe(20);
+        (await new GetDashboardMetricsQueryHandler(_db).Handle(new GetDashboardMetricsQuery { StartDate = dateOnly, EndDate = dateOnly }, CancellationToken.None))
+            .TotalOrdersToday.ShouldBe(1);
+        (await new GetOrderStatsQueryHandler(_db).Handle(new GetOrderStatsQuery(dateOnly, dateOnly), CancellationToken.None))
+            .Total.ShouldBe(1);
+    }
+
     // z8rp3fcx2b
     [Test]
     public async Task Orders_SearchByProductName_AndCanceledMatchesBothSpellings()

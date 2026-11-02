@@ -9,6 +9,7 @@ using EbayClone.Application.Products.Commands.UpdateProduct;
 using EbayClone.Application.Products.Queries.DTOs;
 using EbayClone.Application.Products.Queries.GetProducts;
 using EbayClone.Application.Products.Queries.GetProductById;
+using EbayClone.Application.Products.Queries.GetManagedProductSummary;
 using EbayClone.Application.Products.Queries.GetSellerProducts;
 using EbayClone.Application.Products.Queries.GetViolationDetails;
 using EbayClone.Web.Infrastructure;
@@ -36,6 +37,8 @@ public class Products : EndpointGroupBase
         // [MỚI] Màn hình 5: Lấy danh sách quản lý (có Lọc/Tab)
         group.MapGet("managed", GetManagedProducts)
              .RequireAuthorization(Policies.ManageProducts); // GET /api/products/managed
+        group.MapGet("managed/summary", (ISender sender) => sender.Send(new GetManagedProductSummaryQuery()))
+             .RequireAuthorization(Policies.ManageProducts);
         group.MapPost("reports", CreateProductReport);
 
         // [MỚI] Lấy danh sách sản phẩm của Seller

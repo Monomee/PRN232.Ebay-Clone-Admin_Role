@@ -18,6 +18,7 @@ public class CreateAdminRoleCommandValidator : AbstractValidator<CreateAdminRole
     public CreateAdminRoleCommandValidator(IApplicationDbContext context)
     {
         RuleFor(v => v.RoleName)
+            .Cascade(CascadeMode.Stop)
             .NotEmpty().WithMessage("Role name is required.")
             .MustAsync(async (name, ct) => !await context.AdminRoles.AnyAsync(r => r.RoleName.ToLower() == name.Trim().ToLower(), ct))
             .WithMessage("A role with this name already exists.");

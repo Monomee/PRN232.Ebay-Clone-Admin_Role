@@ -1,3 +1,4 @@
+using EbayClone.Application.Common.Models;
 using EbayClone.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -37,14 +38,14 @@ public class GetRevenueStatsQueryHandler : IRequestHandler<GetRevenueStatsQuery,
 
         if (request.StartDate.HasValue)
         {
-            var start = request.StartDate.Value.ToUniversalTime();
+            var start = DateRange.ToUtc(request.StartDate.Value);
             query = query.Where(t => t.Date >= start);
         }
 
         if (request.EndDate.HasValue)
         {
-            var end = request.EndDate.Value.ToUniversalTime();
-            query = query.Where(t => t.Date <= end);
+            var end = DateRange.ExclusiveEnd(request.EndDate.Value);
+            query = query.Where(t => t.Date < end);
         }
 
         // Fetch raw rows – two columns only, then group client-side.

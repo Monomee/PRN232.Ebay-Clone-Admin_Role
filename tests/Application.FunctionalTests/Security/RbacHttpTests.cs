@@ -25,7 +25,9 @@ public class RbacHttpTests
             ("GET", "/api/adminreturnrequests"), ("GET", "/api/adminreturnrequests/1"),
             ("POST", "/api/adminreturnrequests/1/approve"), ("POST", "/api/adminreturnrequests/1/adjudicate"),
             ("POST", "/api/adminreturnrequests/1/reject"), ("POST", "/api/adminreturnrequests/1/freeze"),
-            ("POST", "/api/adminreturnrequests/1/return-label") })
+            ("POST", "/api/adminreturnrequests/1/return-label"),
+            ("GET", "/api/Users/summary"), ("GET", "/api/Orders/summary"),
+            ("GET", "/api/products/managed/summary"), ("GET", "/api/AuditLogs/summary") })
             yield return new TestCaseData(m, p, null, HttpStatusCode.Unauthorized).SetName($"Anonymous {m} {p}");
 
         // Authenticated, wrong role
