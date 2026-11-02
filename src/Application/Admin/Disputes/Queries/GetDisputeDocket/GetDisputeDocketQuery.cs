@@ -111,9 +111,10 @@ public class GetDisputeDocketQueryHandler : IRequestHandler<GetDisputeDocketQuer
                 ? query.OrderByDescending(d => d.Amount) 
                 : query.OrderBy(d => d.Amount),
             
+            // Rank by severity; the raw string would sort alphabetically (Critical, High, Low, Medium)
             "priority" => request.Descending
-                ? query.OrderByDescending(d => d.Priority)
-                : query.OrderBy(d => d.Priority),
+                ? query.OrderByDescending(d => d.Priority == DisputePriorities.Critical ? 4 : d.Priority == DisputePriorities.High ? 3 : d.Priority == DisputePriorities.Medium ? 2 : 1)
+                : query.OrderBy(d => d.Priority == DisputePriorities.Critical ? 4 : d.Priority == DisputePriorities.High ? 3 : d.Priority == DisputePriorities.Medium ? 2 : 1),
             
             "createdat" => request.Descending
                 ? query.OrderByDescending(d => d.CreatedAt)
