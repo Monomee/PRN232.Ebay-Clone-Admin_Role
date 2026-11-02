@@ -69,8 +69,11 @@ public class FeApiSupportTests
             new OrderTable { Status = "Cancelled", TotalPrice = 40 });
         await _db.SaveChangesAsync();
 
-        (await new GetOrderSummaryQueryHandler(_db).Handle(new GetOrderSummaryQuery(), CancellationToken.None))
+        (await new GetOrderSummaryQueryHandler(_db).Handle(new GetOrderSummaryQuery(new()), CancellationToken.None))
             .ShouldBe(new OrderSummaryDto(4, 60, 1, 2, 50));
+        // Cards follow the list filter, not the whole table
+        (await new GetOrderSummaryQueryHandler(_db).Handle(new GetOrderSummaryQuery(new() { Status = "Delivered" }), CancellationToken.None))
+            .ShouldBe(new OrderSummaryDto(1, 20, 0, 1, 100));
     }
 
     // z8rp3fcgjm
@@ -78,11 +81,14 @@ public class FeApiSupportTests
     public async Task AuditLogSummary_CountsCriticalAcrossAllEntries()
     {
         _db.AdminActions.AddRange(
-            new AdminAction { Action = "BanUser" }, new AdminAction { Action = "DeleteProduct" }, new AdminAction { Action = "ApproveUser" });
+            new AdminAction { Action = "BanUser" }, new AdminAction { Action = "DeleteProduct" },
+            new AdminAction { Action = "ApproveUser" }, new AdminAction { Action = "UnbanUser" });
         await _db.SaveChangesAsync();
 
-        (await new GetAuditLogSummaryQueryHandler(_db).Handle(new GetAuditLogSummaryQuery(), CancellationToken.None))
-            .ShouldBe(new AuditLogSummaryDto(3, 2));
+        (await new GetAuditLogSummaryQueryHandler(_db).Handle(new GetAuditLogSummaryQuery(new()), CancellationToken.None))
+            .ShouldBe(new AuditLogSummaryDto(4, 2));
+        (await new GetAuditLogSummaryQueryHandler(_db).Handle(new GetAuditLogSummaryQuery(new() { Action = "User" }), CancellationToken.None))
+            .ShouldBe(new AuditLogSummaryDto(3, 1));
     }
 
     // z8rp3fcgja

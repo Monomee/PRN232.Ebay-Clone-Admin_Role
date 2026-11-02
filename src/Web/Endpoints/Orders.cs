@@ -17,7 +17,7 @@ public class Orders : EndpointGroupBase
         group.RequireAuthorization(Policies.ManageOrders);
 
         group.MapGet("", GetOrders);
-        group.MapGet("summary", (ISender sender) => sender.Send(new GetOrderSummaryQuery()));
+        group.MapGet("summary", (ISender sender, [AsParameters] GetOrdersWithPaginationQuery filter) => sender.Send(new GetOrderSummaryQuery(filter)));
         group.MapGet("{id:int}", GetOrderById);
     }
 

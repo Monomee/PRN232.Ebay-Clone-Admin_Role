@@ -1,5 +1,6 @@
 using EbayClone.Application.Common.Interfaces;
 using EbayClone.Application.Common.Models;
+using EbayClone.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using System.Text.Json;
 
@@ -27,11 +28,9 @@ public class GetAuditLogsQueryHandler : IRequestHandler<GetAuditLogsQuery, Pagin
         _context = context;
     }
 
-    public async Task<PaginatedList<AuditLogDto>> Handle(GetAuditLogsQuery request, CancellationToken cancellationToken)
+    /// Shared with GetAuditLogSummaryQuery so the page cards use the same filters as the table.
+    internal static IQueryable<AdminAction> ApplyFilters(IQueryable<AdminAction> query, GetAuditLogsQuery request)
     {
-        var query = _context.AdminActions
-            .Include(a => a.Admin)
-            .AsQueryable();
 
         // Filter by admin
         if (request.AdminId.HasValue)
@@ -76,6 +75,13 @@ public class GetAuditLogsQueryHandler : IRequestHandler<GetAuditLogsQuery, Pagin
             var to = DateRange.ExclusiveEnd(request.ToDate.Value);
             query = query.Where(a => a.CreatedAt < to);
         }
+
+        return query;
+    }
+
+    public async Task<PaginatedList<AuditLogDto>> Handle(GetAuditLogsQuery request, CancellationToken cancellationToken)
+    {
+        var query = ApplyFilters(_context.AdminActions.Include(a => a.Admin), request);
 
         var totalCount = await query.CountAsync(cancellationToken);
 
