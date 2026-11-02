@@ -28,6 +28,8 @@ public class FreezeReturnRequestCommandHandler
         FreezeReturnRequestCommand request,
         CancellationToken cancellationToken)
     {
+        var adminId = _user.GetRequiredActorId();
+
         var returnRequest = await _context.ReturnRequests
             .FirstOrDefaultAsync(r => r.Id == request.ReturnRequestId, cancellationToken);
 
@@ -45,17 +47,14 @@ public class FreezeReturnRequestCommandHandler
 
         returnRequest.Status = ReturnStatuses.Frozen;
         returnRequest.AdminNote = $"[FROZEN] {request.AdminNote}";
-        if (int.TryParse(_user.Id, out int adminId))
-        {
-            returnRequest.ResolvedByAdminId = adminId;
-        }
+        returnRequest.ResolvedByAdminId = adminId;
         
         await _context.SaveChangesAsync(cancellationToken);
         
         // Ghi log Admin Action
         var adminAction = new AdminAction
         {
-            AdminId = int.Parse(_user.Id ?? "0"),
+            AdminId = adminId,
             Action = "FreezeReturnRequest",
             TargetType = "ReturnRequest",
             TargetId = returnRequest.Id,

@@ -45,6 +45,8 @@ public class UpdateDisputePriorityCommandHandler : IRequestHandler<UpdateDispute
 
     public async Task<bool> Handle(UpdateDisputePriorityCommand request, CancellationToken cancellationToken)
     {
+        var adminId = _currentUser.GetRequiredActorId();
+
         var dispute = await _context.Disputes
             .FirstOrDefaultAsync(d => d.Id == request.DisputeId, cancellationToken);
 
@@ -54,10 +56,9 @@ public class UpdateDisputePriorityCommandHandler : IRequestHandler<UpdateDispute
         dispute.Priority = request.Priority;
 
         // Log admin action
-        var adminId = int.TryParse(_currentUser.Id, out var parsedId) ? parsedId : (int?)null;
         var adminAction = new AdminAction
         {
-            AdminId = adminId ?? 0,
+            AdminId = adminId,
             Action = "UpdateDisputePriority",
             TargetType = "Dispute",
             TargetId = dispute.Id,

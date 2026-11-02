@@ -23,6 +23,8 @@ public class RejectWithdrawalCommandHandler : IRequestHandler<RejectWithdrawalCo
 
     public async Task Handle(RejectWithdrawalCommand request, CancellationToken cancellationToken)
     {
+        var actorId = _user.GetRequiredActorId();
+
         var withdrawal = await _context.WithdrawalRequests
             .FirstOrDefaultAsync(w => w.Id == request.WithdrawalId, cancellationToken);
 
@@ -44,7 +46,7 @@ public class RejectWithdrawalCommandHandler : IRequestHandler<RejectWithdrawalCo
 
         // 3. Update Status
         withdrawal.Status = WithdrawalRequest.StatusRejected;
-        withdrawal.ProcessedBy = int.Parse(_user.Id ?? "0");
+        withdrawal.ProcessedBy = actorId;
         withdrawal.ProcessedAt = DateTime.UtcNow;
         withdrawal.RejectionReason = request.Reason;
 

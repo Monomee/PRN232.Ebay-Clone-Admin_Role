@@ -31,6 +31,8 @@ public class ApproveReturnRequestCommandHandler
         ApproveReturnRequestCommand request,
         CancellationToken cancellationToken)
     {
+        var adminId = _user.GetRequiredActorId();
+
         var returnRequest = await _context.ReturnRequests
             .Include(r => r.Order)
                 .ThenInclude(o => o!.OrderItems)
@@ -48,10 +50,7 @@ public class ApproveReturnRequestCommandHandler
         // Cập nhật ReturnRequest
         returnRequest.AdminNote = request.AdminNote;
         returnRequest.ResolvedAt = DateTime.UtcNow;
-        if (int.TryParse(_user.Id, out int adminId))
-        {
-            returnRequest.ResolvedByAdminId = adminId;
-        }
+        returnRequest.ResolvedByAdminId = adminId;
         returnRequest.ResolutionAction = request.ResolutionAction;
         returnRequest.IsRefundedByEbayFund = request.IsRefundedByEbayFund;
 
@@ -112,7 +111,7 @@ public class ApproveReturnRequestCommandHandler
                 // Ghi log Admin Action
                 var adminAction = new AdminAction
                 {
-                    AdminId = int.Parse(_user.Id ?? "0"),
+                    AdminId = adminId,
                     Action = "ApproveReturnRequest",
                     TargetType = "ReturnRequest",
                     TargetId = returnRequest.Id,

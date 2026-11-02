@@ -122,7 +122,7 @@ export const ReviewMonitoringPage = () => {
     const handleAction = async (id, status, action) => {
         setActionLoading(prev => ({ ...prev, [id]: true }));
         try {
-            await reviewsService.updateReviewStatus(id, { status, action, adminId: 1 });
+            await reviewsService.updateReviewStatus(id, { status, action });
             showToast(action === 'Hide' 
                 ? "Review hidden and penalty applied to the offending account!" 
                 : "Review approved and retained publicly!");

@@ -71,6 +71,8 @@ public class ResolveDisputeCommandHandler : IRequestHandler<ResolveDisputeComman
 
     public async Task<int> Handle(ResolveDisputeCommand request, CancellationToken cancellationToken)
     {
+        var adminId = _currentUser.GetRequiredActorId();
+
         // Get dispute with related data
         var dispute = await _context.Disputes
             .Include(d => d.Order)
@@ -91,19 +93,6 @@ public class ResolveDisputeCommandHandler : IRequestHandler<ResolveDisputeComman
             (!request.RefundAmount.HasValue || request.RefundAmount.Value <= 0))
         {
             throw new ValidationException("Refund amount is required and must be greater than 0 for Buyer or Split decisions.");
-        }
-
-        // Get current admin ID - Handle mapping from Identity GUID to User table int ID
-        var adminId = int.TryParse(_currentUser.Id, out var parsedId) ? parsedId : (int?)null;
-        
-        if (adminId == null || adminId == 0)
-        {
-            // Fallback to the default admin user in the Domain User table if identity claim doesn't map directly
-            var fallbackAdmin = await _context.Users
-                .Where(u => u.Role == "Admin" || u.Role == "System")
-                .FirstOrDefaultAsync(cancellationToken);
-                
-            adminId = fallbackAdmin?.Id ?? 1; // Default to 1 if no user found
         }
 
         // Capture before state
@@ -186,7 +175,7 @@ public class ResolveDisputeCommandHandler : IRequestHandler<ResolveDisputeComman
         var systemMessage = new DisputeMessage
         {
             DisputeId = dispute.Id,
-            SenderId = adminId ?? 0,
+            SenderId = adminId,
             SenderType = SenderTypes.Admin,
             MessageType = MessageTypes.Note,
             Content = $"Case resolved by admin. Decision: {request.Winner}. {request.AdminNotes}",
@@ -198,7 +187,7 @@ public class ResolveDisputeCommandHandler : IRequestHandler<ResolveDisputeComman
         // Log admin action
         var adminAction = new AdminAction
         {
-            AdminId = adminId ?? 0,
+            AdminId = adminId,
             Action = "ResolveDispute",
             TargetType = "Dispute",
             TargetId = dispute.Id,
@@ -228,7 +217,7 @@ public class ResolveDisputeCommandHandler : IRequestHandler<ResolveDisputeComman
             dispute.CaseId ?? string.Empty,
             request.Winner,
             request.RefundAmount ?? 0,
-            adminId ?? 0,
+            adminId,
             cancellationToken);
 
         // Send notifications (email/SMS)

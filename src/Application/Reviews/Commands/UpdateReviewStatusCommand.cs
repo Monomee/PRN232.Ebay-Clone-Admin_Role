@@ -9,7 +9,6 @@ public record UpdateReviewStatusCommand : IRequest<bool>
     public int Id { get; init; }
     public string Status { get; init; } = null!; // 'Visible', 'Hidden'
     public string Action { get; init; } = null!; // 'Keep', 'Hide'
-    public int AdminId { get; init; }
 }
 
 public class UpdateReviewStatusCommandHandler : IRequestHandler<UpdateReviewStatusCommand, bool>

@@ -83,8 +83,7 @@ public class Reviews : EndpointGroupBase
         {
             Id = id,
             Status = request.Status,
-            Action = request.Action,
-            AdminId = request.AdminId
+            Action = request.Action
         });
 
         if (!result) return TypedResults.NotFound();
@@ -128,7 +127,7 @@ public class Reviews : EndpointGroupBase
     }
 }
 
-public record UpdateReviewStatusRequest(string Status, string Action, int AdminId);
+public record UpdateReviewStatusRequest(string Status, string Action);
 
 public record ReplyToReviewRequest(int SellerId, string Reply);
 

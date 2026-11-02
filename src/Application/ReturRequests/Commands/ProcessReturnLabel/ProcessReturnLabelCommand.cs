@@ -10,15 +10,15 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EbayClone.Application.ReturRequests.Commands.ProcessReturnLabel;
 
-public record ProcessReturnLabelCommand(int ReturnRequestId, string ReturnLabelUrl, int? AdminId = null) : IRequest<Unit>;
+public record ProcessReturnLabelCommand(int ReturnRequestId, string ReturnLabelUrl) : IRequest<Unit>;
 
 public class ProcessReturnLabelCommandHandler : IRequestHandler<ProcessReturnLabelCommand, Unit>
 {
     private readonly IApplicationDbContext _context;
     private readonly INotificationNotifier _notifier;
-    private readonly IUser? _user;
+    private readonly IUser _user;
 
-    public ProcessReturnLabelCommandHandler(IApplicationDbContext context, INotificationNotifier notifier, IUser? user = null)
+    public ProcessReturnLabelCommandHandler(IApplicationDbContext context, INotificationNotifier notifier, IUser user)
     {
         _context = context;
         _notifier = notifier;
@@ -27,6 +27,8 @@ public class ProcessReturnLabelCommandHandler : IRequestHandler<ProcessReturnLab
 
     public async Task<Unit> Handle(ProcessReturnLabelCommand request, CancellationToken cancellationToken)
     {
+        var adminId = _user.GetRequiredActorId();
+
         if (string.IsNullOrWhiteSpace(request.ReturnLabelUrl))
             throw new ArgumentException("Please enter a return label URL.");
 
@@ -38,27 +40,6 @@ public class ProcessReturnLabelCommandHandler : IRequestHandler<ProcessReturnLab
 
         if (returnRequest.Status != ReturnStatuses.WaitingForReturnLabel)
             throw new InvalidOperationException($"Yêu cầu này không ở trạng thái chờ mã vận đơn (Status: {returnRequest.Status}).");
-
-        int adminId = request.AdminId.GetValueOrDefault();
-        if (adminId <= 0 && !string.IsNullOrWhiteSpace(_user?.Id) && int.TryParse(_user.Id, out var parsedUserId))
-        {
-            adminId = parsedUserId;
-        }
-        if (adminId <= 0 && returnRequest.ResolvedByAdminId.HasValue && returnRequest.ResolvedByAdminId.Value > 0)
-        {
-            adminId = returnRequest.ResolvedByAdminId.Value;
-        }
-        if (adminId <= 0)
-        {
-            adminId = await _context.Users
-                .Where(u => u.Role == Roles.SuperAdmin || u.Role == Roles.Support || u.Role == Roles.Administrator)
-                .Select(u => u.Id)
-                .FirstOrDefaultAsync(cancellationToken);
-        }
-        if (adminId <= 0)
-        {
-            throw new UnauthorizedAccessException("AdminId is required to process return shipping label.");
-        }
 
         returnRequest.ReturnLabelUrl = request.ReturnLabelUrl.Trim();
         returnRequest.Status = ReturnStatuses.ReturnLabelProvided;
