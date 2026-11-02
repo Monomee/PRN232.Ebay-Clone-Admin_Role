@@ -1,3 +1,4 @@
+using EbayClone.Application.Common.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -36,22 +37,22 @@ public class GetDashboardMetricsQueryHandler : IRequestHandler<GetDashboardMetri
         var today = now.Date;
         var sevenDaysAgo = today.AddDays(-6);
 
-        var startDate = request.StartDate;
-        var endDate = request.EndDate;
+        DateTime? startDate = request.StartDate.HasValue ? DateRange.ToUtc(request.StartDate.Value) : null;
+        DateTime? endDate = request.EndDate.HasValue ? DateRange.ExclusiveEnd(request.EndDate.Value) : null;
 
         var totalUsers = await _context.Users
-            .CountAsync(u => (!request.StartDate.HasValue || u.CreatedAt >= request.StartDate.Value) &&
-                             (!request.EndDate.HasValue || u.CreatedAt <= request.EndDate.Value), 
+            .CountAsync(u => (!startDate.HasValue || u.CreatedAt >= startDate.Value) &&
+                             (!endDate.HasValue || u.CreatedAt < endDate.Value), 
                         cancellationToken);
 
         var totalProducts = await _context.Products
-            .CountAsync(p => (!request.StartDate.HasValue || p.CreatedAt >= request.StartDate.Value) &&
-                             (!request.EndDate.HasValue || p.CreatedAt <= request.EndDate.Value), 
+            .CountAsync(p => (!startDate.HasValue || p.CreatedAt >= startDate.Value) &&
+                             (!endDate.HasValue || p.CreatedAt < endDate.Value), 
                         cancellationToken);
         
         var totalOrders = await _context.OrderTables
-            .CountAsync(o => (!request.StartDate.HasValue || o.OrderDate >= request.StartDate.Value) &&
-                             (!request.EndDate.HasValue || o.OrderDate <= request.EndDate.Value), 
+            .CountAsync(o => (!startDate.HasValue || o.OrderDate >= startDate.Value) &&
+                             (!endDate.HasValue || o.OrderDate < endDate.Value), 
                         cancellationToken);
 
         var pendingAccountsCount = await _context.Users

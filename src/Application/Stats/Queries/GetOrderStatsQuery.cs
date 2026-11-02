@@ -1,3 +1,4 @@
+using EbayClone.Application.Common.Models;
 using EbayClone.Application.Common.Interfaces;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
@@ -34,14 +35,14 @@ public class GetOrderStatsQueryHandler : IRequestHandler<GetOrderStatsQuery, Ord
 
         if (request.StartDate.HasValue)
         {
-            var start = request.StartDate.Value.ToUniversalTime();
+            var start = DateRange.ToUtc(request.StartDate.Value);
             query = query.Where(o => o.OrderDate >= start);
         }
 
         if (request.EndDate.HasValue)
         {
-            var end = request.EndDate.Value.ToUniversalTime();
-            query = query.Where(o => o.OrderDate <= end);
+            var end = DateRange.ExclusiveEnd(request.EndDate.Value);
+            query = query.Where(o => o.OrderDate < end);
         }
 
         var orders = await query

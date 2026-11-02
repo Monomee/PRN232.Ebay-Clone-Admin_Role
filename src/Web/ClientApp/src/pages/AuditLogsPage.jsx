@@ -45,8 +45,9 @@ export function AuditLogsPage() {
         adminUsername: filters.adminUsername,
         targetType: filters.targetType,
         action: filters.action,
-        fromDate: filters.fromDate ? new Date(filters.fromDate).toISOString() : undefined,
-        toDate: filters.toDate ? new Date(filters.toDate).toISOString() : undefined,
+        // Whole local days: start of From to end of To
+        fromDate: filters.fromDate ? new Date(`${filters.fromDate}T00:00:00`).toISOString() : undefined,
+        toDate: filters.toDate ? new Date(`${filters.toDate}T23:59:59.999`).toISOString() : undefined,
       });
       setLogsData(result);
     } catch (error) {
