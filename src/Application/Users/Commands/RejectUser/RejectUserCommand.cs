@@ -45,8 +45,11 @@ public class RejectUserCommandHandler : IRequestHandler<RejectUserCommand, bool>
             user.BannedReason
         };
 
+        // Same outcome as AutoReviewUsersService's rejection: the account can no longer sign in.
         user.ApprovalStatus = "Rejected";
-        user.BannedReason = request.Reason; // Store rejection reason
+        user.Status = "Banned";
+        user.BannedReason = request.Reason;
+        user.BannedAt = DateTime.UtcNow;
 
         var after = new
         {

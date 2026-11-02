@@ -68,19 +68,20 @@ public class GetDashboardMetricsQueryHandler : IRequestHandler<GetDashboardMetri
         var newReturnRequestsCount = await _context.ReturnRequests
             .CountAsync(r => r.Status == "Pending", cancellationToken);
 
-        // Weekly Revenue Chart Data
-        var ordersLast7Days = await _context.OrderTables
-            .Where(o => o.OrderDate >= sevenDaysAgo)
-            .Select(o => new { o.OrderDate, o.TotalPrice })
+        // Weekly Revenue Chart Data: platform revenue is the fees charged (same source as the revenue report),
+        // not the gross order value that goes to sellers.
+        var feesLast7Days = await _context.FinancialTransactions
+            .Where(t => t.Type == "FeeDeduction" && t.Date >= sevenDaysAgo)
+            .Select(t => new { t.Date, t.Amount })
             .ToListAsync(cancellationToken);
 
         var weeklyRevenue = new List<DailyRevenueDto>();
         for (int i = 0; i < 7; i++)
         {
             var date = sevenDaysAgo.AddDays(i);
-            var dailyTotal = ordersLast7Days
-                .Where(o => o.OrderDate.HasValue && o.OrderDate.Value.Date == date)
-                .Sum(o => o.TotalPrice ?? 0);
+            var dailyTotal = feesLast7Days
+                .Where(t => t.Date.Date == date)
+                .Sum(t => t.Amount);
 
             weeklyRevenue.Add(new DailyRevenueDto
             {

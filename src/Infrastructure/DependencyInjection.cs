@@ -52,29 +52,19 @@ public static class DependencyInjection
         {
             options.AddPolicy(Policies.CanPurge, policy => policy.RequireRole(Roles.SuperAdmin));
 
-            options.AddPolicy(Policies.ViewDashboard, policy =>
-                policy.RequireRole(Roles.Monitor, Roles.Support, Roles.SuperAdmin));
+            // Business policies also accept a custom admin role that lists the policy in its Permissions.
+            // Admin-role management, audit logs and financial endpoints stay system-role only.
+            void AddGrantablePolicy(string name, params string[] roles) => options.AddPolicy(name, policy =>
+                policy.RequireAssertion(ctx => roles.Any(ctx.User.IsInRole) || ctx.User.HasClaim(AdminPermissions.ClaimType, name)));
 
-            options.AddPolicy(Policies.ViewReports, policy =>
-                policy.RequireRole(Roles.Monitor, Roles.SuperAdmin));
-
-            options.AddPolicy(Policies.ManageUsers, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
-
-            options.AddPolicy(Policies.ManageProducts, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
-
-            options.AddPolicy(Policies.ManageOrders, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
-
-            options.AddPolicy(Policies.ManageDisputes, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
-
-            options.AddPolicy(Policies.ModerateReviews, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
-
-            options.AddPolicy(Policies.ManageBroadcasts, policy =>
-                policy.RequireRole(Roles.Support, Roles.SuperAdmin, Roles.Administrator));
+            AddGrantablePolicy(Policies.ViewDashboard, Roles.Monitor, Roles.Support, Roles.SuperAdmin);
+            AddGrantablePolicy(Policies.ViewReports, Roles.Monitor, Roles.SuperAdmin);
+            AddGrantablePolicy(Policies.ManageUsers, Roles.Support, Roles.SuperAdmin, Roles.Administrator);
+            AddGrantablePolicy(Policies.ManageProducts, Roles.Support, Roles.SuperAdmin, Roles.Administrator);
+            AddGrantablePolicy(Policies.ManageOrders, Roles.Support, Roles.SuperAdmin, Roles.Administrator);
+            AddGrantablePolicy(Policies.ManageDisputes, Roles.Support, Roles.SuperAdmin, Roles.Administrator);
+            AddGrantablePolicy(Policies.ModerateReviews, Roles.Support, Roles.SuperAdmin, Roles.Administrator);
+            AddGrantablePolicy(Policies.ManageBroadcasts, Roles.Support, Roles.SuperAdmin, Roles.Administrator);
 
             options.AddPolicy(Policies.ManageAdminRoles, policy =>
                 policy.RequireRole(Roles.SuperAdmin));
@@ -89,6 +79,7 @@ public static class DependencyInjection
         {
             builder.Services.AddHostedService<AutoReviewUsersService>();
             builder.Services.AddHostedService<ReturnRequestEscalationService>();
+            builder.Services.AddHostedService<ScheduledBroadcastService>();
         }
 
         // Payout Engine

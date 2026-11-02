@@ -55,6 +55,11 @@ public class AssignDisputeCommandHandler : IRequestHandler<AssignDisputeCommand,
             throw new ValidationException("Admin ID could not be determined.");
         }
 
+        if (dispute.AssignedTo.HasValue && dispute.AssignedTo != adminId)
+        {
+            throw new ValidationException("This dispute is already assigned to another admin.");
+        }
+
         var before = new
         {
             dispute.AssignedTo,

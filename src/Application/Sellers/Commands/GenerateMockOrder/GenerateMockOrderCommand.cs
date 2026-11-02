@@ -139,6 +139,19 @@ public class GenerateMockOrderCommandHandler : IRequestHandler<GenerateMockOrder
         }
         
         wallet.CreditPending(sellerEarnings);
+
+        // Platform revenue for this sale; dashboards and revenue reports sum FeeDeduction rows.
+        _context.FinancialTransactions.Add(new FinancialTransaction
+        {
+            SellerId = seller.Id,
+            UserId = seller.Id,
+            Type = "FeeDeduction",
+            Amount = platformFee,
+            BalanceAfter = wallet.PendingBalance,
+            OrderId = order.Id,
+            Description = $"Final value fee ({feePercentage}%) for order #{order.Id}",
+            Date = DateTime.UtcNow
+        });
         await _context.SaveChangesAsync(cancellationToken);
 
         // Broadcast: PendingBalance just increased

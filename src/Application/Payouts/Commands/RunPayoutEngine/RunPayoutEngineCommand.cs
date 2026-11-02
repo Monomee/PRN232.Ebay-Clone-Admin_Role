@@ -275,6 +275,14 @@ public class RunPayoutEngineCommandHandler : IRequestHandler<RunPayoutEngineComm
                 continue;
             }
 
+            // The wallet must still hold the funds this payout locked; otherwise confirming or releasing it
+            // throws and would abort the whole run. Leave it for manual review and let other sellers proceed.
+            if (wallet.LockedBalance < payoutTx.Amount)
+            {
+                _logger.LogWarning("Stale payout #{Id}: locked balance does not cover it. Leaving it Processing.", payoutTx.Id);
+                continue;
+            }
+
             _logger.LogInformation(
                 "Resuming stale payout #{Id} for seller #{SellerId}, created {CreatedAt:o}.",
                 payoutTx.Id, payoutTx.SellerId, payoutTx.CreatedAt);

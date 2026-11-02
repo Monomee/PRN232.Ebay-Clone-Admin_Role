@@ -10,6 +10,15 @@ public record UpdatePlatformFeesCommand : IRequest<int>
     public decimal FinalValueFeePercentage { get; init; }
 }
 
+public class UpdatePlatformFeesCommandValidator : AbstractValidator<UpdatePlatformFeesCommand>
+{
+    public UpdatePlatformFeesCommandValidator()
+    {
+        RuleFor(v => v.ListingFee).GreaterThanOrEqualTo(0).WithMessage("Listing fee cannot be negative.");
+        RuleFor(v => v.FinalValueFeePercentage).InclusiveBetween(0, 100).WithMessage("Final value fee must be between 0 and 100%.");
+    }
+}
+
 public class UpdatePlatformFeesCommandHandler : IRequestHandler<UpdatePlatformFeesCommand, int>
 {
     private readonly IApplicationDbContext _context;

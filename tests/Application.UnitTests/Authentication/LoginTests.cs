@@ -41,7 +41,7 @@ public class LoginTests
         _context.Users.Add(user);
         await _context.SaveChangesAsync();
 
-        _jwtMock.Setup(j => j.GenerateToken(It.IsAny<User>())).Returns("TestToken");
+        _jwtMock.Setup(j => j.GenerateToken(It.IsAny<User>(), It.IsAny<IEnumerable<string>?>())).Returns("TestToken");
 
         var handler = new LoginCommandHandler(_context, _jwtMock.Object);
         var command = new LoginCommand("test@example.com", password);

@@ -72,6 +72,11 @@ public class SendBroadcastCommandHandler : IRequestHandler<SendBroadcastCommand,
         }
 
         var now = DateTime.UtcNow;
+        if (request.ScheduleAt.HasValue && request.ScheduleAt.Value.ToUniversalTime() <= now)
+        {
+            throw new ArgumentException("Scheduled time must be in the future.");
+        }
+
         var targetRole = string.Equals(request.TargetAudience, "All", StringComparison.OrdinalIgnoreCase)
             ? null
             : string.Equals(request.TargetAudience, "Group", StringComparison.OrdinalIgnoreCase)
@@ -143,8 +148,6 @@ public class SendBroadcastCommandHandler : IRequestHandler<SendBroadcastCommand,
 
         if (!request.ScheduleAt.HasValue && request.Channels.Contains("Email", StringComparer.OrdinalIgnoreCase))
         {
-            var targetAudience = request.TargetAudience;
-            var targetGroup = request.TargetGroup;
             var title = request.Title;
             var content = request.Content;
 
@@ -157,41 +160,7 @@ public class SendBroadcastCommandHandler : IRequestHandler<SendBroadcastCommand,
                     var emailService = scope.ServiceProvider.GetRequiredService<IEmailService>();
 
                     _logger.LogInformation("Starting background email broadcast...");
-
-                    IQueryable<User> query = dbContext.Users.Where(u => !string.IsNullOrEmpty(u.Email));
-
-                    if (string.Equals(targetAudience, "Seller", StringComparison.OrdinalIgnoreCase))
-                    {
-                        query = query.Where(u => u.Role == "Seller");
-                    }
-                    else if (string.Equals(targetAudience, "Buyer", StringComparison.OrdinalIgnoreCase))
-                    {
-                        query = query.Where(u => u.Role == "Buyer");
-                    }
-                    else if (string.Equals(targetAudience, "Group", StringComparison.OrdinalIgnoreCase) && !string.IsNullOrEmpty(targetGroup))
-                    {
-                        query = query.Where(u => u.SellerLevel == targetGroup || u.Role == targetGroup); 
-                    }
-
-                    var emails = await query.Select(u => u.Email).ToListAsync();
-                    _logger.LogInformation("Found {Count} users to email for broadcast '{Title}'", emails.Count, title);
-
-                    int successCount = 0;
-                    foreach (var email in emails)
-                    {
-                        if (string.IsNullOrEmpty(email)) continue;
-                        try
-                        {
-                            await emailService.SendEmailAsync(email, title, content);
-                            successCount++;
-                        }
-                        catch (Exception ex)
-                        {
-                            _logger.LogError(ex, "Failed to send email broadcast to {Email}", email);
-                        }
-                    }
-
-                    _logger.LogInformation("Finished email broadcast '{Title}'. Successfully sent {SuccessCount}/{Total} emails.", title, successCount, emails.Count);
+                    await SendEmailsAsync(dbContext, emailService, targetRole, title, content, _logger, CancellationToken.None);
                 }
                 catch (Exception ex)
                 {
@@ -201,5 +170,43 @@ public class SendBroadcastCommandHandler : IRequestHandler<SendBroadcastCommand,
         }
 
         return request.Channels.Count; // Return number of notifications created
+    }
+
+    /// Emails every user matched by a broadcast's stored UserRole (null = all, "Seller"/"Buyer", "Group:X").
+    /// Shared with the scheduled-broadcast job.
+    public static async Task SendEmailsAsync(IApplicationDbContext dbContext, IEmailService emailService, string? targetRole,
+        string title, string content, ILogger logger, CancellationToken cancellationToken)
+    {
+        IQueryable<User> query = dbContext.Users.Where(u => !string.IsNullOrEmpty(u.Email));
+
+        if (targetRole is "Seller" or "Buyer")
+        {
+            query = query.Where(u => u.Role == targetRole);
+        }
+        else if (targetRole != null && targetRole.StartsWith("Group:"))
+        {
+            var group = targetRole["Group:".Length..];
+            query = query.Where(u => u.SellerLevel == group || u.Role == group);
+        }
+
+        var emails = await query.Select(u => u.Email).ToListAsync(cancellationToken);
+        logger.LogInformation("Found {Count} users to email for broadcast '{Title}'", emails.Count, title);
+
+        int successCount = 0;
+        foreach (var email in emails)
+        {
+            if (string.IsNullOrEmpty(email)) continue;
+            try
+            {
+                await emailService.SendEmailAsync(email, title, content);
+                successCount++;
+            }
+            catch (Exception ex)
+            {
+                logger.LogError(ex, "Failed to send email broadcast to {Email}", email);
+            }
+        }
+
+        logger.LogInformation("Finished email broadcast '{Title}'. Successfully sent {SuccessCount}/{Total} emails.", title, successCount, emails.Count);
     }
 }

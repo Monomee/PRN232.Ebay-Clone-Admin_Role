@@ -6,5 +6,5 @@ using EbayClone.Domain.Entities;
 namespace EbayClone.Application.Common.Interfaces;
 public interface IJwtService
 {
-    string GenerateToken(User user);
+    string GenerateToken(User user, IEnumerable<string>? permissions = null);
 }

@@ -39,7 +39,7 @@ public class LoginCommandHandler
                 ErrorMessage = "Email hoặc mật khẩu không đúng"
             };
 
-        if (!BCrypt.Net.BCrypt.Verify(request.Password, user.Password))
+        if (!PasswordMatches(request.Password, user.Password))
             return new LoginResponse
             {
                 Success = false,
@@ -47,7 +47,7 @@ public class LoginCommandHandler
             };
 
         // ❌ Check Banned Status
-        if (user.Status == "Banned")
+        if (user.Status == "Banned" || user.ApprovalStatus == "Rejected")
         {
             var banMsg = "Tài khoản của bạn đã bị khóa";
             if (!string.IsNullOrEmpty(user.BannedReason))
@@ -68,7 +68,7 @@ public class LoginCommandHandler
                 UserId = user.Id
             };
 
-        var token = _jwtService.GenerateToken(user);
+        var token = _jwtService.GenerateToken(user, await _context.GetAdminPermissionsAsync(user.Id, cancellationToken));
         return new LoginResponse
         {
             Success = true,
@@ -77,5 +77,12 @@ public class LoginCommandHandler
             UserId = user.Id,
             Role = user.Role
         };
+    }
+
+    // Accounts created before passwords were hashed hold plaintext; BCrypt throws on those instead of returning false.
+    private static bool PasswordMatches(string password, string? hash)
+    {
+        try { return !string.IsNullOrEmpty(hash) && BCrypt.Net.BCrypt.Verify(password, hash); }
+        catch (BCrypt.Net.SaltParseException) { return false; }
     }
 }

@@ -28,7 +28,7 @@ public class GetAdminUsersQueryHandler : IRequestHandler<GetAdminUsersQuery, Pag
 
         var query = _context.Users
             .AsNoTracking()
-            .Where(u => adminRoles.Contains(u.Role))
+            .Where(u => adminRoles.Contains(u.Role) || _context.AdminUserRoles.Any(a => a.UserId == u.Id))
             .GroupJoin(_context.AdminUserRoles.Include(aur => aur.Role).Include(aur => aur.Assigner),
                 u => u.Id,
                 aur => aur.UserId,

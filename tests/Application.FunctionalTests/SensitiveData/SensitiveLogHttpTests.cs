@@ -23,8 +23,8 @@ namespace EbayClone.Security.HttpTests;
 
 public class SensitiveLogHttpTests
 {
-    private const string SigningKey = "functional-test-signing-key-32bytes!";
-    private sealed class Factory : WebApplicationFactory<Program>
+    internal const string SigningKey = "functional-test-signing-key-32bytes!";
+    internal sealed class Factory : WebApplicationFactory<Program>
     {
         private readonly string _database = Guid.NewGuid().ToString();
         protected override void ConfigureWebHost(IWebHostBuilder builder)

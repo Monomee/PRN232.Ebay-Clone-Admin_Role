@@ -67,12 +67,23 @@ public class GetAuditLogsQueryHandler : IRequestHandler<GetAuditLogsQuery, Pagin
         // Filter by date range
         if (request.FromDate.HasValue)
         {
-            query = query.Where(a => a.CreatedAt >= request.FromDate.Value);
+            var from = request.FromDate.Value.ToUniversalTime();
+            query = query.Where(a => a.CreatedAt >= from);
         }
 
         if (request.ToDate.HasValue)
         {
-            query = query.Where(a => a.CreatedAt <= request.ToDate.Value);
+            // A date-only filter (midnight) means "through the end of that day".
+            var to = request.ToDate.Value.ToUniversalTime();
+            if (to.TimeOfDay == TimeSpan.Zero)
+            {
+                var nextDay = to.AddDays(1);
+                query = query.Where(a => a.CreatedAt < nextDay);
+            }
+            else
+            {
+                query = query.Where(a => a.CreatedAt <= to);
+            }
         }
 
         var totalCount = await query.CountAsync(cancellationToken);

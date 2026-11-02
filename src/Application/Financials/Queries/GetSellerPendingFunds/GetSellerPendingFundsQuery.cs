@@ -29,12 +29,11 @@ public class GetSellerPendingFundsQueryHandler : IRequestHandler<GetSellerPendin
     {
         var now = DateTime.UtcNow;
 
-        // Tìm các đơn hàng đã Delivered hoặc PartiallyRefunded/Refunded (sau Dispute) nhưng chưa quyết toán (Status != FundsCleared)
-        // Và đơn hàng đó phải có sản phẩm của Seller này
+        // Đơn Delivered/PartiallyRefunded chưa quyết toán của Seller này.
+        // Refunded: tiền đã trừ khỏi PendingBalance khi xử lý dispute nên không còn là tiền chờ.
         var orders = await _context.OrderTables
-            .Where(o => (o.Status == "Delivered" || o.Status == "PartiallyRefunded" || o.Status == "Refunded") && 
+            .Where(o => (o.Status == "Delivered" || o.Status == "PartiallyRefunded") &&
                         o.OrderItems.Any(oi => oi.Product != null && oi.Product.SellerId == request.SellerId))
-            .OrderBy(o => o.EstimatedSettlementDate)
             .ToListAsync(cancellationToken);
 
         return orders.Select(o => {
@@ -55,6 +54,8 @@ public class GetSellerPendingFundsQueryHandler : IRequestHandler<GetSellerPendin
                 EstimatedSettlementDate = targetDate,
                 DaysRemaining = Math.Round(daysRemaining, 1)
             };
-        }).ToList();
+        })
+        .OrderBy(d => d.EstimatedSettlementDate ?? DateTime.MaxValue)
+        .ToList();
     }
 }

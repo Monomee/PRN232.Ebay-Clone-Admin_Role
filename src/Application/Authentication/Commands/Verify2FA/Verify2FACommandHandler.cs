@@ -34,7 +34,7 @@ namespace EbayClone.Application.Authentication.Commands.Verify2FA
                 return new Verify2FAResponse { Success = false, ErrorMessage = "Người dùng không hợp lệ" };
 
             // ❌ Check Banned Status (thêm check ở đây để bảo mật)
-            if (user.Status == "Banned")
+            if (user.Status == "Banned" || user.ApprovalStatus == "Rejected")
                 return new Verify2FAResponse { Success = false, ErrorMessage = "Tài khoản đã bị khóa" };
 
             var totp = new Totp(Base32Encoding.ToBytes(user.TwoFactorSecret));
@@ -43,7 +43,7 @@ namespace EbayClone.Application.Authentication.Commands.Verify2FA
                 return new Verify2FAResponse { Success = false, ErrorMessage = "Mã 2FA không đúng hoặc đã hết hạn" };
 
             // Nếu hợp lệ → tạo JWT
-            var token = _jwtService.GenerateToken(user);
+            var token = _jwtService.GenerateToken(user, await _context.GetAdminPermissionsAsync(user.Id, cancellationToken));
             return new Verify2FAResponse { Success = true, Token = token, Role = user.Role };
         }
     }
