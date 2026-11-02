@@ -7,6 +7,7 @@ using EbayClone.Application.Users.Commands.UnbanUser;
 using EbayClone.Application.Users.Commands.UpdateUserStatus;
 using EbayClone.Application.Users.Queries.GetUserById;
 using EbayClone.Application.Users.Queries.GetUsers;
+using EbayClone.Application.Users.Queries.GetUserSummary;
 using EbayClone.Application.Sellers.Queries.GetSellerPerformanceMetrics;
 using EbayClone.Domain.Constants;
 using EbayClone.Web.Infrastructure;
@@ -22,6 +23,7 @@ public class Users : EndpointGroupBase
         group.RequireAuthorization(Policies.ManageUsers);
 
         group.MapGet("", GetUsers);
+        group.MapGet("summary", (ISender sender) => sender.Send(new GetUserSummaryQuery()));
         group.MapGet("{id:int}", GetUserById);
         group.MapPut("{id:int}/status", UpdateUserStatus);
         group.MapPost("{id:int}/ban", BanUser);

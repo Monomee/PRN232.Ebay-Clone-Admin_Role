@@ -30,6 +30,13 @@ public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, P
         if (product == null)
             return null;
 
+        // Same source as Review Monitoring -> Seller Reputation
+        var positiveRate = await _context.Feedbacks
+            .Where(f => f.SellerId == product.SellerId)
+            .OrderByDescending(f => f.Id)
+            .Select(f => f.PositiveRate)
+            .FirstOrDefaultAsync(cancellationToken);
+
         return new ProductDetailDto
         {
             Id = product.Id,
@@ -40,6 +47,7 @@ public class GetProductByIdQueryHandler : IRequestHandler<GetProductByIdQuery, P
             Status = product.Status,
             SellerId = product.SellerId,
             SellerName = product.Seller?.Username ?? "Unknown",
+            SellerPositiveRate = positiveRate.HasValue ? Math.Round(positiveRate.Value, 1) : null,
             IsAuction = product.IsAuction,
             AuctionEndTime = product.AuctionEndTime,
             Reviews = product.Reviews.Select(r => new ReviewDto

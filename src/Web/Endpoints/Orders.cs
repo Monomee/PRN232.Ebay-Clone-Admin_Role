@@ -1,6 +1,7 @@
 using EbayClone.Application.Common.Models;
 using EbayClone.Application.Orders.Queries.GetOrdersWithPagination;
 using EbayClone.Application.Orders.Queries.GetOrderDetail;
+using EbayClone.Application.Orders.Queries.GetOrderSummary;
 using EbayClone.Domain.Constants;
 using MediatR;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -16,6 +17,7 @@ public class Orders : EndpointGroupBase
         group.RequireAuthorization(Policies.ManageOrders);
 
         group.MapGet("", GetOrders);
+        group.MapGet("summary", (ISender sender) => sender.Send(new GetOrderSummaryQuery()));
         group.MapGet("{id:int}", GetOrderById);
     }
 

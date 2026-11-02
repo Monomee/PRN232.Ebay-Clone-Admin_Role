@@ -13,6 +13,7 @@ public class ProductDetailDto
     public string? Status { get; set; }
     public int? SellerId { get; set; }
     public string? SellerName { get; set; }
+    public decimal? SellerPositiveRate { get; set; } // null when the seller has no feedback yet
     
     // Detailed properties needed for the UI
     public bool? IsAuction { get; set; }
