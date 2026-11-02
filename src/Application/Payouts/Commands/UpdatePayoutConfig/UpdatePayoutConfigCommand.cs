@@ -12,6 +12,16 @@ public record UpdatePayoutConfigCommand(
     bool IsEnabled
 ) : IRequest<int>;
 
+public class UpdatePayoutConfigCommandValidator : AbstractValidator<UpdatePayoutConfigCommand>
+{
+    public UpdatePayoutConfigCommandValidator()
+    {
+        RuleFor(v => v.Frequency).Must(f => f is "Daily" or "Weekly").WithMessage("Frequency must be Daily or Weekly.");
+        RuleFor(v => v.MinimumThreshold).GreaterThanOrEqualTo(0).WithMessage("Minimum threshold cannot be negative.");
+        RuleFor(v => v.ScheduledHourUtc).InclusiveBetween(0, 23).WithMessage("Execution hour must be between 0 and 23 (UTC).");
+    }
+}
+
 public class UpdatePayoutConfigCommandHandler : IRequestHandler<UpdatePayoutConfigCommand, int>
 {
     private readonly IApplicationDbContext _context;
