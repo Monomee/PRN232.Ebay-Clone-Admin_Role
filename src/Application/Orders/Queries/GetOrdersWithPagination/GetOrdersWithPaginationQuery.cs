@@ -42,7 +42,9 @@ public class GetOrdersWithPaginationQueryHandler : IRequestHandler<GetOrdersWith
 
         if (!string.IsNullOrEmpty(request.Status) && request.Status != "All")
         {
-            query = query.Where(o => o.Status == request.Status);
+            // Both spellings exist in the data; the UI tab says "Canceled".
+            var statuses = request.Status is "Canceled" or "Cancelled" ? new[] { "Canceled", "Cancelled" } : new[] { request.Status };
+            query = query.Where(o => statuses.Contains(o.Status));
         }
 
         if (!string.IsNullOrEmpty(request.Search))
@@ -50,7 +52,8 @@ public class GetOrdersWithPaginationQueryHandler : IRequestHandler<GetOrdersWith
             var search = request.Search.ToLower();
             query = query.Where(o => 
                 o.Id.ToString().Contains(search) || 
-                (o.Buyer != null && o.Buyer.Username!.ToLower().Contains(search)));
+                (o.Buyer != null && o.Buyer.Username!.ToLower().Contains(search)) ||
+                o.OrderItems.Any(oi => oi.Product != null && oi.Product.Title != null && oi.Product.Title.ToLower().Contains(search)));
         }
 
         query = query.OrderByDescending(o => o.OrderDate);

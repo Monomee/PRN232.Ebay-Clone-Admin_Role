@@ -50,7 +50,7 @@ public class GetOrderStatsQueryHandler : IRequestHandler<GetOrderStatsQuery, Ord
 
         var completed = orders.Count(s => s == "Completed");
         var delivered = orders.Count(s => s == "Delivered");
-        var returned  = orders.Count(s => s == "Returned"  || s == "ReturnApproved");
+        var returned  = orders.Count(s => s is "Returned" or "ReturnApproved" or "Refunded" or "PartiallyRefunded");
 
         return new OrderStatsDto
         {
