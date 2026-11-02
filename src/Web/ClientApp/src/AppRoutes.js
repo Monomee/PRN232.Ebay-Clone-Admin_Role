@@ -33,8 +33,9 @@ import ActiveConnectionsPage from "./pages/ActiveConnectionsPage.jsx";
 import OrdersPage from "./pages/OrdersPage.jsx";
 
 // Helper cho gọn
-const protect = (element, allowedRoles = []) => (
-  <ProtectedRoute allowedRoles={allowedRoles}>
+// permission: the API policy a custom admin role must grant to open the page
+const protect = (element, allowedRoles = [], permission) => (
+  <ProtectedRoute allowedRoles={allowedRoles} permission={permission}>
     {element}
   </ProtectedRoute>
 );
@@ -60,7 +61,7 @@ const AppRoutes = [
   // ── Cần login + bắt buộc có 2FA ──────────────────────────────────
   {
     index: true,
-    element: protect(<DashboardPage />, ["SuperAdmin", "Support", "Monitor"])
+    element: protect(<DashboardPage />, ["SuperAdmin", "Support", "Monitor"], "ViewDashboard")
   },
   {
     path: "/home",
@@ -69,19 +70,19 @@ const AppRoutes = [
   },
   {
     path: "/dashboard",
-    element: protect(<DashboardPage />, ["SuperAdmin", "Support", "Monitor"])
+    element: protect(<DashboardPage />, ["SuperAdmin", "Support", "Monitor"], "ViewDashboard")
   },
   {
     path: "/users",
-    element: protect(<UsersPage />, ["SuperAdmin", "Support"])
+    element: protect(<UsersPage />, ["SuperAdmin", "Support"], "ManageUsers")
   },
   {
     path: "/users/:userId",
-    element: protect(<UserDetailPage />, ["SuperAdmin", "Support"])
+    element: protect(<UserDetailPage />, ["SuperAdmin", "Support"], "ManageUsers")
   },
   {
     path: "/broadcasts",
-    element: protect(<BroadcastPage />, ["SuperAdmin", "Support"])
+    element: protect(<BroadcastPage />, ["SuperAdmin", "Support"], "ManageBroadcasts")
   },
   {
     path: "/admin-roles",
@@ -101,30 +102,30 @@ const AppRoutes = [
   },
   {
     path: "/disputes",
-    element: protect(<DisputesPage />, ["SuperAdmin", "Support"])
+    element: protect(<DisputesPage />, ["SuperAdmin", "Support"], "ManageDisputes")
   },
   {
     path: "/disputes/dashboard",
-    element: protect(<DisputeDashboard />, ["SuperAdmin", "Support"])
+    element: protect(<DisputeDashboard />, ["SuperAdmin", "Support"], "ManageDisputes")
   },
   {
     path: "/disputes/:id",
-    element: protect(<DisputeDetailPage />, ["SuperAdmin", "Support"])
+    element: protect(<DisputeDetailPage />, ["SuperAdmin", "Support"], "ManageDisputes")
   },
 
 
   {
     path: "/sellers",
-    element: protect(<SellersPage />, ["SuperAdmin", "Support"])
+    element: protect(<SellersPage />, ["SuperAdmin", "Support"], "ManageUsers")
   },
 
   {
     path: '/products',
-    element: protect(<ProductModerationPage/>, ["SuperAdmin", "Support"])
+    element: protect(<ProductModerationPage/>, ["SuperAdmin", "Support"], "ManageProducts")
   },
   {
     path: '/review-monitoring',
-    element: protect(<ReviewMonitoringPage />, ["SuperAdmin", "Support"])
+    element: protect(<ReviewMonitoringPage />, ["SuperAdmin", "Support"], "ModerateReviews")
   },
   {
     path: "/public",
@@ -132,7 +133,7 @@ const AppRoutes = [
   },
   {
     path: "/seller-products",
-    element: protect(<SellerProductManagementPage />, ["SuperAdmin", "Support"])
+    element: protect(<SellerProductManagementPage />, ["SuperAdmin", "Support", "Seller"])
   },
   {
     path: "/product/:id",
@@ -142,11 +143,11 @@ const AppRoutes = [
 
   {
     path: "/return-requests",
-    element: protect(<ReturnRequestsPage />, ["SuperAdmin", "Support"])
+    element: protect(<ReturnRequestsPage />, ["SuperAdmin", "Support"], "ManageOrders")
   },
   {
     path: "/return-requests/:id",
-    element: protect(<ReturnRequestDetailPage />, ["SuperAdmin", "Support"])
+    element: protect(<ReturnRequestDetailPage />, ["SuperAdmin", "Support"], "ManageOrders")
   },
   {
     path: "/mock",
@@ -166,7 +167,7 @@ const AppRoutes = [
   },
   {
     path: "/orders",
-    element: protect(<OrdersPage />, ["SuperAdmin", "Support", "Administrator"])
+    element: protect(<OrdersPage />, ["SuperAdmin", "Support", "Administrator"], "ManageOrders")
   }
 ];
 

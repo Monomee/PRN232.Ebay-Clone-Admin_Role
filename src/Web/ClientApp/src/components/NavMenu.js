@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { NavItem, NavLink } from 'reactstrap';
 import { useAuth } from '../context/AuthContext';
+import { canAccess } from '../utils/access';
 import './NavMenu.css';
 
 const SidebarLink = ({ to, icon, children }) => {
@@ -58,19 +59,18 @@ export const NavMenu = ({ isOpen, toggleSidebar, closeSidebar }) => {
               <SidebarLink to="/seller-products" icon="bi bi-box-seam">Your products</SidebarLink>
             )}
 
-            {(user?.role === 'SuperAdmin' || user?.role === 'Support' || user?.roles?.includes('SuperAdmin') || user?.roles?.includes('Support')) && (
-              <>
-                <SidebarLink to="/users" icon="bi bi-people">Users</SidebarLink>
-                <SidebarLink to="/products" icon="bi bi-box-seam">Products</SidebarLink>
-                <SidebarLink to="/orders" icon="bi bi-cart">Orders</SidebarLink>
-                <SidebarLink to="/review-monitoring" icon="bi bi-chat-left-text">Reviews</SidebarLink>
-
-                <SidebarLink to="/disputes" icon="bi bi-shield-exclamation">Disputes</SidebarLink>
-                <SidebarLink to="/return-requests" icon="bi bi-cart">Return Requests</SidebarLink>
-                <SidebarLink to="/sellers" icon="bi bi-person-badge">Sellers Overview</SidebarLink>
-                <SidebarLink to="/broadcasts" icon="bi bi-megaphone">Broadcasts</SidebarLink>
-              </>
-            )}
+            {/* Same roles/permissions as the routes in AppRoutes.js */}
+            {[
+              ['/users', 'bi bi-people', 'Users', 'ManageUsers'],
+              ['/products', 'bi bi-box-seam', 'Products', 'ManageProducts'],
+              ['/orders', 'bi bi-cart', 'Orders', 'ManageOrders'],
+              ['/review-monitoring', 'bi bi-chat-left-text', 'Reviews', 'ModerateReviews'],
+              ['/disputes', 'bi bi-shield-exclamation', 'Disputes', 'ManageDisputes'],
+              ['/return-requests', 'bi bi-cart', 'Return Requests', 'ManageOrders'],
+              ['/sellers', 'bi bi-person-badge', 'Sellers Overview', 'ManageUsers'],
+              ['/broadcasts', 'bi bi-megaphone', 'Broadcasts', 'ManageBroadcasts'],
+            ].filter(([, , , permission]) => canAccess(user, ['SuperAdmin', 'Support'], permission))
+              .map(([to, icon, label]) => <SidebarLink key={to} to={to} icon={icon}>{label}</SidebarLink>)}
 
 
 
