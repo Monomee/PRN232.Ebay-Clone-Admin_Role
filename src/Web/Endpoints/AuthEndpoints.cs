@@ -3,6 +3,7 @@ using EbayClone.Application.Authentication.Commands.Enable2FA;
 using EbayClone.Application.Authentication.Commands.Login;
 using EbayClone.Application.Authentication.Commands.Verify2FA;
 using EbayClone.Application.Authentication.Commands.Verify2FASetup;
+using EbayClone.Application.Common.Interfaces;
 using EbayClone.Web.Infrastructure;
 
 namespace EbayClone.Web.Endpoints;
@@ -88,7 +89,10 @@ public class Auth : EndpointGroupBase
         var role = http.User.FindFirst(ClaimTypes.Role)?.Value;
         var twoFactorEnabled = http.User.FindFirst("twoFactorEnabled")?.Value == "true"; // ✅ thêm
 
-        return Results.Ok(new { email, userId, role, twoFactorEnabled });
+        // Custom admin roles are authorized by these (see AdminPermissions); the UI uses them for routes and menu
+        var permissions = http.User.FindAll(AdminPermissions.ClaimType).Select(c => c.Value).ToList();
+
+        return Results.Ok(new { email, userId, role, twoFactorEnabled, permissions });
     }
 
     public async Task<IResult> Enable2FA(ISender sender, HttpContext http)

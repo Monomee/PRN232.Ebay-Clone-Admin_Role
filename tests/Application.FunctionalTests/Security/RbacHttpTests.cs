@@ -55,6 +55,23 @@ public class RbacHttpTests
         Assert.That(await Send("GET", "/api/Disputes", token), Is.EqualTo(403));
     }
 
+    // z8rp3fcgjj: the UI reads the granted permissions from /me to open routes and menu items
+    [Test]
+    public async Task Me_ReturnsGrantedPermissions()
+    {
+        var response = await _factory.Server.SendAsync(context =>
+        {
+            context.Connection.RemoteIpAddress = IPAddress.Loopback;
+            context.Request.Scheme = "https";
+            context.Request.Method = "GET";
+            context.Request.Path = "/api/Auth/me";
+            context.Request.Headers.Authorization = "Bearer " + Token("QA Lead", "ManageOrders", "ViewDashboard");
+        });
+        var body = await new StreamReader(response.Response.Body).ReadToEndAsync();
+        Assert.That(response.Response.StatusCode, Is.EqualTo(200));
+        Assert.That(body, Does.Contain("\"permissions\":[\"ManageOrders\",\"ViewDashboard\"]"));
+    }
+
     private static async Task<int> Send(string method, string path, string? token)
     {
         var response = await _factory.Server.SendAsync(context =>
