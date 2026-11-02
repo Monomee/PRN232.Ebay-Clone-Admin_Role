@@ -61,12 +61,6 @@ public partial class Testing
         return _roles;
     }
 
-    public static void RunAsDomainUser(int id, params string[] roles)
-    {
-        _userId = id.ToString();
-        _roles = roles.ToList();
-    }
-
     public static async Task<string> RunAsDefaultUserAsync()
     {
         return await RunAsUserAsync("test@local", "Testing1234!", Array.Empty<string>());
