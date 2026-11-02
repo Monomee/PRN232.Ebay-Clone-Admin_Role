@@ -102,6 +102,12 @@ export const productService = {
     },
 
     // GET /api/products/managed?page=1&tab=Reported
+    // { reported, resolved, rejected } over all products
+    getManagedSummary: async () => {
+        const response = await axios.get(`${ENDPOINTS.PRODUCTS.MANAGED}/summary`);
+        return response.data;
+    },
+
     getManagedProducts: async (params) => {
         try {
             const response = await axios.get(

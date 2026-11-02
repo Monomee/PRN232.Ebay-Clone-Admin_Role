@@ -156,18 +156,19 @@ export function UserDetailPage() {
                           user.sellerLevel === 'AboveStandard' ? 'bg-warning text-dark' : 
                           'bg-danger text-white'
                         }`} style={{ fontSize: '0.65rem', fontWeight: 800 }}>
-                          {(user.sellerLevel === 'TopRated' ? 'Top Rated' : user.sellerLevel === 'AboveStandard' ? 'Above Std' : (user.sellerLevel || "Below Std")).toUpperCase()}
+                          {user.sellerLevel === 'TopRated' ? 'Top Rated' : user.sellerLevel === 'AboveStandard' ? 'Above Std' : 'Below Std'}
                         </span>
                       </div>
                       <button className="btn btn-sm btn-primary w-100 rounded-pill fw-bold py-2 shadow-sm" onClick={async () => {
                         try {
-                           const res = await fetch('/api/Users/evaluate-sellers', {
-                             method: 'POST',
-                             headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-                           });
-                           if(res.ok) alert("Seller evaluation protocol completed successfully.");
+                           // Auth cookie is sent automatically; show the result as a toast, not a blocking alert
+                           const res = await fetch('/api/Users/evaluate-sellers', { method: 'POST', credentials: 'include' });
+                           if (!res.ok) throw new Error(`Evaluation failed (${res.status}).`);
+                           setToast({ message: "Seller evaluation protocol completed successfully.", type: "success" });
                            loadDetail();
-                        } catch(e) { }
+                        } catch (e) {
+                           setToast({ message: e.message, type: "error" });
+                        }
                       }}>
                         <i className="bi bi-lightning-charge-fill me-2"></i>Evaluate Level
                       </button>

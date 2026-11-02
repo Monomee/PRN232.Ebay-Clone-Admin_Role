@@ -33,13 +33,9 @@ public class GetOrdersWithPaginationQueryHandler : IRequestHandler<GetOrdersWith
         _context = context;
     }
 
-    public async Task<PaginatedList<OrderBriefDto>> Handle(GetOrdersWithPaginationQuery request, CancellationToken cancellationToken)
+    /// Shared with GetOrderSummaryQuery so the page cards use the same filters as the table.
+    internal static IQueryable<OrderTable> ApplyFilters(IQueryable<OrderTable> query, GetOrdersWithPaginationQuery request)
     {
-        var query = _context.OrderTables
-            .Include(o => o.Buyer)
-            .Include(o => o.OrderItems)
-            .AsNoTracking();
-
         if (!string.IsNullOrEmpty(request.Status) && request.Status != "All")
         {
             // Both spellings exist in the data; the UI tab says "Canceled".
@@ -55,6 +51,18 @@ public class GetOrdersWithPaginationQueryHandler : IRequestHandler<GetOrdersWith
                 (o.Buyer != null && o.Buyer.Username!.ToLower().Contains(search)) ||
                 o.OrderItems.Any(oi => oi.Product != null && oi.Product.Title != null && oi.Product.Title.ToLower().Contains(search)));
         }
+
+        return query;
+    }
+
+    public async Task<PaginatedList<OrderBriefDto>> Handle(GetOrdersWithPaginationQuery request, CancellationToken cancellationToken)
+    {
+        var query = _context.OrderTables
+            .Include(o => o.Buyer)
+            .Include(o => o.OrderItems)
+            .AsNoTracking();
+
+        query = ApplyFilters(query, request);
 
         query = query.OrderByDescending(o => o.OrderDate);
 

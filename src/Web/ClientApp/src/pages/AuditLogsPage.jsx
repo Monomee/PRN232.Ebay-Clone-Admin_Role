@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { LoadingIndicator } from "../components/LoadingIndicator";
 import { ToastMessage } from "../components/ToastMessage";
-import { getAuditLogs } from "../services/auditLogService";
+import { getAuditLogs, getAuditLogSummary } from "../services/auditLogService";
 
 function formatDate(value) {
   if (!value) {
@@ -33,23 +33,28 @@ export function AuditLogsPage() {
   });
   const [pageNumber, setPageNumber] = useState(1);
   const [logsData, setLogsData] = useState({ items: [], totalCount: 0, totalPages: 0 });
+  const [criticalCount, setCriticalCount] = useState(0);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "success" });
 
   const loadLogs = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await getAuditLogs({
-        pageNumber,
-        pageSize: 20,
+      const query = {
         adminUsername: filters.adminUsername,
         targetType: filters.targetType,
         action: filters.action,
         // Whole local days: start of From to end of To
         fromDate: filters.fromDate ? new Date(`${filters.fromDate}T00:00:00`).toISOString() : undefined,
         toDate: filters.toDate ? new Date(`${filters.toDate}T23:59:59.999`).toISOString() : undefined,
-      });
+      };
+      // Critical Actions counts every log matching the filter, not the loaded page (z8rp3fcgjm)
+      const [result, summary] = await Promise.all([
+        getAuditLogs({ ...query, pageNumber, pageSize: 20 }),
+        getAuditLogSummary(query),
+      ]);
       setLogsData(result);
+      setCriticalCount(summary.critical);
     } catch (error) {
       setToast({ message: error.message, type: "error" });
     } finally {
@@ -61,7 +66,6 @@ export function AuditLogsPage() {
     loadLogs();
   }, [loadLogs]);
 
-  const criticalCount = (logsData.items || []).filter(l => l.action?.toLowerCase().includes('delete') || l.action?.toLowerCase().includes('ban')).length;
 
   return (
     <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: "'Inter', sans-serif", padding: '28px 20px' }}>
@@ -84,7 +88,7 @@ export function AuditLogsPage() {
         <div className="row g-3 mb-5 justify-content-center">
           {[
             { label: 'Total Activity', value: logsData.totalCount, icon: 'bi-journal-text', color: 'primary' },
-            { label: 'Critical Actions', value: criticalCount > 0 ? criticalCount : 'Monitored', icon: 'bi-shield-lock-fill', color: 'danger' },
+            { label: 'Critical Actions', value: criticalCount, icon: 'bi-shield-lock-fill', color: 'danger' },
             { label: 'Governance Health', value: 'Excellent', icon: 'bi-check-circle-fill', color: 'success' },
             { label: 'Log Retention', value: '30 Days', icon: 'bi-archive-fill', color: 'info' },
           ].map((stat, idx) => (

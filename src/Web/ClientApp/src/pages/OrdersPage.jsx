@@ -21,7 +21,7 @@ const OrdersPage = () => {
   const [stats, setStats] = useState({
     totalRevenue: 0,
     activeOrders: 0,
-    completedOrders: 0
+    successRate: 0
   });
 
   // Detail Modal State
@@ -36,24 +36,17 @@ const OrdersPage = () => {
   const fetchOrders = async () => {
     setLoading(true);
     try {
-      const data = await orderService.getOrders({
-        pageNumber,
-        pageSize,
-        status,
-        search
-      });
+      // Cards come from every order matching the same filter, not just this page (z8rp3fcxr1)
+      const [data, summary] = await Promise.all([
+        orderService.getOrders({ pageNumber, pageSize, status, search }),
+        orderService.getSummary({ status, search })
+      ]);
       setOrders(data.items);
       setTotalCount(data.totalCount);
-      
-      // Calculate simple stats from current page for demo (ideally these come from a dedicated API)
-      const revenue = data.items.reduce((acc, curr) => acc + (curr.totalPrice || 0), 0);
-      const active = data.items.filter(o => o.status === 'Pending' || o.status === 'Shipped').length;
-      const completed = data.items.filter(o => o.status === 'Delivered').length;
-      
       setStats({
-        totalRevenue: revenue,
-        activeOrders: active,
-        completedOrders: completed
+        totalRevenue: summary.totalRevenue,
+        activeOrders: summary.activeOrders,
+        successRate: summary.successRate
       });
     } catch (error) {
       console.error("Error fetching orders:", error);
@@ -195,7 +188,7 @@ const OrdersPage = () => {
               </div>
               <div>
                 <p className="text-secondary small fw-bold text-uppercase mb-0" style={{ letterSpacing: '1px' }}>Success Rate</p>
-                <h4 className="fw-bold mb-0">100% <span className="small text-muted fw-normal">fulfillment</span></h4>
+                <h4 className="fw-bold mb-0">{stats.successRate}% <span className="small text-muted fw-normal">fulfillment</span></h4>
               </div>
             </CardBody>
           </Card>
@@ -407,6 +400,7 @@ const OrdersPage = () => {
                       <div>
                         <p className="mb-0 fw-bold">{selectedOrder.buyerName}</p>
                         <p className="mb-0 text-secondary small">{selectedOrder.buyerEmail}</p>
+                        <p className="mb-0 text-secondary small">Ordered: {selectedOrder.orderDate ? new Date(selectedOrder.orderDate).toLocaleString() : '—'}</p>
                       </div>
                     </div>
                   </div>

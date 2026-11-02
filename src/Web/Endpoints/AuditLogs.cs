@@ -15,7 +15,7 @@ public class AuditLogs : EndpointGroupBase
         groupBuilder.RequireAuthorization(Policies.ViewAuditLogs);
 
         groupBuilder.MapGet("", GetAuditLogs);
-        groupBuilder.MapGet("summary", (ISender sender) => sender.Send(new GetAuditLogSummaryQuery()));
+        groupBuilder.MapGet("summary", (ISender sender, [AsParameters] GetAuditLogsQuery filter) => sender.Send(new GetAuditLogSummaryQuery(filter)));
         groupBuilder.MapGet("admin/{adminId:int}", GetAuditLogsByAdmin);
         groupBuilder.MapGet("entity/{targetType}/{targetId:int}", GetAuditLogsByEntity);
     }

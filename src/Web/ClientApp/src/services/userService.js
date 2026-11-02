@@ -13,6 +13,12 @@ export const userService = {
     return response.data;
   },
 
+  // Totals over all users (page cards): { total, pendingApproval, banned }
+  getSummary: async () => {
+    const response = await axios.get(`${ENDPOINTS.USERS.BASE}/summary`);
+    return response.data;
+  },
+
   getUserById: async (id) => {
     const response = await axios.get(ENDPOINTS.USERS.DETAIL(id));
     return response.data;
