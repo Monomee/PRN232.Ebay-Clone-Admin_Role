@@ -177,6 +177,9 @@ public class ReturnRequestsSeeder : ISeeder
                     TotalPrice = 1500.00m,
                     Status = "Delivered",
                     CompletedAt = DateTime.UtcNow.AddDays(-1),
+                    // Same settlement rules as GenerateMockOrder (standard seller: 21-day hold, 14-day dispute window)
+                    EstimatedSettlementDate = DateTime.UtcNow.AddDays(20),
+                    CanDisputeUntil = DateTime.UtcNow.AddDays(13),
                     PlatformFee = 193.50m,
                     SellerEarnings = 1306.50m
                 };
@@ -200,6 +203,27 @@ public class ReturnRequestsSeeder : ISeeder
                     ShopSolution = "Seller claims the package was handled correctly and refuses refund."
                 };
                 _context.ReturnRequests.Add(newRequest);
+
+                // A Delivered sale is pending money for the seller; without this the wallet's PendingBalance
+                // and the Pending Funds list disagree (z8rp3fcgj0).
+                var wallet = await _context.SellerWallets.FirstOrDefaultAsync(w => w.SellerId == sellerId);
+                if (wallet == null)
+                {
+                    wallet = new SellerWallet { SellerId = sellerId };
+                    _context.SellerWallets.Add(wallet);
+                }
+                wallet.CreditPending(newOrder.SellerEarnings.Value);
+                _context.FinancialTransactions.Add(new FinancialTransaction
+                {
+                    SellerId = sellerId,
+                    UserId = sellerId,
+                    Type = "FeeDeduction",
+                    Amount = newOrder.PlatformFee.Value,
+                    BalanceAfter = wallet.PendingBalance,
+                    OrderId = newOrder.Id,
+                    Description = $"Final value fee for order #{newOrder.Id}",
+                    Date = DateTime.UtcNow
+                });
 
                 var newMessages = new List<Message>
                 {
