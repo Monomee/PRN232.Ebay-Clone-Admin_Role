@@ -23,6 +23,13 @@ public static class InitialiserExtensions
         var mode = ApplicationDbContextInitialiser.ValidateConfiguration(configuration, app.Environment);
         if (configuration.GetValue<bool>("DatabaseInitialization:RunMigrationsOnStartup"))
             await initialiser.InitialiseAsync();
+        // Migrations are not applied on startup by default; say how to fix it instead of failing later in the sensitive-data check.
+        var pending = (await scope.ServiceProvider.GetRequiredService<ApplicationDbContext>().Database.GetPendingMigrationsAsync()).ToList();
+        if (pending.Count > 0)
+            throw new InvalidOperationException(
+                $"Database schema is missing {pending.Count} migration(s), latest '{pending[^1]}'. " +
+                "Apply them with 'dotnet ef database update --project src/Infrastructure --startup-project src/Web' " +
+                "(see docs/W7-01-README.md), or set DatabaseInitialization__RunMigrationsOnStartup=true.");
         var protection = scope.ServiceProvider.GetRequiredService<EbayClone.Infrastructure.Services.SensitiveDataMigrationService>();
         if ((await protection.RunAsync(false)).NeedsConversion)
             throw new InvalidOperationException("Existing sensitive data needs an explicit maintenance-window conversion. Run --migrate-sensitive-data dry-run, then --apply with writers stopped.");
