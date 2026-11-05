@@ -77,6 +77,10 @@ export function unbanUser(userId, adminId) {
   });
 }
 
+export function liftRestrictions(userId) {
+  return apiRequest(`${endpoints.users}/${userId}/lift-restrictions`, { method: "POST" });
+}
+
 export function updateUserStatus(userId, status, adminId) {
   return apiRequest(`${endpoints.users}/${userId}/status`, {
     method: "PUT",

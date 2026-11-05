@@ -60,6 +60,26 @@ public class PayoutEngineTests
 
     // ── RunPayoutEngine: happy path ─────────────────────────────────────────
 
+    // Risk hold (approved after a manual risk review, or flagged by the account monitor): no payout until it ends.
+    [Test]
+    public async Task RiskHold_PayoutIsHeld()
+    {
+        await SeedSellerAsync();
+        var seller = await _context.Users.SingleAsync();
+        seller.RiskScore = 45;
+        seller.PayoutHoldUntil = DateTime.UtcNow.AddDays(28);
+        await _context.SaveChangesAsync();
+        SetupGateway(true);
+        var result = await CreateHandler().Handle(new RunPayoutEngineCommand(), default);
+        result.OnHold.ShouldBe(1);
+        (await _context.SellerWallets.SingleAsync()).AvailableBalance.ShouldBe(500m);
+        _gatewayMock.Verify(g => g.ProcessAsync(It.IsAny<decimal>(), It.IsAny<string>()), Times.Never);
+
+        seller.PayoutHoldUntil = DateTime.UtcNow.AddMinutes(-1);
+        await _context.SaveChangesAsync();
+        (await CreateHandler().Handle(new RunPayoutEngineCommand(), default)).Success.ShouldBe(1);
+    }
+
     [Test]
     public async Task TamperedNewBank_DoesNotLockFundsOrCallGateway()
     {

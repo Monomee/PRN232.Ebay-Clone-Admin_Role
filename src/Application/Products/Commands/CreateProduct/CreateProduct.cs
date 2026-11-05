@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using EbayClone.Application.Common.Interfaces;
+using EbayClone.Application.Users.Risk;
 using EbayClone.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -43,6 +44,7 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
                     throw new Exception("Tài khoản của bạn đã bị khóa.");
                 if (seller.ProductBanUntil.HasValue && seller.ProductBanUntil.Value > DateTime.UtcNow)
                     throw new Exception($"Chức năng đăng sản phẩm của bạn bị tạm khóa đến {seller.ProductBanUntil.Value:dd/MM/yyyy HH:mm}.");
+                await SellingLimits.EnsureWithinAsync(_context, seller, request.Price, newListing: true, cancellationToken);
             }
         }
 

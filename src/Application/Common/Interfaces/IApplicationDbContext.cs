@@ -52,6 +52,7 @@ public interface IApplicationDbContext
     DbSet<SellerLevelCriteria> SellerLevelCriteria { get; }
     DbSet<WithdrawalRequest> WithdrawalRequests { get; }
     DbSet<SensitiveDataLog> SensitiveDataLogs { get; }
+    DbSet<UserIdentifier> UserIdentifiers { get; }
 
 
     // 2. Hàm lưu thay đổi (Quan trọng nhất)

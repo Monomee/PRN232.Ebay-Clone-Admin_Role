@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Text;
 using EbayClone.Application.Common.Interfaces;
+using EbayClone.Application.Users.Risk;
 using EbayClone.Domain.Entities;
 
 namespace EbayClone.Application.Products.Commands.UpdateProduct;
@@ -44,6 +45,9 @@ public class UpdateProductCommandHandler : IRequestHandler<UpdateProductCommand>
 
         // 3. Cập nhật dữ liệu
         // CỰC KỲ QUAN TRỌNG: Chỉ lấy đúng 3 trường để cập nhật. Không lấy Status!
+        if (request.Price != entity.Price && await _context.Users.FindAsync([userId], cancellationToken) is { } seller)
+            await SellingLimits.EnsureWithinAsync(_context, seller, request.Price, newListing: false, cancellationToken);
+
         entity.Title = request.Title;
         entity.Description = request.Description;
         entity.Price = request.Price;

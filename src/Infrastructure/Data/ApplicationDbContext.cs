@@ -54,6 +54,7 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>, 
     public virtual DbSet<SellerLevelCriteria> SellerLevelCriteria { get; set; }
     public virtual DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
     public virtual DbSet<SensitiveDataLog> SensitiveDataLogs { get; set; }
+    public virtual DbSet<UserIdentifier> UserIdentifiers { get; set; }
 
 
     public new Task<int> SaveChangesAsync(CancellationToken cancellationToken)
@@ -533,6 +534,15 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>, 
 
         modelBuilder.Entity<User>().Property(u => u.CccdLookupHash).HasMaxLength(64);
         modelBuilder.Entity<User>().HasIndex(u => u.CccdLookupHash);
+
+        modelBuilder.Entity<UserIdentifier>(entity =>
+        {
+            entity.Property(e => e.Type).HasMaxLength(20);
+            entity.Property(e => e.ValueHash).HasMaxLength(64);
+            entity.HasIndex(e => e.ValueHash);
+            entity.HasIndex(e => e.UserId);
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
 
         // NEW: Apply configurations from assembly for new entities
         modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());

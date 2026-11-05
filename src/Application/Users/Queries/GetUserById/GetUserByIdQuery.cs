@@ -1,6 +1,7 @@
 using System.Text.Json;
 using EbayClone.Application.Common.Interfaces;
 using EbayClone.Domain.Entities;
+using EbayClone.Application.Users.Risk;
 using Microsoft.EntityFrameworkCore;
 
 namespace EbayClone.Application.Users.Queries.GetUserById;
@@ -50,6 +51,20 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
         var documents = user.VerificationDocuments == null ? null : _encryption.Decrypt(user.VerificationDocuments);
         var nationalId = ExtractNationalId(documents) ?? (user.CCCD == null ? null : _encryption.Decrypt(user.CCCD));
         dto.MaskedNationalId = MaskNationalId(nationalId);
+
+        var links = await AccountLinking.FindLinksAsync(_context, user, _encryption, cancellationToken);
+        var risk = AccountLinking.Assess(links, user.Email);
+        dto.CurrentRiskScore = risk.Score;
+        dto.RiskReasons = risk.Reasons.ToList();
+        var linkedIds = links.Select(l => l.UserId).Distinct().ToList();
+        dto.LinkedAccounts = (await _context.Users.Where(u => linkedIds.Contains(u.Id)).ToListAsync(cancellationToken))
+            .OrderByDescending(AccountLinking.IsBanned).ThenBy(u => u.Id)
+            .Select(u => new LinkedAccountDto
+            {
+                UserId = u.Id, Username = u.Username, Role = u.Role, Status = u.Status, ApprovalStatus = u.ApprovalStatus,
+                SharedTypes = links.Where(l => l.UserId == u.Id).Select(l => l.Type).Distinct().ToList(),
+            })
+            .ToList();
 
         dto.OrderHistory = user.OrderTables
             .OrderByDescending(o => o.OrderDate)

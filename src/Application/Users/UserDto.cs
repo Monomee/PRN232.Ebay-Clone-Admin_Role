@@ -12,6 +12,7 @@ public class UserBriefDto
     public bool IsVerified { get; set; }
     public DateTime? LastLoginAt { get; set; }
     public string? SellerLevel { get; set; }
+    public int? RiskScore { get; set; }
 }
 
 public class UserDto
@@ -52,6 +53,15 @@ public class UserDto
     // Detail screen data
     public List<UserOrderHistoryDto> OrderHistory { get; set; } = new();
     public List<UserViolationHistoryDto> ViolationHistory { get; set; } = new();
+
+    // Account linking: score stored at the sign-up check, links and reasons computed from current data
+    public int? RiskScore { get; set; }
+    public DateTime? RiskCheckedAt { get; set; }
+    public int CurrentRiskScore { get; set; }
+    public List<string> RiskReasons { get; set; } = new();
+    public List<LinkedAccountDto> LinkedAccounts { get; set; } = new();
+    public DateTime? ProductBanUntil { get; set; }
+    public DateTime? PayoutHoldUntil { get; set; }
 }
 
 public class UserOrderHistoryDto
@@ -70,4 +80,15 @@ public class UserViolationHistoryDto
     public DateTime CreatedAt { get; set; }
     public int AdminId { get; set; }
     public string? AdminUsername { get; set; }
+}
+
+/// Which identity data is shared, never the value itself.
+public class LinkedAccountDto
+{
+    public int UserId { get; set; }
+    public string? Username { get; set; }
+    public string? Role { get; set; }
+    public string Status { get; set; } = "Active";
+    public string ApprovalStatus { get; set; } = "Approved";
+    public List<string> SharedTypes { get; set; } = new();
 }

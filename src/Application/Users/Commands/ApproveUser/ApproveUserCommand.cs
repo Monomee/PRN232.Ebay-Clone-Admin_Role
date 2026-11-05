@@ -1,6 +1,7 @@
 using System.Text.Json;
 using EbayClone.Application.Common.Interfaces;
 using EbayClone.Domain.Entities;
+using EbayClone.Application.Users.Risk;
 using Microsoft.EntityFrameworkCore;
 
 namespace EbayClone.Application.Users.Commands.ApproveUser;
@@ -49,6 +50,7 @@ public class ApproveUserCommandHandler : IRequestHandler<ApproveUserCommand, boo
         user.Status = "Active";
         user.ApprovedBy = actorId;
         user.ApprovedAt = DateTime.UtcNow;
+        if (SellingLimits.PayoutHoldOnApproval(user, DateTime.UtcNow) is { } hold) user.PayoutHoldUntil = hold;
 
         var after = new
         {
