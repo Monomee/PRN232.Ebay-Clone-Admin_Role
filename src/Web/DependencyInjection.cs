@@ -133,6 +133,8 @@ public static class DependencyInjection
         });
         if (builder.Configuration.GetValue<bool>("Security:AllowApiWithout2FA") && builder.Environment.IsProduction())
             throw new InvalidOperationException("Security:AllowApiWithout2FA is for load tests only and cannot be enabled in Production.");
+        if (builder.Configuration.GetValue<bool>("EmailSettings:LogInsteadOfSending") && builder.Environment.IsProduction())
+            throw new InvalidOperationException("EmailSettings:LogInsteadOfSending writes verification codes to the log and cannot be enabled in Production.");
         builder.Services.AddMemoryCache();
         builder.Services.AddSingleton<SecurityCache>();
         builder.Services.AddSingleton<IRunOnceGuard>(sp => sp.GetRequiredService<SecurityCache>());

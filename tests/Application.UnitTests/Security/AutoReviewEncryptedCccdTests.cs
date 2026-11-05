@@ -87,6 +87,8 @@ public class AutoReviewEncryptedCccdTests
             // 9 is the same gmail mailbox as active user 10, written with dots and a +tag.
             db.Users.Add(new User { Id = 9, Username = "dots", Email = "N.guyen+shop2@gmail.com", ApprovalStatus = "PendingApproval" });
             db.Users.Add(new User { Id = 10, Username = "original", Email = "nguyen@gmail.com" });
+            // 11 signed up but never entered its email code: not reviewed (and so never auto-approved).
+            db.Users.Add(new User { Id = 11, Username = "unverified", Status = "Unverified", ApprovalStatus = "PendingApproval" });
             await db.SaveChangesAsync();
         }
         using var service = new AutoReviewUsersService(provider, NullLogger<AutoReviewUsersService>.Instance);
@@ -98,7 +100,8 @@ public class AutoReviewEncryptedCccdTests
         var users = await context.Users.OrderBy(x => x.Id).ToListAsync();
         // 1,2 same CCCD: rejected. 5,6 only share IP + location (shared Wi-Fi?): left for an admin, not banned.
         // 8 shares a bank account with banned 7: rejected. 9 is user 10's mailbox: review.
-        Assert.That(users.Select(x => x.ApprovalStatus), Is.EqualTo(new[]
+        Assert.That((users[10].Status, users[10].RiskCheckedAt), Is.EqualTo(("Unverified", (DateTime?)null)));
+        Assert.That(users.Take(10).Select(x => x.ApprovalStatus), Is.EqualTo(new[]
             { "Rejected", "Rejected", "Approved", "Approved", "PendingApproval", "PendingApproval", "Approved", "Rejected", "PendingApproval", "Approved" }));
         Assert.That(users.Where(x => x.Id is 5 or 6 or 9).All(x => x.RiskCheckedAt != null && x.RiskScore >= 30), Is.True);
         Assert.That(users[7].BannedReason, Does.Not.Contain("Bank"), "the user is not told what linked them");

@@ -60,6 +60,13 @@ public class LoginCommandHandler
             };
         }
 
+        if (user.Status == "Unverified")
+            return new LoginResponse
+            {
+                Success = false,
+                ErrorMessage = "Vui lòng xác minh email trước khi đăng nhập"
+            };
+
         if (user.TwoFactorEnabled)
             return new LoginResponse
             {

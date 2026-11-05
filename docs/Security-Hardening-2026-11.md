@@ -104,7 +104,22 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
   - chỉ rút về **tài khoản ngân hàng đã đăng ký** (`PUT /api/Account/bank-account`, đã so tên KYC). Số tài khoản khác trả 400; tên chủ tài khoản lưu lấy từ tài khoản đã đăng ký.
 - **Review chéo (shill review):** người review có chung CCCD, ngân hàng, email, SĐT, thiết bị hoặc địa chỉ với seller thì review bị giữ ở `PendingReview`, `FlagReason = LinkedToSeller` để moderator xem. Chỉ trùng IP/tọa độ thì không tính (wifi chung, NAT nhà mạng).
 
-### 1.8 Load test
+### 1.8 Đăng ký, captcha, OTP email, kiểm tra CCCD
+
+- **API đăng ký** `POST /api/Auth/register` (chỉ API, chưa có giao diện). Chỉ tạo được `Buyer` hoặc `Seller`.
+  - **Captcha** Cloudflare Turnstile (`Captcha:TurnstileSecretKey`). Không có key: Production **từ chối** đăng ký; môi trường khác bỏ qua captcha và ghi log cảnh báo.
+  - Rate limit strict (5 lần/phút/IP) cho `register`, `verify-email`, `resend-email-code`.
+  - Ghi IP đăng ký (`LastLoginIp`) và cookie `device_id` + `LoginHistories`: nhiều tài khoản đăng ký từ cùng một trình duyệt sẽ bị liên kết qua định danh `Device`.
+  - Seller bắt buộc khai họ tên, CCCD, ngày sinh, đủ 18 tuổi. Buyer không bắt buộc, nhưng nếu khai CCCD thì phải khai đủ cả ba.
+- **Kiểm tra định dạng CCCD** (`CccdFormat`): 12 số, 3 số đầu là mã tỉnh hợp lệ, số thứ 4 (giới tính + thế kỷ) và 2 số tiếp theo phải khớp năm sinh. Chặn số bịa; **không** chứng minh được thẻ có thật (cần eKYC).
+- **OTP email:**
+  - Tài khoản mới ở `Status = Unverified`: không đăng nhập được, không đăng bán/review/rút tiền, và **chưa được đưa vào duyệt rủi ro**.
+  - Mã 6 số, DB chỉ lưu HMAC, hết hạn sau 10 phút, sai 5 lần thì phải xin mã mới, xin lại tối đa 1 lần/phút (`POST /api/Auth/resend-email-code`).
+  - Nhập đúng (`POST /api/Auth/verify-email`) thì chuyển sang `Pending` → `AutoReviewUsersService` chấm điểm như trước.
+  - `verify-email` và `resend-email-code` trả cùng một câu cho email không tồn tại, để không lộ email nào đã đăng ký.
+- **Dev không có SMTP:** `EmailSettings:LogInsteadOfSending=true` in nội dung mail (có mã OTP) ra log thay vì gửi. App **từ chối khởi động** nếu bật ở Production.
+
+### 1.9 Load test
 
 - Cấu hình `Security:AllowApiWithout2FA` cho phép tài khoản chưa bật 2FA gọi API, chỉ dùng khi chạy JMeter. App **từ chối khởi động** nếu bật ở Production. `docker-compose.loadtest.yml` đã bật sẵn.
 - JMeter plan 11 gửi cookie `2fa_challenge` thay cho `userId`.
@@ -120,6 +135,7 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
 5. **Ngày giờ trên giao diện** đang hiển thị giờ UTC như giờ địa phương. Lỗi này có từ trước và ảnh hưởng toàn app.
 6. **Trong lúc rolling update**, pod chạy code cũ (chưa có khóa) vẫn có thể đồng bộ trùng. Index unique chặn lại; pod cũ chỉ ghi log lỗi, dữ liệu không sai.
 7. **Test HTTP tự ký token** phải có user khớp trong DB: dùng `Factory.EnsureSessionUser(id, role, permissions...)`. Muốn truyền cấu hình riêng cho một test thì dùng `new Factory { Settings = { ... } }`.
+8. **Rolling update lên bản có đăng ký:** pod cũ chưa biết trạng thái `Unverified` nên có thể duyệt tài khoản chưa xác minh email. Chỉ xảy ra khi đã có người đăng ký trong lúc deploy; muốn chắc chắn thì deploy xong mới mở đăng ký.
 
 ---
 
@@ -129,7 +145,7 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
 |---|---|---|
 | Vị trí IP | Bảng mẫu cấp quốc gia (VN, US, JP) | MaxMind GeoLite2 (cần đăng ký key) |
 | Dải IP datacenter | Bảng mẫu vài dải | Job tải định kỳ `ip-ranges.json` (AWS), `cloud.json` (Google), Azure ServiceTags |
-| Trang đăng ký, UI buyer/seller | Chưa có; chỉ user mock/seed được chấm điểm | Gọi cùng luồng `PendingApproval` → `AutoReviewUsersService` |
+| UI đăng ký, buyer/seller | Đã có API đăng ký, chưa có giao diện | Form gọi `register` → `verify-email`, nhúng widget Turnstile |
 | UI đổi tài khoản ngân hàng | Chỉ gọi qua Swagger/API | Form gọi `PUT /api/Account/bank-account` |
 | Thông báo bảo mật | Chỉ in-app (bảng Notification) | Gửi email khi đổi ngân hàng hoặc đăng nhập từ nơi lạ |
 | Xác minh thêm khi đăng nhập lạ | Chỉ gắn cờ | Yêu cầu nhập lại 2FA hoặc xác nhận qua email |
@@ -137,11 +153,11 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
 | Governance Records | "Lift restrictions" không hiện (bộ lọc chỉ lấy Ban/Reject/Suspend) | Mở rộng bộ lọc |
 | Trọng số / ngưỡng | Hằng số trong code | Đưa vào cấu hình, tinh chỉnh bằng dữ liệu thật |
 | Hiệu năng job | Đồng bộ toàn bộ user mỗi 10 phút | Xử lý theo trang khi dữ liệu lớn (đã ghi chú `ponytail:`) |
-| Xác minh email / SĐT | Không có; email và SĐT do user tự khai nên có thể khai thông tin của người khác | OTP email (đã có `EmailService`), OTP SMS (cần nhà cung cấp); chỉ tính định danh đã xác minh khi chấm điểm |
-| eKYC CCCD | `CCCD` tự nhập; `IsVerified` chưa chặn chức năng nào | Dịch vụ eKYC (OCR + selfie/NFC); bắt buộc `IsVerified` với seller trước khi đăng bán/nhận tiền |
+| OTP SMS | SĐT vẫn do user tự khai | Cần nhà cung cấp SMS; dùng lại cơ chế của `EmailOtp` |
+| Chiếm email | Đăng ký trước bằng email của người khác thì chủ thật không đăng ký được (email unique) | Xóa hoặc cho đăng ký đè tài khoản `Unverified` quá 24 giờ |
+| eKYC CCCD | Đã kiểm định dạng CCCD khi đăng ký; `IsVerified` vẫn chưa chặn chức năng nào | Dịch vụ eKYC (OCR + selfie/NFC); bắt buộc `IsVerified` với seller trước khi đăng bán/nhận tiền |
 | Xác minh tài khoản ngân hàng | Chỉ so tên với tên KYC tự khai | Tra tên chủ tài khoản qua Napas hoặc chuyển thử |
 | Một CCCD một tài khoản ở DB | Chỉ qua điểm rủi ro (CCCD trùng = 80 → từ chối) | Không đặt unique index: tài khoản trùng phải được lưu thì mới bị chấm và từ chối |
-| Captcha / rate limit đăng ký | Chưa có trang đăng ký | Thêm khi làm trang đăng ký |
 | Cookie thiết bị | Dễ né bằng cửa sổ ẩn danh | Cố ý là tín hiệu yếu; không làm fingerprint canvas |
 | JMeter, k8s | Chưa chạy plan JMeter, chưa apply lên cluster thật | Chạy `tests/jmeter`, apply `k8s/` |
 | `App.test.js` | Fail từ trước (Jest không import được axios ESM) | Cấu hình `transformIgnorePatterns` cho axios |
@@ -157,13 +173,14 @@ git pull origin main
 dotnet build EbayClone.slnx
 ```
 
-Có 3 migration mới. Tất cả chỉ thêm, an toàn khi rolling update.
+Có 4 migration mới. Tất cả chỉ thêm, an toàn khi rolling update.
 
 | Migration | Thay đổi |
 |---|---|
 | `20261105080224_AccountLinking` | Bảng `UserIdentifiers`; cột `RiskScore`, `RiskCheckedAt`, `PayoutHoldUntil` trên `User` |
 | `20261105084303_SignInHistory` | Bảng `LoginHistories` |
 | `20261105090812_UniqueUserIdentifier` | Xóa dòng trùng, unique index `(UserId, Type, ValueHash)` |
+| `20261105181302_EmailVerification` | Cột `EmailVerifiedAt`, `EmailOtpHash`, `EmailOtpSentAt`, `EmailOtpAttempts` trên `User` |
 
 Áp migration bằng một trong hai cách:
 
@@ -185,6 +202,9 @@ DatabaseInitialization__RunMigrationsOnStartup=true
 | `InternalIps` | IP hoặc CIDR | Ai được vào app |
 | `Security:EncryptionKey` | 32 byte Base64 | Đã có từ trước; cũng là khóa cho các HMAC định danh |
 | `Security:AllowApiWithout2FA` | `false` | Chỉ đặt `true` khi chạy JMeter (`ALLOW_API_WITHOUT_2FA` trong `.env`) |
+| `Captcha:TurnstileSecretKey` | secret key Turnstile | **Bắt buộc ở Production** để đăng ký được. Key test luôn qua: `1x0000000000000000000000000000000AA` |
+| `EmailSettings:SenderEmail` / `SenderPassword` | Gmail + app password | Để gửi mã OTP thật |
+| `EmailSettings:LogInsteadOfSending` | `false` | Chỉ đặt `true` khi dev không có SMTP (mã OTP in ra log) |
 
 ### 4.3 Tài khoản
 
