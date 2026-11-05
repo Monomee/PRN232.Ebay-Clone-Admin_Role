@@ -1,4 +1,5 @@
 
+using EbayClone.Application.Common.Interfaces;
 using EbayClone.Application.Common.Models;
 using EbayClone.Domain.Constants;
 using EbayClone.Application.Products.Commands.CreateProduct;
@@ -27,9 +28,9 @@ public class Products : EndpointGroupBase
         // Chỉ cần khai báo các hành động cụ thể vào group này
         group.MapGet(GetProducts);              // Tự động thành: GET /api/products
         group.MapGet("{id}", GetProductById);   // GET /api/products/{id}
-        group.MapPost(CreateProduct);           // Tự động thành: POST /api/products
-        group.MapPut("{id}", UpdateProduct);
-        group.MapDelete("{id}", DeleteProduct);
+        group.MapPost(CreateProduct).RequireAuthorization();           // POST /api/products — seller = người đang đăng nhập
+        group.MapPut("{id}", UpdateProduct).RequireAuthorization();    // handler còn kiểm tra chủ sở hữu
+        group.MapDelete("{id}", DeleteProduct).RequireAuthorization();
         group.MapGet("managed/{id}/violation-details", GetViolationDetails).RequireAuthorization(Policies.ManageProducts);
         group.MapPost("managed/{id}/resolve-violation", ResolveViolation).RequireAuthorization(Policies.ManageProducts);
 
@@ -55,8 +56,10 @@ public class Products : EndpointGroupBase
         return product != null ? Results.Ok(product) : Results.NotFound();
     }
 
-    public async Task<int> CreateProduct(ISender sender, CreateProductCommand command)
+    public async Task<int> CreateProduct(ISender sender, IUser user, CreateProductCommand command)
     {
+        // Never trust SellerId from the body: anyone could list products under another seller.
+        command.SellerId = user.GetRequiredActorId();
         return await sender.Send(command);
     }
 
@@ -76,8 +79,10 @@ public class Products : EndpointGroupBase
         return Results.NoContent();
     }
 
-    public async Task<IResult> CreateProductReport(ISender sender, CreateProductReportCommand command)
+    public async Task<IResult> CreateProductReport(ISender sender, IUser user, CreateProductReportCommand command)
     {
+        // Anonymous reports stay allowed, but the reporter is whoever is signed in, not what the body claims.
+        command.ReporterUserId = int.TryParse(user.Id, out var reporterId) ? reporterId : null;
         await sender.Send(command);
         return Results.NoContent();
     }

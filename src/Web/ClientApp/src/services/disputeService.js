@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { guardAxios } from './sessionGuard';
 
 const API_BASE = '/api';
 
@@ -7,6 +8,8 @@ const api = axios.create({
     baseURL: API_BASE,
     withCredentials: true // R?t quan tr?ng ð? g?i kèm HttpOnly Cookie (Auth)
 });
+
+guardAxios(api);
 
 export const disputeService = {
     // ===============================

@@ -1,9 +1,12 @@
 import axios from "axios";
+import { guardAxios } from "./sessionGuard";
 
 const instance = axios.create({
     baseURL: "/",
     // timeout: 1000,
 });
+
+guardAxios(instance);
 
 instance.interceptors.request.use(
     function (config) {

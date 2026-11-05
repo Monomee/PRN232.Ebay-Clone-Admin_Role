@@ -17,6 +17,7 @@ builder.AddKeyVaultIfConfigured();
 builder.AddApplicationServices();
 builder.AddInfrastructureServices();
 builder.AddWebServices();
+builder.WebHost.ConfigureKestrel(options => options.AddServerHeader = false); // ẩn "Server: Kestrel"
 
 // Ngắn hơn terminationGracePeriodSeconds (45) trừ preStop (15), để process tự thoát trước SIGKILL.
 builder.Services.Configure<HostOptions>(options =>
@@ -48,6 +49,7 @@ if (!app.Environment.IsEnvironment("Testing"))
 
 // Ensure real client IP is captured before any other middleware
 app.UseForwardedHeaders();
+app.UseMiddleware<SecurityHeadersMiddleware>(); // CSP, nosniff, X-Frame-Options... cho mọi response (kể cả Swagger, 403)
 
 // ── Environment-specific middleware ──────────────────────────
 if (app.Environment.IsDevelopment())
@@ -79,8 +81,8 @@ app.UseMiddleware<InternalIpMiddleware>(); // <-- restrict to internal IPs early
 app.UseStaticFiles();          // serve React build from wwwroot
 app.UseExceptionHandler(options => { });
 app.UseCors("FrontendPolicy");
-app.UseRateLimiter();          // Rate Limiting — TRƯỚC authentication
 app.UseAuthentication();
+app.UseRateLimiter();          // Sau authentication để policy "authenticated" chia theo UserId
 app.UseAuthorization();
 
 // ── API endpoints ────────────────────────────────────────────

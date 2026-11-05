@@ -71,6 +71,8 @@ services:
       EmailSettings__SmtpServer: "smtp.gmail.com"
       EmailSettings__Port: "587"
       Redis__ConnectionString: "redis:6379"
+      # Chỉ bật khi chạy JMeter (tài khoản test chưa bật 2FA). App từ chối khởi động nếu bật ở Production.
+      Security__AllowApiWithout2FA: "${ALLOW_API_WITHOUT_2FA:-false}"
     restart: unless-stopped
 
   # ============================================================

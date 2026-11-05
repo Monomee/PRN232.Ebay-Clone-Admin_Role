@@ -5,11 +5,11 @@
   "InternalIps": [
     "127.0.0.1",
     "::1",
-    "192.168.1.*",
-    "192.168.*.*",
-    "172.*",
-    "10.*"
+    "192.168.0.0/16",
+    "172.16.0.0/12",
+    "10.0.0.0/8"
   ],
+  "TrustedProxyNetworks": [ "127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16" ],
   "ConnectionStrings": {
     "MyCnn": "Server=.\\SQLEXPRESS;Database=CloneEbayDB;Trusted_Connection=True;TrustServerCertificate=True;"
   },

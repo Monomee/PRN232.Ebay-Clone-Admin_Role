@@ -15,10 +15,7 @@ const ActiveConnectionsPage = () => {
     try {
       setLoading(true);
       const response = await fetch('/api/SystemAdmin/active-ips', {
-        headers: {
-          'Authorization': `Bearer ${window.localStorage.getItem('token') || ''}`
-        },
-        credentials: 'include'
+        credentials: 'include' // auth là HttpOnly cookie; token không bao giờ nằm trong localStorage
       });
 
       if (!response.ok) {

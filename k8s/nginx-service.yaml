@@ -8,6 +8,9 @@ metadata:
   namespace: ebay-clone
 spec:
   type: LoadBalancer # Trên Docker Desktop sẽ map thẳng localhost:80
+  # Giữ IP thật của client (mặc định "Cluster" SNAT thành IP node): rate limit và allowlist IP
+  # của nginx/app tính theo IP, nếu mất IP thật thì mọi người dùng chung một bộ đếm.
+  externalTrafficPolicy: Local
   ports:
     - port: 80
       targetPort: 80

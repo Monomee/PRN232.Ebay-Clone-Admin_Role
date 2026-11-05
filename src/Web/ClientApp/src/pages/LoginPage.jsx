@@ -144,7 +144,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
-  const [userId, setUserId] = useState(null);
   const [code, setCode] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -186,7 +185,6 @@ export default function LoginPage() {
       }
 
       if (data.requireTwoFactor) {
-        setUserId(data.userId);
         setStep("2fa");
       } else {
         // ✅ Không lưu token — server đã set HttpOnly cookie
@@ -217,7 +215,7 @@ export default function LoginPage() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",                          // ✅ gửi/nhận cookie
-        body: JSON.stringify({ userId, code }),
+        body: JSON.stringify({ code }),          // server lấy user từ cookie challenge
       });
 
       const data = await res.json();

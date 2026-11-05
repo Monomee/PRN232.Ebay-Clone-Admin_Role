@@ -441,6 +441,18 @@ public class ManhW8BugFixesTests
     // =========================================================================
 
     [Test]
+    public async Task Enable2FA_WhenAlreadyEnabled_KeepsExistingSecret()
+    {
+        _context.Users.Add(new User { Id = 52, Email = "mfa_on@ebayclone.com", Username = "mfaOn", TwoFactorEnabled = true, TwoFactorSecret = "EXISTINGSECRET" });
+        await _context.SaveChangesAsync();
+
+        var qr = await new Enable2FACommandHandler(_context).Handle(new Enable2FACommand("mfa_on@ebayclone.com"), CancellationToken.None);
+
+        qr.ShouldBeNull();
+        (await _context.Users.FindAsync(52))!.TwoFactorSecret.ShouldBe("EXISTINGSECRET");
+    }
+
+    [Test]
     public async Task Enable2FA_GeneratesSecret_KeepsTwoFactorEnabledFalse()
     {
         // Arrange

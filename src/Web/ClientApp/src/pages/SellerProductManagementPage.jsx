@@ -8,8 +8,8 @@ const SellerProductManagementPage = () => {
     const [products, setProducts] = useState([]);
     const [loading, setLoading] = useState(false);
     
-    // Add test user ID if not logged in for easy debugging
-    const sellerId = user?.id || 1; 
+    // /api/Auth/me returns userId; the server takes the seller from the session when creating
+    const sellerId = user?.userId;
 
     // Add modal state
     const [showAddModal, setShowAddModal] = useState(false);
@@ -17,7 +17,7 @@ const SellerProductManagementPage = () => {
     const [addError, setAddError] = useState('');
 
     useEffect(() => {
-        fetchProducts();
+        if (sellerId) fetchProducts();
     }, [sellerId]);
 
     const fetchProducts = async () => {
@@ -36,10 +36,7 @@ const SellerProductManagementPage = () => {
         e.preventDefault();
         setAddError('');
         try {
-            await productService.createProduct({
-                ...newProduct,
-                sellerId: sellerId
-            });
+            await productService.createProduct(newProduct);
             setShowAddModal(false);
             setNewProduct({ title: '', description: '', price: '', categoryId: 1, images: '', isAuction: false });
             fetchProducts();
