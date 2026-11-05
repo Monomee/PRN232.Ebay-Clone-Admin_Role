@@ -18,7 +18,6 @@ public class CurrentUser : IUser
     public bool IsSystem => _httpContextAccessor.HttpContext == null;
     public List<string>? Roles => _httpContextAccessor.HttpContext?.User?.FindAll(ClaimTypes.Role).Select(x => x.Value).ToList();
 
-    public string? IpAddress =>
-        _httpContextAccessor.HttpContext?.Request?.Headers["X-Forwarded-For"].FirstOrDefault()?.Split(',').FirstOrDefault()?.Trim()
-        ?? _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
+    // UseForwardedHeaders already resolved the client IP from trusted proxies; reading the raw header would trust anyone.
+    public string? IpAddress => _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
 }

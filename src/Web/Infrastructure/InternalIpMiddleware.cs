@@ -61,10 +61,12 @@ public class InternalIpMiddleware
             tracker?.RecordActivity(remoteIpString);
         }
 
-        // Check against exact matches or subnets (simple prefix check for this example)
+        // Exact IP, CIDR ("172.16.0.0/12") or legacy wildcard prefix ("192.168.*")
         foreach (var ip in _allowedIps)
         {
-            if (remoteIpString == ip || (ip.EndsWith(".*") && remoteIpString.StartsWith(ip.Replace(".*", ""))))
+            if (remoteIpString == ip
+                || (IPNetwork.TryParse(ip, out var network) && network.Contains(remoteIp))
+                || (ip.EndsWith(".*") && remoteIpString.StartsWith(ip.Replace(".*", "") + ".")))
             {
                 isAllowed = true;
                 break;

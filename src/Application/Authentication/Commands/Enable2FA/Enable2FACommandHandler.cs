@@ -6,7 +6,7 @@ using OtpNet;
 using QRCoder;
 
 namespace EbayClone.Application.Authentication.Commands.Enable2FA;
-public class Enable2FACommandHandler : IRequestHandler<Enable2FACommand, string>
+public class Enable2FACommandHandler : IRequestHandler<Enable2FACommand, string?>
 {
     private readonly IApplicationDbContext _context;
 
@@ -15,13 +15,17 @@ public class Enable2FACommandHandler : IRequestHandler<Enable2FACommand, string>
         _context = context;
     }
 
-    public async Task<string> Handle(Enable2FACommand request, CancellationToken cancellationToken)
+    public async Task<string?> Handle(Enable2FACommand request, CancellationToken cancellationToken)
     {
         var user = await _context.Users
             .FirstOrDefaultAsync(x => x.Email == request.Email);
 
         if (user == null)
             throw new Exception("User not found");
+
+        // Ghi đè secret khi 2FA đang bật sẽ làm hỏng authenticator hiện tại và cho phép ai giữ phiên đăng ký lại 2FA về máy mình.
+        if (user.TwoFactorEnabled)
+            return null;
 
         var secretKey = KeyGeneration.GenerateRandomKey(20);
         var base32Secret = Base32Encoding.ToString(secretKey);

@@ -44,6 +44,21 @@ public class SensitiveLogHttpTests
                 services.AddScoped<IUser, CurrentUser>();
             });
         }
+
+        /// Every authenticated request is checked against the Users table (status, role, 2FA), so a test token needs
+        /// a matching active account with 2FA on. Creates it, or brings an existing row in line with the token.
+        public void EnsureSessionUser(int id, string role)
+        {
+            using var scope = Services.CreateScope();
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            var user = db.Users.Find(id);
+            if (user == null) db.Users.Add(user = new User { Id = id, Username = $"user{id}", Email = $"user{id}@test.local" });
+            user.Role = role;
+            user.Status = "Active";
+            user.ApprovalStatus = "Approved";
+            user.TwoFactorEnabled = true;
+            db.SaveChanges();
+        }
     }
 
     [TestCase(null, HttpStatusCode.Unauthorized, false)]
@@ -60,7 +75,7 @@ public class SensitiveLogHttpTests
         {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             var crypto = scope.ServiceProvider.GetRequiredService<IEncryptionService>();
-            db.Users.Add(new User { Id = 42, Username = "superadmin", Role = "SuperAdmin" });
+            db.Users.Add(new User { Id = 42, Username = "superadmin", Role = role ?? "SuperAdmin", TwoFactorEnabled = true });
             db.SensitiveDataLogs.Add(new SensitiveDataLog { Id = 1, ActorId = 42, Action = "TestRead", TargetEntity = "User",
                 EncryptedData = crypto.Encrypt("{\"cccd\":\"001234567890\"}"), DataHash = tamper ? new string('0', 64) : crypto.ComputeHmac("{\"cccd\":\"001234567890\"}") });
             await db.SaveChangesAsync();

@@ -5,6 +5,7 @@ using EbayClone.Application.Common.Interfaces;
 using EbayClone.Infrastructure.Data;
 using EbayClone.Infrastructure.Services;
 using EbayClone.Web.Hubs;
+using EbayClone.Web.Infrastructure;
 using EbayClone.Web.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.HttpOverrides;
@@ -21,12 +22,19 @@ public static class DependencyInjection
     {
         builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
+        // X-Forwarded-For is only honoured when the direct peer is our own proxy (nginx / ingress on a private network).
+        // A client reaching Kestrel directly cannot spoof its IP past InternalIpMiddleware or into audit logs.
+        var trustedProxyNetworks = builder.Configuration.GetSection("TrustedProxyNetworks").Get<string[]>()
+            ?? ["127.0.0.0/8", "::1/128", "10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"];
         builder.Services.Configure<ForwardedHeadersOptions>(options =>
         {
-            options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.All;
-            options.ForwardLimit = null; // Trust all proxies (loopback by default is trusted)
+            options.ForwardedHeaders = Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedFor
+                | Microsoft.AspNetCore.HttpOverrides.ForwardedHeaders.XForwardedProto;
+            options.ForwardLimit = null; // walk back through trusted hops only, stops at the first untrusted address
             options.KnownProxies.Clear();
             options.KnownIPNetworks.Clear();
+            foreach (var network in trustedProxyNetworks)
+                options.KnownIPNetworks.Add(System.Net.IPNetwork.Parse(network));
         });
 
         builder.Services.AddScoped<IUser, CurrentUser>();
@@ -119,9 +127,12 @@ public static class DependencyInjection
                     }
 
                     return Task.CompletedTask;
-                }
+                },
+                OnTokenValidated = SessionValidation.OnTokenValidated
             };
         });
+        builder.Services.AddMemoryCache();
+        builder.Services.AddSingleton<RevokedTokenStore>();
 
         builder.Services.AddCors(options =>
         {
