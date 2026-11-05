@@ -48,6 +48,8 @@ public class CreateProductTests
     public async Task Handle_ValidRequest_ShouldCreateProduct()
     {
         // Arrange
+        _context.Users.Add(new User { Id = 1, Role = "Seller" });
+        await _context.SaveChangesAsync();
         var handler = new CreateProductCommandHandler(_context, _serviceProviderMock.Object);
         var command = new CreateProductCommand 
         { 
@@ -97,5 +99,27 @@ public class CreateProductTests
         // Act & Assert
         Should.ThrowAsync<Exception>(() => handler.Handle(command, CancellationToken.None))
             .Result.Message.ShouldContain("Chức năng đăng sản phẩm của bạn bị tạm khóa");
+    }
+
+    // The window between sign-up and the risk review is where a clone account does its damage.
+    [TestCase("Active", "PendingApproval", "Seller")]
+    [TestCase("Suspended", "Approved", "Seller")]
+    [TestCase("Active", "Approved", "Buyer")]
+    public async Task Handle_AccountNotAllowedToSell_IsRejected(string status, string approval, string role)
+    {
+        _context.Users.Add(new User { Id = 4, Status = status, ApprovalStatus = approval, Role = role });
+        await _context.SaveChangesAsync();
+        var handler = new CreateProductCommandHandler(_context, _serviceProviderMock.Object);
+
+        await Should.ThrowAsync<EbayClone.Application.Common.Exceptions.ValidationException>(
+            () => handler.Handle(new CreateProductCommand { Title = "Item", Price = 10, SellerId = 4 }, CancellationToken.None));
+        (await _context.Products.CountAsync()).ShouldBe(0);
+    }
+
+    [Test]
+    public async Task Handle_NoSeller_IsRejected()
+    {
+        var handler = new CreateProductCommandHandler(_context, _serviceProviderMock.Object);
+        await Should.ThrowAsync<UnauthorizedAccessException>(() => handler.Handle(new CreateProductCommand { Title = "Item" }, CancellationToken.None));
     }
 }

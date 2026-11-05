@@ -116,4 +116,37 @@ public class CreateReviewTests
         Should.ThrowAsync<Exception>(() => handler.Handle(command, CancellationToken.None))
             .Result.Message.ShouldBe("Tài khoản của bạn đã bị khóa.");
     }
+
+    // Shill review: the buyer shares a strong identifier (here the phone) with the seller -> held for a moderator.
+    // Sharing only the IP (same café / carrier NAT) is not enough.
+    [TestCase("0912 345 678", true)]
+    [TestCase("0987 000 111", false)]
+    public async Task Handle_ReviewerLinkedToSeller_IsFlagged(string reviewerPhone, bool flagged)
+    {
+        var encryption = EbayClone.Application.UnitTests.Security.EncryptionServiceTests.Create();
+        _context.Users.AddRange(
+            new User { Id = 10, Role = "Seller", LastLoginIp = "14.161.1.1", Addresses = { new Address { Phone = "+84912345678" } } },
+            new User { Id = 11, Role = "Buyer", LastLoginIp = "14.161.1.1", Addresses = { new Address { Phone = reviewerPhone } } });
+        _context.Products.Add(new Product { Id = 101, SellerId = 10, Title = "Item" });
+        _context.OrderTables.Add(new OrderTable { BuyerId = 11, Status = "Completed", OrderItems = { new OrderItem { ProductId = 101 } } });
+        await _context.SaveChangesAsync();
+        await EbayClone.Application.Users.Risk.AccountLinking.SyncIdentifiersAsync(_context, encryption, _context.Users, CancellationToken.None);
+
+        var handler = new CreateReviewCommandHandler(_context, _serviceProviderMock.Object, null, encryption);
+        var id = await handler.Handle(new CreateReviewCommand { ProductId = 101, ReviewerId = 11, Rating = 5 }, CancellationToken.None);
+
+        var review = await _context.Reviews.FindAsync(id);
+        review!.Status.ShouldBe(flagged ? "PendingReview" : "Visible");
+        (review.FlagReason == "LinkedToSeller").ShouldBe(flagged);
+    }
+
+    [Test]
+    public async Task Handle_PendingAccount_CannotReview()
+    {
+        _context.Users.Add(new User { Id = 12, ApprovalStatus = "PendingApproval" });
+        await _context.SaveChangesAsync();
+        var handler = new CreateReviewCommandHandler(_context, _serviceProviderMock.Object);
+        await Should.ThrowAsync<EbayClone.Application.Common.Exceptions.ValidationException>(
+            () => handler.Handle(new CreateReviewCommand { ProductId = 101, ReviewerId = 12, Rating = 5 }, CancellationToken.None));
+    }
 }

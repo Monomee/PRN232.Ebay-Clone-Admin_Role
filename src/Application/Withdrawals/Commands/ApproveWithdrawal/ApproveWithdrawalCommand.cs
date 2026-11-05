@@ -35,6 +35,14 @@ public class ApproveWithdrawalCommandHandler : IRequestHandler<ApproveWithdrawal
             throw new InvalidOperationException("Only pending requests can be approved.");
         }
 
+        // The seller may have been banned or put on hold (new bank account, link to a banned account, impossible
+        // travel) after requesting: re-check at payout time. Reject the request to return the funds instead.
+        var seller = await _context.Users.FirstOrDefaultAsync(u => u.Id == withdrawal.SellerId, cancellationToken);
+        if (EbayClone.Application.Users.Risk.AccountStanding.Problem(seller) is { } problem)
+            throw new InvalidOperationException($"Cannot pay out: {problem}");
+        if (seller!.PayoutHoldUntil > DateTime.UtcNow)
+            throw new InvalidOperationException($"Cannot pay out: seller payouts are on hold until {seller.PayoutHoldUntil:u}.");
+
         var wallet = await _context.SellerWallets
             .FirstOrDefaultAsync(w => w.SellerId == withdrawal.SellerId, cancellationToken);
 

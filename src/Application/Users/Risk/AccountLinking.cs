@@ -225,7 +225,7 @@ public static class AccountLinking
         return rows.ToLookup(r => r.UserId, r => r.DeviceHash!);
     }
 
-    private static string? BankAccountNumber(string? bankAccountMock, IEncryptionService encryption) =>
+    public static string? BankAccountNumber(string? bankAccountMock, IEncryptionService encryption) =>
         NormalizeBankAccount(ReadJsonString(bankAccountMock, encryption, "accountNumber"));
 
     /// Rewrites the identifier rows of the given users from their current data (only the differences are written).

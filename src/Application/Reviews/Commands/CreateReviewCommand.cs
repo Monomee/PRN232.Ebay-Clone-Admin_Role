@@ -1,5 +1,6 @@
 using ValidationException = EbayClone.Application.Common.Exceptions.ValidationException;
 using EbayClone.Application.Common.Interfaces;
+using EbayClone.Application.Users.Risk;
 using EbayClone.Domain.Entities;
 using FluentValidation.Results;
 using MediatR;
@@ -21,12 +22,14 @@ public class CreateReviewCommandHandler : IRequestHandler<CreateReviewCommand, i
     private readonly IApplicationDbContext _context;
     private readonly IServiceProvider _serviceProvider;
     private readonly IUser? _user;
+    private readonly IEncryptionService? _encryption;
 
-    public CreateReviewCommandHandler(IApplicationDbContext context, IServiceProvider serviceProvider, IUser? user = null)
+    public CreateReviewCommandHandler(IApplicationDbContext context, IServiceProvider serviceProvider, IUser? user = null, IEncryptionService? encryption = null)
     {
         _context = context;
         _serviceProvider = serviceProvider;
         _user = user;
+        _encryption = encryption;
     }
 
     public async Task<int> Handle(CreateReviewCommand request, CancellationToken cancellationToken)
@@ -46,7 +49,7 @@ public class CreateReviewCommandHandler : IRequestHandler<CreateReviewCommand, i
             throw new UnauthorizedAccessException();
         }
 
-        var reviewer = await _context.Users.FindAsync(new object[] { reviewerId }, cancellationToken);
+        var reviewer = await _context.Users.Include(u => u.Addresses).FirstOrDefaultAsync(u => u.Id == reviewerId, cancellationToken);
         if (reviewer == null)
             throw new Exception("Không tìm thấy người dùng.");
 
@@ -59,7 +62,9 @@ public class CreateReviewCommandHandler : IRequestHandler<CreateReviewCommand, i
             if (reviewer.ReviewBanUntil.HasValue && reviewer.ReviewBanUntil.Value > DateTime.UtcNow)
                 throw new Exception($"Chức năng đánh giá của bạn bị tạm khóa đến {reviewer.ReviewBanUntil.Value:dd/MM/yyyy HH:mm}.");
         }
+        AccountStanding.Ensure(reviewer); // suspended / not yet reviewed accounts may not review
 
+        var linkedToSeller = false;
         var product = await _context.Products.FindAsync(new object[] { request.ProductId }, cancellationToken);
         if (product != null)
         {
@@ -80,6 +85,14 @@ public class CreateReviewCommandHandler : IRequestHandler<CreateReviewCommand, i
             {
                 throw new ValidationException([new ValidationFailure(nameof(request.ProductId), "Bạn chỉ có thể đánh giá những sản phẩm đã mua thành công.")]);
             }
+
+            // Shill review: the "buyer" is another account of the seller (same CCCD, bank, email, phone, device,
+            // address). IP / location alone are left out: shared Wi-Fi and mobile carrier NAT are innocent.
+            if (_encryption != null && product.SellerId is int sellerId)
+            {
+                var links = await AccountLinking.FindLinksAsync(_context, reviewer!, _encryption, cancellationToken);
+                linkedToSeller = links.Any(l => l.UserId == sellerId && l.Type is not (AccountLinking.Types.Ip or AccountLinking.Types.Geo));
+            }
         }
 
         var review = new Review
@@ -98,6 +111,13 @@ public class CreateReviewCommandHandler : IRequestHandler<CreateReviewCommand, i
         {
             review.FlaggedBySystem = true;
             review.FlagReason = "LowRating";
+            review.Status = "PendingReview";
+        }
+        if (linkedToSeller)
+        {
+            // Not rejected outright: a household member buying from family is legitimate; a moderator decides.
+            review.FlaggedBySystem = true;
+            review.FlagReason = string.IsNullOrEmpty(review.FlagReason) ? "LinkedToSeller" : review.FlagReason + ", LinkedToSeller";
             review.Status = "PendingReview";
         }
 

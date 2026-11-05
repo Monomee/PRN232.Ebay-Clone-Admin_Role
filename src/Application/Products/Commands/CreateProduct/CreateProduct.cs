@@ -35,18 +35,16 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
 
     public async Task<int> Handle(CreateProductCommand request, CancellationToken cancellationToken)
     {
-        if (request.SellerId.HasValue)
-        {
-            var seller = await _context.Users.FindAsync(new object[] { request.SellerId.Value }, cancellationToken);
-            if (seller != null)
-            {
-                if (seller.Status == "Banned")
-                    throw new Exception("Tài khoản của bạn đã bị khóa.");
-                if (seller.ProductBanUntil.HasValue && seller.ProductBanUntil.Value > DateTime.UtcNow)
-                    throw new Exception($"Chức năng đăng sản phẩm của bạn bị tạm khóa đến {seller.ProductBanUntil.Value:dd/MM/yyyy HH:mm}.");
-                await SellingLimits.EnsureWithinAsync(_context, seller, request.Price, newListing: true, cancellationToken);
-            }
-        }
+        // A listing always has a seller account behind it, otherwise none of the checks below apply.
+        if (request.SellerId is not int sellerId) throw new UnauthorizedAccessException();
+        var account = await _context.Users.FindAsync(new object[] { sellerId }, cancellationToken);
+        if (account?.Status == "Banned")
+            throw new Exception("Tài khoản của bạn đã bị khóa.");
+        if (account?.ProductBanUntil > DateTime.UtcNow)
+            throw new Exception($"Chức năng đăng sản phẩm của bạn bị tạm khóa đến {account.ProductBanUntil.Value:dd/MM/yyyy HH:mm}.");
+        // Pending (not risk-reviewed yet), suspended and buyer accounts may not list.
+        AccountStanding.Ensure(account, "Seller");
+        await SellingLimits.EnsureWithinAsync(_context, account!, request.Price, newListing: true, cancellationToken);
 
         var entity = new Product
         {
