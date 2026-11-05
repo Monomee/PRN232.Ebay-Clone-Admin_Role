@@ -148,4 +148,19 @@ public class RegisterTests
         (await Register(Seller())).EmailSent.ShouldBeFalse();
         (await _db.Users.SingleAsync()).Status.ShouldBe("Unverified");
     }
+
+    // Testing with real SMTP settings present must still never mail a real address.
+    [Test]
+    public async Task EmailService_LogInsteadOfSending_WinsOverConfiguredSmtp()
+    {
+        var config = new Mock<Microsoft.Extensions.Configuration.IConfiguration>();
+        foreach (var (key, value) in new Dictionary<string, string>
+        {
+            ["EmailSettings:SmtpServer"] = "smtp.invalid", ["EmailSettings:SenderEmail"] = "me@example.com",
+            ["EmailSettings:SenderPassword"] = "secret", ["EmailSettings:LogInsteadOfSending"] = "true",
+        })
+            config.Setup(c => c[key]).Returns(value);
+        var service = new EbayClone.Infrastructure.Services.EmailService(NullLogger<EbayClone.Infrastructure.Services.EmailService>.Instance, config.Object);
+        await Should.NotThrowAsync(() => service.SendEmailAsync("someone@example.com", "OTP", "123456")); // would fail to reach smtp.invalid
+    }
 }
