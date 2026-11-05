@@ -229,7 +229,7 @@ export function UserDetailPage() {
                         </thead>
                         <tbody>
                           {(user.linkedAccounts || []).length === 0 ? (
-                            <tr><td colSpan="3" className="text-center py-5 text-muted">No other account shares this user's identity data.</td></tr>
+                            <tr><td colSpan="3" className="text-center py-4 text-muted">No other account shares this user's identity data.</td></tr>
                           ) : (
                             user.linkedAccounts.map((a) => (
                               <tr key={a.userId} className="border-bottom">
@@ -244,6 +244,45 @@ export function UserDetailPage() {
                                 </td>
                                 <td className="pe-4">
                                   {a.sharedTypes.map((t) => <span key={t} className="badge bg-warning-subtle text-dark border me-1">{t}</span>)}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ── Sign-ins: where and on which browser the account was used ── */}
+                <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+                  <div className="card-header bg-white border-bottom py-3 px-4">
+                    <h5 className="mb-0 fw-bold text-dark"><i className="bi bi-clock-history me-2 text-primary"></i>Recent Sign-ins</h5>
+                  </div>
+                  <div className="card-body p-0">
+                    <div className="table-responsive">
+                      <table className="table pe-table mb-0 align-middle">
+                        <thead className="bg-light text-secondary fw-bold small text-uppercase">
+                          <tr>
+                            <th className="ps-4 py-3 border-0">Time</th>
+                            <th className="py-3 border-0">IP / Place</th>
+                            <th className="py-3 border-0">Device</th>
+                            <th className="pe-4 py-3 border-0">Signals</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(user.recentSignIns || []).length === 0 ? (
+                            <tr><td colSpan="4" className="text-center py-4 text-muted">No sign-in recorded yet.</td></tr>
+                          ) : (
+                            user.recentSignIns.map((s, i) => (
+                              <tr key={`${s.at}-${i}`} className="border-bottom">
+                                <td className="ps-4 py-3 small">{formatDate(s.at)}</td>
+                                <td className="small"><code>{s.ipAddress || "-"}</code><div className="text-muted">{s.place || "Unknown location"}</div></td>
+                                <td className="small"><code>{s.device || "-"}</code></td>
+                                <td className="pe-4">
+                                  {s.flags.length === 0 ? <span className="text-muted small">-</span> : s.flags.map((f) => (
+                                    <span key={f} className={`badge me-1 ${f === "ImpossibleTravel" ? "bg-danger" : f === "Datacenter" ? "bg-warning text-dark" : "bg-light text-dark border"}`}>{f}</span>
+                                  ))}
                                 </td>
                               </tr>
                             ))

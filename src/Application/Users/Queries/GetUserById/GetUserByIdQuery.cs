@@ -53,7 +53,7 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
         dto.MaskedNationalId = MaskNationalId(nationalId);
 
         var links = await AccountLinking.FindLinksAsync(_context, user, _encryption, cancellationToken);
-        var risk = AccountLinking.Assess(links, user.Email);
+        var risk = AccountLinking.Assess(links, AccountLinking.OwnSignals(user, _encryption));
         dto.CurrentRiskScore = risk.Score;
         dto.RiskReasons = risk.Reasons.ToList();
         var linkedIds = links.Select(l => l.UserId).Distinct().ToList();
@@ -63,6 +63,15 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
             {
                 UserId = u.Id, Username = u.Username, Role = u.Role, Status = u.Status, ApprovalStatus = u.ApprovalStatus,
                 SharedTypes = links.Where(l => l.UserId == u.Id).Select(l => l.Type).Distinct().ToList(),
+            })
+            .ToList();
+
+        dto.RecentSignIns = (await _context.LoginHistories.Where(h => h.UserId == user.Id)
+                .OrderByDescending(h => h.CreatedAt).Take(10).ToListAsync(cancellationToken))
+            .Select(h => new SignInDto
+            {
+                At = h.CreatedAt, IpAddress = h.IpAddress, Place = h.Place, Device = h.DeviceHash?[..6],
+                Flags = h.Flags?.Split(',').ToList() ?? new(),
             })
             .ToList();
 

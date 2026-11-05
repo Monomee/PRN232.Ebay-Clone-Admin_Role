@@ -10,6 +10,9 @@ namespace EbayClone.Application.Users.Risk;
 
 public record LinkedAccount(int UserId, string Type, bool Banned);
 
+/// Risk that comes from the account itself, not from other accounts.
+public record RiskSignal(string Reason, int Weight);
+
 public record RiskAssessment(int Score, IReadOnlyList<string> Reasons)
 {
     public const int ReviewThreshold = 30;
@@ -25,7 +28,7 @@ public static class AccountLinking
 {
     public static class Types
     {
-        public const string Cccd = "Cccd", Email = "Email", Phone = "Phone", Bank = "Bank", Address = "Address", Ip = "Ip", Geo = "Geo";
+        public const string Cccd = "Cccd", Email = "Email", Phone = "Phone", Bank = "Bank", Address = "Address", Ip = "Ip", Geo = "Geo", Device = "Device";
     }
 
     // (linked to an active account, linked to a banned/rejected account)
@@ -38,8 +41,10 @@ public static class AccountLinking
         [Types.Address] = (15, 40),
         [Types.Ip] = (15, 30),      // NAT, cafés, mobile carriers: weak on its own
         [Types.Geo] = (15, 20),
+        [Types.Device] = (30, 60),  // same browser (device_id cookie); a shared family PC is innocent, so not decisive
     };
-    private const int DisposableEmailWeight = 20;
+    public const int DisposableEmailWeight = 20, DatacenterIpWeight = 20, NameMismatchWeight = 40;
+    public static readonly TimeSpan DeviceMemory = TimeSpan.FromDays(90);
 
     private static readonly HashSet<string> DisposableDomains = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -47,7 +52,20 @@ public static class AccountLinking
         "tempmail.com", "trashmail.com", "maildrop.cc", "getnada.com", "dispostable.com", "throwawaymail.com",
     };
 
-    public static RiskAssessment Assess(IEnumerable<LinkedAccount> links, string? email)
+    /// Own risk signals: throwaway mailbox, signing up from a server/VPN, bank account in someone else's name.
+    public static List<RiskSignal> OwnSignals(User user, IEncryptionService encryption)
+    {
+        var signals = new List<RiskSignal>();
+        if (IsDisposableEmail(user.Email)) signals.Add(new("Email dùng một lần", DisposableEmailWeight));
+        if (IpIntelligence.DatacenterProvider(user.LastLoginIp) is { } provider)
+            signals.Add(new($"IP thuộc datacenter/VPS ({provider}), không phải mạng gia đình/di động", DatacenterIpWeight));
+        if (KycName(user.VerificationDocuments, encryption) is { } kyc && BankHolderName(user.BankAccountMock, encryption) is { } holder
+            && !NamesMatch(kyc, holder))
+            signals.Add(new("Tên chủ tài khoản ngân hàng khác tên trên giấy tờ đã xác minh", NameMismatchWeight));
+        return signals;
+    }
+
+    public static RiskAssessment Assess(IEnumerable<LinkedAccount> links, IEnumerable<RiskSignal> own)
     {
         var score = 0;
         var reasons = new List<string>();
@@ -62,10 +80,10 @@ public static class AccountLinking
                 ? $"{byType.Key}: trùng với {banned.Count} tài khoản đã bị khóa/từ chối (+{weight})"
                 : $"{byType.Key}: trùng với {others} tài khoản khác (+{weight})");
         }
-        if (IsDisposableEmail(email))
+        foreach (var signal in own)
         {
-            score += DisposableEmailWeight;
-            reasons.Add($"Email dùng một lần (+{DisposableEmailWeight})");
+            score += signal.Weight;
+            reasons.Add($"{signal.Reason} (+{signal.Weight})");
         }
         return new RiskAssessment(score, reasons);
     }
@@ -121,6 +139,40 @@ public static class AccountLinking
         return tokens.Count >= 3 && tokens.Any(t => t.Any(char.IsDigit)) ? string.Join(' ', tokens) : null;
     }
 
+    /// "NGUYEN VAN A" == "Nguyễn  Văn A": bank holder names are usually uppercase without diacritics.
+    public static bool NamesMatch(string a, string b)
+    {
+        static string N(string s) => string.Join(' ', new string(RemoveDiacritics(s.ToLowerInvariant()).Select(c => char.IsLetter(c) ? c : ' ').ToArray())
+            .Split(' ', StringSplitOptions.RemoveEmptyEntries));
+        return N(a) == N(b);
+    }
+
+    public static string? KycName(string? verificationDocuments, IEncryptionService encryption) =>
+        ReadJsonString(verificationDocuments, encryption, "fullName", "name", "holderName");
+
+    public static string? BankHolderName(string? bankAccountMock, IEncryptionService encryption) =>
+        ReadJsonString(bankAccountMock, encryption, "accountName");
+
+    /// First non-empty string property of an (encrypted or legacy plain) JSON object; null when unreadable.
+    private static string? ReadJsonString(string? stored, IEncryptionService encryption, params string[] keys)
+    {
+        if (string.IsNullOrWhiteSpace(stored)) return null;
+        try
+        {
+            var json = stored.StartsWith("gcm:", StringComparison.Ordinal) ? encryption.Decrypt(stored) : stored;
+            using var doc = JsonDocument.Parse(json);
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return null;
+            foreach (var key in keys)
+                if (doc.RootElement.TryGetProperty(key, out var v) && v.ValueKind == JsonValueKind.String && !string.IsNullOrWhiteSpace(v.GetString()))
+                    return v.GetString();
+            return null;
+        }
+        catch (Exception e) when (e is JsonException or InvalidOperationException or System.Security.Cryptography.CryptographicException)
+        {
+            return null; // unreadable data: no signal rather than a crashed review job
+        }
+    }
+
     private static string RemoveDiacritics(string s)
     {
         var sb = new StringBuilder();
@@ -146,7 +198,8 @@ public static class AccountLinking
         lat is { } a && lng is { } b ? FormattableString.Invariant($"{Math.Round(a, 3):F3},{Math.Round(b, 3):F3}") : null;
 
     /// Identifier hashes of one user. The hash input is prefixed with the type, so equal hashes imply the same type.
-    public static IEnumerable<(string Type, string Hash)> Extract(User user, IEncryptionService encryption)
+    /// deviceHashes: LoginHistory.DeviceHash values of the user (already keyed hashes).
+    public static IEnumerable<(string Type, string Hash)> Extract(User user, IEncryptionService encryption, IEnumerable<string>? deviceHashes = null)
     {
         string H(string type, string value) => encryption.ComputeHmac(type.ToLowerInvariant() + ":" + value);
 
@@ -160,22 +213,20 @@ public static class AccountLinking
             if (NormalizePhone(address.Phone) is { } phone) yield return (Types.Phone, H(Types.Phone, phone));
             if (NormalizeAddress(address.Street, address.City) is { } place) yield return (Types.Address, H(Types.Address, place));
         }
+        foreach (var device in deviceHashes ?? []) yield return (Types.Device, device);
     }
 
-    private static string? BankAccountNumber(string? bankAccountMock, IEncryptionService encryption)
+    public static async Task<ILookup<int, string>> DeviceHashesAsync(IApplicationDbContext db, IReadOnlyCollection<int> userIds, CancellationToken ct)
     {
-        if (string.IsNullOrWhiteSpace(bankAccountMock)) return null;
-        try
-        {
-            var json = bankAccountMock.StartsWith("gcm:", StringComparison.Ordinal) ? encryption.Decrypt(bankAccountMock) : bankAccountMock;
-            using var doc = JsonDocument.Parse(json);
-            return doc.RootElement.TryGetProperty("accountNumber", out var n) ? NormalizeBankAccount(n.GetString()) : null;
-        }
-        catch (Exception e) when (e is JsonException or InvalidOperationException or System.Security.Cryptography.CryptographicException)
-        {
-            return null; // unreadable bank data: no link rather than a crashed review job
-        }
+        var since = DateTime.UtcNow - DeviceMemory;
+        var rows = await db.LoginHistories
+            .Where(h => userIds.Contains(h.UserId) && h.DeviceHash != null && h.CreatedAt >= since)
+            .Select(h => new { h.UserId, h.DeviceHash }).Distinct().ToListAsync(ct);
+        return rows.ToLookup(r => r.UserId, r => r.DeviceHash!);
     }
+
+    private static string? BankAccountNumber(string? bankAccountMock, IEncryptionService encryption) =>
+        NormalizeBankAccount(ReadJsonString(bankAccountMock, encryption, "accountNumber"));
 
     /// Rewrites the identifier rows of the given users from their current data (only the differences are written).
     public static async Task SyncIdentifiersAsync(IApplicationDbContext db, IEncryptionService encryption, IQueryable<User> users, CancellationToken ct)
@@ -184,9 +235,10 @@ public static class AccountLinking
         var loaded = await users.Include(u => u.Addresses).ToListAsync(ct);
         var ids = loaded.Select(u => u.Id).ToList();
         var existing = (await db.UserIdentifiers.Where(i => ids.Contains(i.UserId)).ToListAsync(ct)).ToLookup(i => i.UserId);
+        var devices = await DeviceHashesAsync(db, ids, ct);
         foreach (var user in loaded)
         {
-            var wanted = Extract(user, encryption).ToHashSet();
+            var wanted = Extract(user, encryption, devices[user.Id]).ToHashSet();
             var have = existing[user.Id].ToList();
             db.UserIdentifiers.RemoveRange(have.Where(i => !wanted.Contains((i.Type, i.ValueHash))));
             var haveSet = have.Select(i => (i.Type, i.ValueHash)).ToHashSet();
@@ -201,7 +253,8 @@ public static class AccountLinking
     public static async Task<List<LinkedAccount>> FindLinksAsync(IApplicationDbContext db, User user, IEncryptionService encryption, CancellationToken ct)
     {
         var userId = user.Id;
-        var mine = Extract(user, encryption).Select(x => x.Hash).Distinct().ToList(); // user.Addresses must be loaded
+        var devices = await DeviceHashesAsync(db, [userId], ct);
+        var mine = Extract(user, encryption, devices[userId]).Select(x => x.Hash).Distinct().ToList(); // user.Addresses must be loaded
         var matches = await db.UserIdentifiers
             .Where(i => i.UserId != userId && mine.Contains(i.ValueHash))
             .Select(i => new { i.UserId, i.Type })

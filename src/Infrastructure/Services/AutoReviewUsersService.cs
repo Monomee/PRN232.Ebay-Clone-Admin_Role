@@ -92,7 +92,7 @@ public class AutoReviewUsersService : BackgroundService
         foreach (var pendingUser in pendingUsers)
         {
             var links = await AccountLinking.FindLinksAsync(context, pendingUser, encryption, cancellationToken);
-            var risk = AccountLinking.Assess(links, pendingUser.Email);
+            var risk = AccountLinking.Assess(links, AccountLinking.OwnSignals(pendingUser, encryption));
             pendingUser.RiskScore = risk.Score;
             pendingUser.RiskCheckedAt = DateTime.UtcNow;
             _logger.LogInformation("Risk check User {Id}: score {Score} -> {Decision}", pendingUser.Id, risk.Score, risk.Decision);

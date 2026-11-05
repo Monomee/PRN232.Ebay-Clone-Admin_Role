@@ -55,6 +55,7 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>, 
     public virtual DbSet<WithdrawalRequest> WithdrawalRequests { get; set; }
     public virtual DbSet<SensitiveDataLog> SensitiveDataLogs { get; set; }
     public virtual DbSet<UserIdentifier> UserIdentifiers { get; set; }
+    public virtual DbSet<LoginHistory> LoginHistories { get; set; }
 
 
     public new Task<int> SaveChangesAsync(CancellationToken cancellationToken)
@@ -541,6 +542,17 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>, 
             entity.Property(e => e.ValueHash).HasMaxLength(64);
             entity.HasIndex(e => e.ValueHash);
             entity.HasIndex(e => e.UserId);
+            entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<LoginHistory>(entity =>
+        {
+            entity.Property(e => e.IpAddress).HasMaxLength(64);
+            entity.Property(e => e.DeviceHash).HasMaxLength(64);
+            entity.Property(e => e.Place).HasMaxLength(100);
+            entity.Property(e => e.Flags).HasMaxLength(100);
+            entity.HasIndex(e => new { e.UserId, e.CreatedAt });
+            entity.HasIndex(e => e.DeviceHash);
             entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 

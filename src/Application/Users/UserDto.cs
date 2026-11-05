@@ -62,6 +62,7 @@ public class UserDto
     public List<LinkedAccountDto> LinkedAccounts { get; set; } = new();
     public DateTime? ProductBanUntil { get; set; }
     public DateTime? PayoutHoldUntil { get; set; }
+    public List<SignInDto> RecentSignIns { get; set; } = new();
 }
 
 public class UserOrderHistoryDto
@@ -80,6 +81,15 @@ public class UserViolationHistoryDto
     public DateTime CreatedAt { get; set; }
     public int AdminId { get; set; }
     public string? AdminUsername { get; set; }
+}
+
+public class SignInDto
+{
+    public DateTime At { get; set; }
+    public string? IpAddress { get; set; }
+    public string? Place { get; set; }
+    public string? Device { get; set; } // short tag of the device hash, enough to tell devices apart
+    public List<string> Flags { get; set; } = new();
 }
 
 /// Which identity data is shared, never the value itself.
