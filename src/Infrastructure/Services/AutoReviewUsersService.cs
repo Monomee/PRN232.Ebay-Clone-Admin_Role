@@ -92,7 +92,8 @@ public class AutoReviewUsersService : BackgroundService
         }
 
         // RiskCheckedAt == null: a user left pending for manual review is not re-scored every tick.
-        var pending = context.Users.Where(u => u.ApprovalStatus == "PendingApproval" && u.RiskCheckedAt == null);
+        // Unverified: self sign-up that has not entered its email code yet; reviewed once the mailbox is proven.
+        var pending = context.Users.Where(u => u.ApprovalStatus == "PendingApproval" && u.RiskCheckedAt == null && u.Status != "Unverified");
         if (!await pending.AnyAsync(cancellationToken) || !await Lead("auto-review", TimeSpan.FromSeconds(14))) return;
         await AccountLinking.SyncIdentifiersAsync(context, encryption, pending, cancellationToken);
         var pendingUsers = await pending.OrderBy(u => u.Id).ToListAsync(cancellationToken);

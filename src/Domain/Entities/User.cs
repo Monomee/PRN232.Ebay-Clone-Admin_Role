@@ -74,6 +74,12 @@ public partial class User : BaseAuditableEntity
     public int? RiskScore { get; set; }
     public DateTime? RiskCheckedAt { get; set; }
     public DateTime? PayoutHoldUntil { get; set; } // risk hold: payout engine skips the seller until then
+
+    // Email ownership (self sign-up): Status stays "Unverified" until the emailed code is entered.
+    public DateTime? EmailVerifiedAt { get; set; }
+    public string? EmailOtpHash { get; set; } // HMAC of the current code, never the code itself
+    public DateTime? EmailOtpSentAt { get; set; }
+    public int EmailOtpAttempts { get; set; }
     public virtual ICollection<Address> Addresses { get; set; } = new List<Address>();
 
     public virtual ICollection<Bid> Bids { get; set; } = new List<Bid>();

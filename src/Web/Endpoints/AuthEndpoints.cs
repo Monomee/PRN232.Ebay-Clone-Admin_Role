@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Security.Cryptography;
 using EbayClone.Application.Authentication.Commands.Enable2FA;
 using EbayClone.Application.Authentication.Commands.Login;
+using EbayClone.Application.Authentication.Commands.Register;
 using EbayClone.Application.Authentication.Commands.Verify2FA;
 using EbayClone.Application.Authentication.Commands.Verify2FASetup;
 using EbayClone.Application.Common.Interfaces;
@@ -20,6 +21,16 @@ public class Auth : EndpointGroupBase
              .RequireRateLimiting(RateLimitingExtensions.StrictPolicy);
 
         group.MapPost("verify-2fa", Verify2FA)
+             .RequireRateLimiting(RateLimitingExtensions.StrictPolicy);
+
+        // Self sign-up (buyer/seller): captcha + per-IP strict limit; the account waits for its email code.
+        group.MapPost("register", Register)
+             .RequireRateLimiting(RateLimitingExtensions.StrictPolicy);
+
+        group.MapPost("verify-email", VerifyEmail)
+             .RequireRateLimiting(RateLimitingExtensions.StrictPolicy);
+
+        group.MapPost("resend-email-code", ResendEmailCode)
              .RequireRateLimiting(RateLimitingExtensions.StrictPolicy);
 
         // 🟡 STANDARD (60 req/min)
@@ -134,6 +145,37 @@ public class Auth : EndpointGroupBase
 
         result.Token = null; // ❌ không trả token về body (giống login): JS không được đọc JWT
         return Results.Ok(result);
+    }
+
+    public async Task<IResult> Register(ISender sender, RegisterCommand command, HttpContext http)
+    {
+        command.RemoteIp = http.Connection.RemoteIpAddress?.ToString(); // after trusted-proxy forwarding, never from the body
+        var result = await sender.Send(command);
+        // Ties this browser (device_id cookie) and network to the new account: several sign-ups from one browser
+        // is the clearest sign of someone farming accounts.
+        await RecordSignInAsync(http, result.UserId);
+        return Results.Ok(new
+        {
+            success = true,
+            emailSent = result.EmailSent,
+            message = result.EmailSent
+                ? "Đã gửi mã xác minh tới email của bạn."
+                : "Tạo tài khoản thành công nhưng chưa gửi được email, vui lòng yêu cầu gửi lại mã.",
+        });
+    }
+
+    public async Task<IResult> VerifyEmail(ISender sender, VerifyEmailCommand command)
+    {
+        var error = await sender.Send(command);
+        return error == null
+            ? Results.Ok(new { success = true, message = "Email đã được xác minh. Tài khoản đang chờ hệ thống duyệt." })
+            : Results.Ok(new { success = false, errorMessage = error });
+    }
+
+    public async Task<IResult> ResendEmailCode(ISender sender, ResendEmailCodeCommand command)
+    {
+        await sender.Send(command);
+        return Results.Ok(new { success = true, message = "Nếu email đang chờ xác minh, mã mới đã được gửi (tối đa 1 lần mỗi phút)." });
     }
 
     public async Task<IResult> Logout(HttpContext http, SecurityCache revoked)

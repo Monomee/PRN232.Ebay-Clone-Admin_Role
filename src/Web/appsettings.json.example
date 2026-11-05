@@ -17,7 +17,11 @@
     "SmtpServer": "smtp.gmail.com",
     "Port": 587,
     "SenderEmail": "your_email@gmail.com",
-    "SenderPassword": "your_gmail_app_password"
+    "SenderPassword": "your_gmail_app_password",
+    "LogInsteadOfSending": false
+  },
+  "Captcha": {
+    "TurnstileSecretKey": ""
   },
   "Logging": {
     "LogLevel": {

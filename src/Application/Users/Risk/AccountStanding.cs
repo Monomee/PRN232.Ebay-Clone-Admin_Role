@@ -13,6 +13,7 @@ public static class AccountStanding
         null => "Không tìm thấy tài khoản.",
         _ when AccountLinking.IsBanned(user) => "Tài khoản của bạn đã bị khóa.",
         { Status: "Suspended" } => "Tài khoản của bạn đang bị tạm ngưng.",
+        { Status: "Unverified" } => "Tài khoản chưa xác minh email.",
         { ApprovalStatus: "PendingApproval" } or { Status: "Pending" } => "Tài khoản của bạn đang chờ duyệt.",
         _ => null,
     };

@@ -1624,6 +1624,18 @@ namespace EbayClone.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(100)")
                         .HasColumnName("email");
 
+                    b.Property<int>("EmailOtpAttempts")
+                        .HasColumnType("int");
+
+                    b.Property<string>("EmailOtpHash")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("EmailOtpSentAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("EmailVerifiedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("IpWhitelist")
                         .HasColumnType("nvarchar(max)");
 
