@@ -77,7 +77,7 @@ public static class SessionValidation
 
 /// Short-lived security state: logged-out token ids and already-used 2FA codes.
 /// Shared through Redis when configured (several pods), in memory otherwise.
-public sealed class SecurityCache
+public sealed class SecurityCache : IRunOnceGuard
 {
     private readonly IMemoryCache _memory;
     private readonly Lazy<IDatabase>? _redis;

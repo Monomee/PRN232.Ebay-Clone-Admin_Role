@@ -1742,9 +1742,10 @@ namespace EbayClone.Infrastructure.Data.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("UserId");
-
                     b.HasIndex("ValueHash");
+
+                    b.HasIndex("UserId", "Type", "ValueHash")
+                        .IsUnique();
 
                     b.ToTable("UserIdentifiers");
                 });

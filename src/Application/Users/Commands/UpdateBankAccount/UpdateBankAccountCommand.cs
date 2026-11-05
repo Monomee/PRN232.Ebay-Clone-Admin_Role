@@ -49,7 +49,9 @@ public class UpdateBankAccountCommandHandler(IApplicationDbContext db, IUser act
         await db.SaveChangesAsync(ct);
 
         // Link the new account right away (shared with a banned seller?) instead of waiting for the 10-minute sync.
-        await AccountLinking.SyncIdentifiersAsync(db, encryption, db.Users.Where(u => u.Id == userId), ct);
+        // The bank change is already saved: if this races the background sync (unique index), that sync covers it.
+        try { await AccountLinking.SyncIdentifiersAsync(db, encryption, db.Users.Where(u => u.Id == userId), ct); }
+        catch (DbUpdateException) { }
     }
 
     private static ValidationException Fail(string field, string message) => new([new ValidationFailure(field, message)]);

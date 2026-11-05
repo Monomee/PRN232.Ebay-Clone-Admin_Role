@@ -62,7 +62,14 @@ public class AutoReviewUsersService : BackgroundService
         var encryption = scope.ServiceProvider.GetRequiredService<IEncryptionService>();
         var sensitiveLog = scope.ServiceProvider.GetRequiredService<ISensitiveDataLogger>();
 
-        if (DateTime.UtcNow >= _nextFullSync)
+        // Every API replica runs this service; only one may review / monitor at a time, or users get decided and
+        // notified twice. No guard registered (tests, single process): run.
+        // ponytail: a lease without renewal; a run longer than its ttl may overlap the next one (the unique index on
+        // UserIdentifiers keeps that harmless). Renew the lease if runs ever get that long.
+        var guard = scope.ServiceProvider.GetService<IRunOnceGuard>();
+        async Task<bool> Lead(string job, TimeSpan ttl) => guard == null || await guard.TryUseOnceAsync("job:" + job, ttl);
+
+        if (DateTime.UtcNow >= _nextFullSync && await Lead("account-monitor", FullSyncInterval - TimeSpan.FromSeconds(30)))
         {
             await AccountLinking.SyncIdentifiersAsync(context, encryption, context.Users, cancellationToken);
             _nextFullSync = DateTime.UtcNow + FullSyncInterval;
@@ -71,9 +78,12 @@ public class AutoReviewUsersService : BackgroundService
             {
                 using var monitorScope = _serviceProvider.CreateScope();
                 var sp = monitorScope.ServiceProvider;
-                var monitor = await AccountMonitor.RunAsync(sp.GetRequiredService<IApplicationDbContext>(), encryption,
+                var monitorDb = sp.GetRequiredService<IApplicationDbContext>();
+                var monitor = await AccountMonitor.RunAsync(monitorDb, encryption,
                     sp.GetRequiredService<ISensitiveDataLogger>(), DateTime.UtcNow, cancellationToken);
                 if (monitor != new MonitorResult(0, 0, 0)) _logger.LogWarning("Account monitor: {Result}", monitor);
+                var purged = await SignInMonitor.PurgeOldAsync(monitorDb, DateTime.UtcNow, cancellationToken);
+                if (purged > 0) _logger.LogInformation("Deleted {Count} sign-in records older than {Days} days.", purged, SignInMonitor.Retention.TotalDays);
             }
             catch (Exception ex) when (ex is not OperationCanceledException)
             {
@@ -83,7 +93,7 @@ public class AutoReviewUsersService : BackgroundService
 
         // RiskCheckedAt == null: a user left pending for manual review is not re-scored every tick.
         var pending = context.Users.Where(u => u.ApprovalStatus == "PendingApproval" && u.RiskCheckedAt == null);
-        if (!await pending.AnyAsync(cancellationToken)) return;
+        if (!await pending.AnyAsync(cancellationToken) || !await Lead("auto-review", TimeSpan.FromSeconds(14))) return;
         await AccountLinking.SyncIdentifiersAsync(context, encryption, pending, cancellationToken);
         var pendingUsers = await pending.OrderBy(u => u.Id).ToListAsync(cancellationToken);
 
