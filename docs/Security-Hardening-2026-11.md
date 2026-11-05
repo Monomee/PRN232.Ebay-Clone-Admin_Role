@@ -1,6 +1,6 @@
 # Bảo mật & chống gian lận tài khoản (11/2026)
 
-Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú ý gì, còn thiếu gì, và cách setup bản mới.
+Tổng hợp các thay đổi trong PR #17 → #24: thay đổi gì, cần chú ý gì, còn thiếu gì, và cách setup bản mới.
 
 | PR | Nội dung |
 |---|---|
@@ -8,6 +8,10 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
 | #18 | Liên kết tài khoản, chấm điểm rủi ro, giới hạn seller mới, monitor |
 | #19 | Lịch sử đăng nhập, thiết bị, đăng nhập ở hai nơi xa nhau, IP datacenter, đổi ngân hàng |
 | #20 | Khóa job khi chạy nhiều replica, unique index, xóa lịch sử đăng nhập cũ |
+| #21 | Tài liệu này |
+| #22 | Chặn tài khoản chưa duyệt/tạm ngưng, rút tiền chỉ về tài khoản đã đăng ký, review chéo |
+| #23 | API đăng ký, captcha Turnstile, OTP email, kiểm tra định dạng CCCD |
+| #24 | `LogInsteadOfSending` được ưu tiên hơn SMTP đã cấu hình |
 
 ---
 
@@ -93,7 +97,7 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
 - **Unique index** `(UserId, Type, ValueHash)` trên `UserIdentifiers`.
 - **`LoginHistories`** cũ hơn 180 ngày bị xóa tự động.
 
-### 1.7 Chặn tài khoản chưa duyệt, rút tiền và review chéo
+### 1.7 Chặn tài khoản chưa duyệt, rút tiền và review chéo (PR #22)
 
 - **`AccountStanding`** (`Users/Risk/AccountStanding.cs`): tài khoản bị ban/reject, `Suspended`, hoặc còn `PendingApproval` (chưa qua duyệt rủi ro) **không được**:
   - đăng sản phẩm (và chỉ role `Seller` mới đăng được; command thiếu `SellerId` trả 401),
@@ -104,7 +108,7 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
   - chỉ rút về **tài khoản ngân hàng đã đăng ký** (`PUT /api/Account/bank-account`, đã so tên KYC). Số tài khoản khác trả 400; tên chủ tài khoản lưu lấy từ tài khoản đã đăng ký.
 - **Review chéo (shill review):** người review có chung CCCD, ngân hàng, email, SĐT, thiết bị hoặc địa chỉ với seller thì review bị giữ ở `PendingReview`, `FlagReason = LinkedToSeller` để moderator xem. Chỉ trùng IP/tọa độ thì không tính (wifi chung, NAT nhà mạng).
 
-### 1.8 Đăng ký, captcha, OTP email, kiểm tra CCCD
+### 1.8 Đăng ký, captcha, OTP email, kiểm tra CCCD (PR #23, #24)
 
 - **API đăng ký** `POST /api/Auth/register` (chỉ API, chưa có giao diện). Chỉ tạo được `Buyer` hoặc `Seller`.
   - **Captcha** Cloudflare Turnstile (`Captcha:TurnstileSecretKey`). Không có key: Production **từ chối** đăng ký; môi trường khác bỏ qua captcha và ghi log cảnh báo.
@@ -117,7 +121,7 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
   - Mã 6 số, DB chỉ lưu HMAC, hết hạn sau 10 phút, sai 5 lần thì phải xin mã mới, xin lại tối đa 1 lần/phút (`POST /api/Auth/resend-email-code`).
   - Nhập đúng (`POST /api/Auth/verify-email`) thì chuyển sang `Pending` → `AutoReviewUsersService` chấm điểm như trước.
   - `verify-email` và `resend-email-code` trả cùng một câu cho email không tồn tại, để không lộ email nào đã đăng ký.
-- **Dev:** `EmailSettings:LogInsteadOfSending=true` in nội dung mail (có mã OTP) ra log thay vì gửi, kể cả khi đã cấu hình SMTP (không gửi nhầm mail thật lúc test). App **từ chối khởi động** nếu bật ở Production.
+- **Dev (PR #24):** `EmailSettings:LogInsteadOfSending=true` in nội dung mail (có mã OTP) ra log thay vì gửi, kể cả khi đã cấu hình SMTP (không gửi nhầm mail thật lúc test). App **từ chối khởi động** nếu bật ở Production.
 
 ### 1.9 Load test
 
@@ -135,7 +139,10 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
 5. **Ngày giờ trên giao diện** đang hiển thị giờ UTC như giờ địa phương. Lỗi này có từ trước và ảnh hưởng toàn app.
 6. **Trong lúc rolling update**, pod chạy code cũ (chưa có khóa) vẫn có thể đồng bộ trùng. Index unique chặn lại; pod cũ chỉ ghi log lỗi, dữ liệu không sai.
 7. **Test HTTP tự ký token** phải có user khớp trong DB: dùng `Factory.EnsureSessionUser(id, role, permissions...)`. Muốn truyền cấu hình riêng cho một test thì dùng `new Factory { Settings = { ... } }`.
-8. **Rolling update lên bản có đăng ký:** pod cũ chưa biết trạng thái `Unverified` nên có thể duyệt tài khoản chưa xác minh email. Chỉ xảy ra khi đã có người đăng ký trong lúc deploy; muốn chắc chắn thì deploy xong mới mở đăng ký.
+8. **Rolling update lên bản có đăng ký (PR #23):** pod cũ chưa biết trạng thái `Unverified` nên có thể duyệt tài khoản chưa xác minh email. Chỉ xảy ra khi đã có người đăng ký trong lúc deploy; muốn chắc chắn thì deploy xong mới mở đăng ký.
+9. **Sau PR #22, seller phải đăng ký tài khoản ngân hàng trước khi rút tiền** (`PUT /api/Account/bank-account`). Hiện chưa có endpoint gọi `RequestWithdrawalCommand`/`ApproveWithdrawalCommand`; khi mở endpoint, seller chưa có `BankAccountMock` sẽ nhận 400 "cần đăng ký tài khoản ngân hàng". Tài khoản `PendingApproval`/`Suspended` không còn đăng bán, review hay rút tiền được; role khác `Seller` không đăng bán được.
+10. **Sau PR #23, Production phải có `Captcha:TurnstileSecretKey`**, nếu không mọi lượt đăng ký đều bị từ chối (cố ý: thà không cho đăng ký còn hơn đăng ký không có captcha).
+11. **`LogInsteadOfSending` (PR #24) in mã OTP ra log:** chỉ bật ở máy dev. Bật cờ này thì không mail nào được gửi, kể cả khi đã cấu hình Gmail.
 
 ---
 
@@ -173,7 +180,7 @@ git pull origin main
 dotnet build EbayClone.slnx
 ```
 
-Có 4 migration mới. Tất cả chỉ thêm, an toàn khi rolling update.
+Có 4 migration mới (3 migration đầu từ PR #18–#20, `EmailVerification` từ PR #23; PR #22 và #24 không đổi DB). Tất cả chỉ thêm, an toàn khi rolling update.
 
 | Migration | Thay đổi |
 |---|---|
@@ -204,7 +211,7 @@ DatabaseInitialization__RunMigrationsOnStartup=true
 | `Security:AllowApiWithout2FA` | `false` | Chỉ đặt `true` khi chạy JMeter (`ALLOW_API_WITHOUT_2FA` trong `.env`) |
 | `Captcha:TurnstileSecretKey` | secret key Turnstile | **Bắt buộc ở Production** để đăng ký được. Key test luôn qua: `1x0000000000000000000000000000000AA` |
 | `EmailSettings:SenderEmail` / `SenderPassword` | Gmail + app password | Để gửi mã OTP thật |
-| `EmailSettings:LogInsteadOfSending` | `false` | Chỉ đặt `true` khi dev không có SMTP (mã OTP in ra log) |
+| `EmailSettings:LogInsteadOfSending` | `false` | Chỉ đặt `true` ở máy dev: mọi mail (cả mã OTP) chỉ in ra log, không gửi, kể cả khi đã có SMTP. App không khởi động nếu bật ở Production |
 
 ### 4.3 Tài khoản
 
@@ -224,6 +231,7 @@ Kiểm tra trên app:
 2. Mở một user → thấy card **Account Linking** và bảng **Recent Sign-ins**.
 3. Log của API có dòng `Account monitor` hoặc `Risk check User …` (chứng tỏ background job đang chạy).
 4. Chạy nhiều replica: mỗi user chờ duyệt chỉ có **1** thông báo.
+5. Đăng ký thử (Swagger hoặc curl): `POST /api/Auth/register` → mã OTP trong mail (hoặc log nếu bật `LogInsteadOfSending`) → `POST /api/Auth/verify-email`. Trước khi xác minh, đăng nhập phải báo "Vui lòng xác minh email". Sau khi xác minh, user ở `Pending` và được job duyệt chấm điểm (cần `BackgroundJobs:Enabled`).
 
 ### 4.5 Test các luật trên một máy
 
@@ -234,3 +242,11 @@ Kiểm tra trên app:
 - **Giả thiết bị:** mỗi context trình duyệt (Playwright `browser.newContext()`) là một thiết bị.
 - Nếu test bằng IP public, cần mở `InternalIps` (ví dụ `0.0.0.0/0`, `::/0`) **chỉ trên môi trường test**.
 - Code mẫu: `tests/Application.FunctionalTests/Security/SignInRulesHttpTests.cs`.
+- **Đăng ký trên máy dev:** thêm `"EmailSettings": { "LogInsteadOfSending": true }` vào `src/Web/appsettings.Development.json` (file này không được commit). Không có `Captcha:TurnstileSecretKey` thì captcha được bỏ qua ngoài Production. Ví dụ body:
+
+  ```json
+  { "email": "seller@example.com", "username": "demo_seller", "password": "secret123", "role": "Seller",
+    "fullName": "Tran Thi B", "cccd": "001301001234", "dateOfBirth": "2001-05-20", "phone": "0987654321" }
+  ```
+
+  Mã OTP nằm trong dòng log `EmailSettings:LogInsteadOfSending - mail to ...`. Code mẫu: `tests/Application.FunctionalTests/Security/RegisterHttpTests.cs`.
