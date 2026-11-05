@@ -23,7 +23,7 @@ public class AccountLinkingHttpTests
         using (var scope = factory.Services.CreateScope())
         {
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-            foreach (var u in await db.Users.Where(u => u.Id == 720 || u.Id == 721).ToListAsync()) u.ApprovedAt = DateTime.UtcNow.AddDays(-3);
+            foreach (var u in await db.Users.Where(u => u.Id == 720 || u.Id == 721).ToListAsync()) (u.ApprovedAt, u.RiskCheckedAt) = (DateTime.UtcNow.AddDays(-3), DateTime.UtcNow.AddDays(-3));
             (await db.Users.SingleAsync(u => u.Id == 721)).RiskScore = 45; // approved after a manual review
             await db.SaveChangesAsync();
         }

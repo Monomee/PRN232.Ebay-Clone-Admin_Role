@@ -11,6 +11,20 @@ public static class SignInMonitor
     public const double MinTravelKm = 500;               // below this, IP geolocation is too coarse to judge
     public static readonly TimeSpan TakeoverPayoutHold = TimeSpan.FromHours(48);
 
+    /// Sign-in rows hold raw IPs (personal data): kept long enough for the device (90 days) and travel checks, then deleted.
+    public static readonly TimeSpan Retention = TimeSpan.FromDays(180);
+
+    public static async Task<int> PurgeOldAsync(IApplicationDbContext db, DateTime now, CancellationToken ct)
+    {
+        var cutoff = now - Retention;
+        // ponytail: loads at most 5000 old rows per run (runs every 10 minutes); ExecuteDeleteAsync if this ever lags
+        var old = await db.LoginHistories.Where(h => h.CreatedAt < cutoff).OrderBy(h => h.Id).Take(5000).ToListAsync(ct);
+        if (old.Count == 0) return 0;
+        db.LoginHistories.RemoveRange(old);
+        await db.SaveChangesAsync(ct);
+        return old.Count;
+    }
+
     public static async Task<LoginHistory> RecordAsync(IApplicationDbContext db, int userId, string? ip, string? deviceHash,
         DateTime now, CancellationToken ct)
     {

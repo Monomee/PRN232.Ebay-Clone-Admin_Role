@@ -22,6 +22,9 @@ public static class SellingLimits
     /// null = no limit (established or proven seller).
     public static SellingLimit? For(User seller, DateTime now)
     {
+        // Only accounts that came in through the sign-up risk review. Seeded/demo and pre-existing accounts never
+        // did (their CreatedAt is just the seeding time), so they are treated as established.
+        if (seller.RiskCheckedAt == null) return null;
         if (seller.SellerLevel is "TopRated" or "AboveStandard") return null;
         if (now - AccountStart(seller) >= NewAccountPeriod) return null;
         return seller.RiskScore >= RiskAssessment.ReviewThreshold ? RiskyNewAccount : NewAccount;

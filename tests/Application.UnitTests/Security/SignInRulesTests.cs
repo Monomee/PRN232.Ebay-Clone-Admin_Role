@@ -78,6 +78,18 @@ public class SignInRulesTests
         Assert.That(vps.Place, Is.EqualTo("AWS"));
     }
 
+    [Test]
+    public async Task OldSignIns_AreDeleted_AfterRetention()
+    {
+        using var db = Db();
+        db.LoginHistories.AddRange(
+            new LoginHistory { UserId = 1, IpAddress = Hanoi, CreatedAt = T0 - SignInMonitor.Retention - TimeSpan.FromDays(1) },
+            new LoginHistory { UserId = 1, IpAddress = Hanoi, CreatedAt = T0.AddDays(-10) });
+        await db.SaveChangesAsync();
+        Assert.That(await SignInMonitor.PurgeOldAsync(db, T0, default), Is.EqualTo(1));
+        Assert.That(await db.LoginHistories.Select(h => h.CreatedAt).SingleAsync(), Is.EqualTo(T0.AddDays(-10)));
+    }
+
     // Two accounts used from the same browser are linked through the device_id cookie hash.
     [Test]
     public async Task SameBrowser_LinksAccounts()

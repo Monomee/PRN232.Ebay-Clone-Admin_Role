@@ -135,6 +135,7 @@ public static class DependencyInjection
             throw new InvalidOperationException("Security:AllowApiWithout2FA is for load tests only and cannot be enabled in Production.");
         builder.Services.AddMemoryCache();
         builder.Services.AddSingleton<SecurityCache>();
+        builder.Services.AddSingleton<IRunOnceGuard>(sp => sp.GetRequiredService<SecurityCache>());
 
         builder.Services.AddCors(options =>
         {

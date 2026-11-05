@@ -541,7 +541,7 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>, 
             entity.Property(e => e.Type).HasMaxLength(20);
             entity.Property(e => e.ValueHash).HasMaxLength(64);
             entity.HasIndex(e => e.ValueHash);
-            entity.HasIndex(e => e.UserId);
+            entity.HasIndex(e => new { e.UserId, e.Type, e.ValueHash }).IsUnique(); // also serves lookups by UserId
             entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
         });
 

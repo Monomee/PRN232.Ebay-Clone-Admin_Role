@@ -11,11 +11,13 @@ public class SellingLimitsTests
     [Test]
     public void Limits_ShrinkWithRisk_AndEndWithHistory()
     {
-        var fresh = new User { ApprovedAt = Now.AddDays(-5) };
-        Assert.That(SellingLimits.For(fresh, Now), Is.EqualTo(SellingLimits.NewAccount));
-        Assert.That(SellingLimits.For(new User { ApprovedAt = Now.AddDays(-5), RiskScore = 45 }, Now), Is.EqualTo(SellingLimits.RiskyNewAccount));
-        Assert.That(SellingLimits.For(new User { ApprovedAt = Now.AddDays(-120) }, Now), Is.Null, "older than 90 days");
-        Assert.That(SellingLimits.For(new User { ApprovedAt = Now.AddDays(-5), SellerLevel = "TopRated" }, Now), Is.Null);
+        User Reviewed(int daysAgo, int score = 0, string level = "BelowStandard") =>
+            new() { ApprovedAt = Now.AddDays(-daysAgo), RiskCheckedAt = Now.AddDays(-daysAgo), RiskScore = score, SellerLevel = level };
+        Assert.That(SellingLimits.For(Reviewed(5), Now), Is.EqualTo(SellingLimits.NewAccount));
+        Assert.That(SellingLimits.For(Reviewed(5, score: 45), Now), Is.EqualTo(SellingLimits.RiskyNewAccount));
+        Assert.That(SellingLimits.For(Reviewed(120), Now), Is.Null, "older than 90 days");
+        Assert.That(SellingLimits.For(Reviewed(5, level: "TopRated"), Now), Is.Null);
+        Assert.That(SellingLimits.For(new User { CreatedAt = Now.AddDays(-1) }, Now), Is.Null, "seeded/demo seller, never went through sign-up review");
     }
 
     [Test]

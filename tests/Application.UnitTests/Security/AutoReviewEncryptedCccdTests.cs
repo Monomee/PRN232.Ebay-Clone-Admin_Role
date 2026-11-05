@@ -22,6 +22,43 @@ public class AutoReviewEncryptedCccdTests
             return ValueTask.FromResult(result);
         }
     }
+    // Several API replicas run the job: a replica that does not hold the lock reviews nobody.
+    [Test]
+    public async Task Review_SkippedWhenAnotherReplicaHoldsTheLock()
+    {
+        var crypto = EncryptionServiceTests.Create();
+        var system = new Mock<IUser>();
+        system.SetupGet(x => x.IsSystem).Returns(true);
+        var guard = new Mock<IRunOnceGuard>();
+        var asked = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        guard.Setup(g => g.TryUseOnceAsync("job:auto-review", It.IsAny<TimeSpan>())).Callback(() => asked.TrySetResult()).ReturnsAsync(false);
+        guard.Setup(g => g.TryUseOnceAsync("job:account-monitor", It.IsAny<TimeSpan>())).ReturnsAsync(false);
+        var services = new ServiceCollection();
+        var name = Guid.NewGuid().ToString();
+        services.AddDbContext<ApplicationDbContext>(o => o.UseInMemoryDatabase(name));
+        services.AddScoped<IApplicationDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+        services.AddSingleton<IEncryptionService>(crypto);
+        services.AddSingleton(system.Object);
+        services.AddSingleton(guard.Object);
+        services.AddScoped<ISensitiveDataLogger, SensitiveDataLogger>();
+        await using var provider = services.BuildServiceProvider();
+        using (var seed = provider.CreateScope())
+        {
+            var db = seed.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.Users.Add(new User { Id = 1, Username = "pending", ApprovalStatus = "PendingApproval" });
+            await db.SaveChangesAsync();
+        }
+        using var service = new AutoReviewUsersService(provider, NullLogger<AutoReviewUsersService>.Instance);
+        await service.StartAsync(default);
+        await asked.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        await service.StopAsync(default);
+
+        using var check = provider.CreateScope();
+        var user = await check.ServiceProvider.GetRequiredService<ApplicationDbContext>().Users.SingleAsync();
+        Assert.That((user.ApprovalStatus, user.RiskCheckedAt), Is.EqualTo(("PendingApproval", (DateTime?)null)));
+        Assert.That(await check.ServiceProvider.GetRequiredService<ApplicationDbContext>().UserIdentifiers.CountAsync(), Is.Zero, "no sync either");
+    }
+
     [Test]
     public async Task Review_UsesHashForRandomCiphertexts_KeepsIpRule_AndLogsSystemActor()
     {
