@@ -2,6 +2,7 @@ using EbayClone.Application.Common.Models;
 using EbayClone.Application.Users;
 using EbayClone.Application.Users.Commands.ApproveUser;
 using EbayClone.Application.Users.Commands.BanUser;
+using EbayClone.Application.Users.Commands.LiftRestrictions;
 using EbayClone.Application.Users.Commands.RejectUser;
 using EbayClone.Application.Users.Commands.UnbanUser;
 using EbayClone.Application.Users.Commands.UpdateUserStatus;
@@ -28,6 +29,8 @@ public class Users : EndpointGroupBase
         group.MapPut("{id:int}/status", UpdateUserStatus);
         group.MapPost("{id:int}/ban", BanUser);
         group.MapPost("{id:int}/unban", UnbanUser);
+        group.MapPost("{id:int}/lift-restrictions", async (int id, ISender sender) =>
+            await sender.Send(new LiftRestrictionsCommand(id)) ? Results.NoContent() : Results.NotFound());
         group.MapPost("{id:int}/approve", ApproveUser);
         group.MapPost("{id:int}/reject", RejectUser);
         group.MapPost("evaluate-sellers", EvaluateSellers);

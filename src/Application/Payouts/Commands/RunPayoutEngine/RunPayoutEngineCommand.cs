@@ -151,6 +151,16 @@ public class RunPayoutEngineCommandHandler : IRequestHandler<RunPayoutEngineComm
                 continue;
             }
 
+            // Risk hold (approved after a risk review, or flagged by AccountMonitor): funds stay in the wallet.
+            if (seller.PayoutHoldUntil is { } holdUntil && holdUntil > DateTime.UtcNow)
+            {
+                _logger.LogInformation("[HOLD] Seller #{Id}: risk score {Score}, payouts held until {Until:yyyy-MM-dd}.",
+                    seller.Id, seller.RiskScore, holdUntil);
+                if (request.SellerId.HasValue) diagnosticMessage = $"Payout on hold until {holdUntil:yyyy-MM-dd} (risk score {seller.RiskScore}).";
+                holdCount++;
+                continue;
+            }
+
             // ── STEP 1 Bank info validation ───────────────────────────────────
             if (string.IsNullOrWhiteSpace(seller.BankAccountMock))
             {

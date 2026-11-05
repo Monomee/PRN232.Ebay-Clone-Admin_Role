@@ -69,6 +69,11 @@ public partial class User : BaseAuditableEntity
 
     // Payout Engine: Mock bank account info (JSON: { bankName, accountNumber, accountName })
     public string? BankAccountMock { get; set; }
+
+    // Account-linking risk check at sign-up (AutoReviewUsersService): null = not checked yet
+    public int? RiskScore { get; set; }
+    public DateTime? RiskCheckedAt { get; set; }
+    public DateTime? PayoutHoldUntil { get; set; } // risk hold: payout engine skips the seller until then
     public virtual ICollection<Address> Addresses { get; set; } = new List<Address>();
 
     public virtual ICollection<Bid> Bids { get; set; } = new List<Bid>();

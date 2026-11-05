@@ -274,7 +274,7 @@ public class SecurityHardeningHttpTests
         return Sign(userId, role, twoFactorEnabled);
     }
 
-    private static string Sign(int userId, string role, bool twoFactorEnabled = true, string? jti = null) =>
+    internal static string Sign(int userId, string role, bool twoFactorEnabled = true, string? jti = null) =>
         new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken("EbayCloneTest", "EbayCloneTest",
             [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, role),
              new Claim("twoFactorEnabled", twoFactorEnabled ? "true" : "false"),

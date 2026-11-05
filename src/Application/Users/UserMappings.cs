@@ -16,7 +16,8 @@ public static class UserMappings
             Status = user.Status,
             ApprovalStatus = user.ApprovalStatus,
             IsVerified = user.IsVerified,
-            LastLoginAt = user.LastLoginAt
+            LastLoginAt = user.LastLoginAt,
+            RiskScore = user.RiskScore
         };
 
     public static UserDto ToDto(this User user)
@@ -40,7 +41,11 @@ public static class UserMappings
             ViolationCount = user.ViolationCount,
             LastLoginIp = user.LastLoginIp,
             LastLoginAt = user.LastLoginAt,
-            SellerLevel = user.SellerLevel
+            SellerLevel = user.SellerLevel,
+            RiskScore = user.RiskScore,
+            RiskCheckedAt = user.RiskCheckedAt,
+            ProductBanUntil = user.ProductBanUntil,
+            PayoutHoldUntil = user.PayoutHoldUntil
         };
     }
 
@@ -57,7 +62,8 @@ public static class UserMappings
             ApprovalStatus = user.ApprovalStatus,
             IsVerified = user.IsVerified,
             LastLoginAt = user.LastLoginAt,
-            SellerLevel = user.SellerLevel
+            SellerLevel = user.SellerLevel,
+            RiskScore = user.RiskScore
         };
     }
 }

@@ -1608,6 +1608,9 @@ namespace EbayClone.Infrastructure.Data.Migrations
                         .HasColumnType("nvarchar(255)")
                         .HasColumnName("password");
 
+                    b.Property<DateTime?>("PayoutHoldUntil")
+                        .HasColumnType("datetime2");
+
                     b.Property<int>("PerformanceScore")
                         .HasColumnType("int");
 
@@ -1618,6 +1621,12 @@ namespace EbayClone.Infrastructure.Data.Migrations
                         .HasColumnType("datetime2");
 
                     b.Property<int>("ReviewViolationCount")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("RiskCheckedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("RiskScore")
                         .HasColumnType("int");
 
                     b.Property<string>("Role")
@@ -1660,6 +1669,36 @@ namespace EbayClone.Infrastructure.Data.Migrations
                         .HasFilter("[email] IS NOT NULL");
 
                     b.ToTable("User", (string)null);
+                });
+
+            modelBuilder.Entity("EbayClone.Domain.Entities.UserIdentifier", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ValueHash")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("ValueHash");
+
+                    b.ToTable("UserIdentifiers");
                 });
 
             modelBuilder.Entity("EbayClone.Domain.Entities.UserNotificationRead", b =>
@@ -2327,6 +2366,15 @@ namespace EbayClone.Infrastructure.Data.Migrations
                         .HasConstraintName("FK__Store__sellerId__6D0D32F4");
 
                     b.Navigation("Seller");
+                });
+
+            modelBuilder.Entity("EbayClone.Domain.Entities.UserIdentifier", b =>
+                {
+                    b.HasOne("EbayClone.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EbayClone.Domain.Entities.UserNotificationRead", b =>

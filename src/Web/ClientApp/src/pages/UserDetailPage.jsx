@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { LoadingIndicator } from "../components/LoadingIndicator";
 import { ToastMessage } from "../components/ToastMessage";
-import { banUser, getUserById, unbanUser } from "../services/userService";
+import { banUser, getUserById, liftRestrictions, unbanUser } from "../services/userService";
 import { getCurrentAdminId } from "../services/adminSession";
 
 function formatDate(value) {
@@ -12,6 +12,9 @@ function formatDate(value) {
 
   return new Date(value).toLocaleString();
 }
+
+const isFuture = (value) => value != null && new Date(value) > new Date();
+const riskBadge = (score) => (score >= 80 ? "bg-danger" : score >= 30 ? "bg-warning text-dark" : "bg-success");
 
 export function UserDetailPage() {
   const { userId } = useParams();
@@ -45,6 +48,16 @@ export function UserDetailPage() {
     try {
       await banUser(user.id, reason, adminId);
       setToast({ message: "User has been banned.", type: "success" });
+      await loadDetail();
+    } catch (error) {
+      setToast({ message: error.message, type: "error" });
+    }
+  };
+
+  const handleLiftRestrictions = async () => {
+    try {
+      await liftRestrictions(user.id);
+      setToast({ message: "Listing pause and payout hold lifted.", type: "success" });
       await loadDetail();
     } catch (error) {
       setToast({ message: error.message, type: "error" });
@@ -181,6 +194,66 @@ export function UserDetailPage() {
             {/* ── Right Column: Activity & Governance ── */}
             <div className="col-lg-8">
               <div className="vstack gap-4">
+                {/* ── Account linking: who else shares this person's identity data ── */}
+                <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
+                  <div className="card-header bg-white border-bottom py-3 px-4 d-flex align-items-center justify-content-between">
+                    <h5 className="mb-0 fw-bold text-dark"><i className="bi bi-diagram-3 me-2 text-primary"></i>Account Linking</h5>
+                    <span className={`badge rounded-pill px-3 py-2 ${riskBadge(user.currentRiskScore)}`} title="30+ needs review, 80+ is rejected at sign-up">
+                      Risk {user.currentRiskScore ?? 0}
+                      {user.riskScore != null && user.riskScore !== user.currentRiskScore ? ` (last check: ${user.riskScore})` : ""}
+                    </span>
+                  </div>
+                  <div className="card-body p-0">
+                    {(isFuture(user.productBanUntil) || isFuture(user.payoutHoldUntil)) && (
+                      <div className="alert alert-warning rounded-0 mb-0 d-flex align-items-center justify-content-between gap-3 px-4">
+                        <div className="small">
+                          {isFuture(user.productBanUntil) && <div><i className="bi bi-pause-circle me-2"></i>Listing paused until {formatDate(user.productBanUntil)}</div>}
+                          {isFuture(user.payoutHoldUntil) && <div><i className="bi bi-lock me-2"></i>Payouts held until {formatDate(user.payoutHoldUntil)}</div>}
+                        </div>
+                        <button type="button" className="btn btn-sm btn-outline-dark rounded-pill" onClick={handleLiftRestrictions}>Lift restrictions</button>
+                      </div>
+                    )}
+                    {(user.riskReasons || []).length > 0 && (
+                      <ul className="small text-secondary mb-0 px-5 py-3 border-bottom">
+                        {user.riskReasons.map((r) => <li key={r}>{r}</li>)}
+                      </ul>
+                    )}
+                    <div className="table-responsive">
+                      <table className="table pe-table mb-0 align-middle">
+                        <thead className="bg-light text-secondary fw-bold small text-uppercase">
+                          <tr>
+                            <th className="ps-4 py-3 border-0">Linked Account</th>
+                            <th className="py-3 border-0">Status</th>
+                            <th className="pe-4 py-3 border-0">Shared Data</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {(user.linkedAccounts || []).length === 0 ? (
+                            <tr><td colSpan="3" className="text-center py-5 text-muted">No other account shares this user's identity data.</td></tr>
+                          ) : (
+                            user.linkedAccounts.map((a) => (
+                              <tr key={a.userId} className="border-bottom">
+                                <td className="ps-4 py-3">
+                                  <Link to={`/users/${a.userId}`} className="fw-bold text-decoration-none">{a.username || `User #${a.userId}`}</Link>
+                                  <span className="text-muted small ms-2">#{a.userId} · {a.role || "-"}</span>
+                                </td>
+                                <td>
+                                  <span className={`badge rounded-pill px-3 py-1 ${a.status === "Banned" || a.approvalStatus === "Rejected" ? "bg-danger" : "bg-light text-dark border"}`}>
+                                    {a.approvalStatus === "Rejected" ? "Rejected" : a.status}
+                                  </span>
+                                </td>
+                                <td className="pe-4">
+                                  {a.sharedTypes.map((t) => <span key={t} className="badge bg-warning-subtle text-dark border me-1">{t}</span>)}
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                </div>
+
                 {/* ── Order History ── */}
                 <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
                   <div className="card-header bg-white border-bottom py-3 px-4">

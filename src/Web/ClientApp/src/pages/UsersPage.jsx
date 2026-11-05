@@ -242,6 +242,11 @@ export function UsersPage() {
                             <span className={`badge rounded-pill px-3 py-1 ${user.approvalStatus === 'Approved' ? 'bg-success-subtle text-success border border-success-subtle' : 'bg-warning-subtle text-warning border border-warning-subtle'}`} style={{ fontSize: '0.65rem', fontWeight: 700 }}>
                               {user.approvalStatus?.toUpperCase()}
                             </span>
+                            {user.riskScore >= 30 && (
+                              <span className={`badge rounded-pill ms-1 px-2 py-1 ${user.riskScore >= 80 ? 'bg-danger' : 'bg-warning text-dark'}`} style={{ fontSize: '0.65rem' }} title="Account-linking risk score at sign-up; open the user for linked accounts">
+                                RISK {user.riskScore}
+                              </span>
+                            )}
                           </td>
                           <td className="pe-4 text-end">
                             <div className="d-flex justify-content-end gap-1">
