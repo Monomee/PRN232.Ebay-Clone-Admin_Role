@@ -50,7 +50,7 @@ public static class AccountMonitor
         foreach (var user in candidates)
         {
             var links = await AccountLinking.FindLinksAsync(db, user, encryption, ct);
-            var risk = AccountLinking.Assess(links, user.Email);
+            var risk = AccountLinking.Assess(links, AccountLinking.OwnSignals(user, encryption));
             // Act only when it got worse than what was last assessed: an admin who lifted a restriction
             // is not overruled every 10 minutes by the same evidence.
             if (risk.Score < RiskAssessment.ReviewThreshold || risk.Score <= (user.RiskScore ?? 0)) continue;

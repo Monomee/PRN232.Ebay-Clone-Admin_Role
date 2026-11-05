@@ -30,11 +30,11 @@ public class AccountLinkingTests
     public void Assess_StrongestLinkPerType_BannedWeighsMore()
     {
         var cafe = Enumerable.Range(1, 50).Select(id => new LinkedAccount(id, T.Ip, false));
-        Assert.That(AccountLinking.Assess(cafe, "a@x.com").Decision, Is.EqualTo("Approve"), "shared IP alone never blocks");
+        Assert.That(AccountLinking.Assess(cafe, []).Decision, Is.EqualTo("Approve"), "shared IP alone never blocks");
 
-        Assert.That(AccountLinking.Assess([new(9, T.Ip, true)], null).Decision, Is.EqualTo("Review"));
-        Assert.That(AccountLinking.Assess([new(9, T.Bank, false)], null).Decision, Is.EqualTo("Review"));
-        Assert.That(AccountLinking.Assess([new(9, T.Bank, true)], null).Decision, Is.EqualTo("Reject"));
-        Assert.That(AccountLinking.Assess([new(9, T.Phone, false), new(9, T.Address, false)], "x@yopmail.com").Score, Is.EqualTo(30 + 15 + 20));
+        Assert.That(AccountLinking.Assess([new(9, T.Ip, true)], []).Decision, Is.EqualTo("Review"));
+        Assert.That(AccountLinking.Assess([new(9, T.Bank, false)], []).Decision, Is.EqualTo("Review"));
+        Assert.That(AccountLinking.Assess([new(9, T.Bank, true)], []).Decision, Is.EqualTo("Reject"));
+        Assert.That(AccountLinking.Assess([new(9, T.Phone, false), new(9, T.Address, false)], [new RiskSignal("Email dùng một lần", AccountLinking.DisposableEmailWeight)]).Score, Is.EqualTo(30 + 15 + 20));
     }
 }

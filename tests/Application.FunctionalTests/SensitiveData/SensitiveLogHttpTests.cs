@@ -28,12 +28,17 @@ public class SensitiveLogHttpTests
     internal sealed class Factory : WebApplicationFactory<Program>
     {
         private readonly string _database = Guid.NewGuid().ToString();
+
+        /// Extra configuration for one test (e.g. opening InternalIps), applied after the defaults below.
+        public Dictionary<string, string> Settings { get; init; } = new();
+
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
             builder.UseEnvironment("Testing")
                 .UseSetting("ConnectionStrings:MyCnn", "Server=unused;Database=unused;Trusted_Connection=True;TrustServerCertificate=True")
                 .UseSetting("Security:EncryptionKey", Convert.ToBase64String(Enumerable.Repeat((byte)7, 32).ToArray()))
                 .UseSetting("Jwt:Key", SigningKey).UseSetting("Jwt:Issuer", "EbayCloneTest").UseSetting("Jwt:Audience", "EbayCloneTest");
+            foreach (var (key, value) in Settings) builder.UseSetting(key, value);
             builder.ConfigureLogging(logging => logging.ClearProviders().AddConsole());
             builder.ConfigureTestServices(services =>
             {

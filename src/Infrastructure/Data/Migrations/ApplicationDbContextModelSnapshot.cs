@@ -595,6 +595,54 @@ namespace EbayClone.Infrastructure.Data.Migrations
                     b.ToTable("Inventory", (string)null);
                 });
 
+            modelBuilder.Entity("EbayClone.Domain.Entities.LoginHistory", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeviceHash")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Flags")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("IpAddress")
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<bool>("IsDatacenter")
+                        .HasColumnType("bit");
+
+                    b.Property<double?>("Latitude")
+                        .HasColumnType("float");
+
+                    b.Property<double?>("Longitude")
+                        .HasColumnType("float");
+
+                    b.Property<string>("Place")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("DeviceHash");
+
+                    b.HasIndex("UserId", "CreatedAt");
+
+                    b.ToTable("LoginHistories");
+                });
+
             modelBuilder.Entity("EbayClone.Domain.Entities.Message", b =>
                 {
                     b.Property<int>("Id")
@@ -2140,6 +2188,15 @@ namespace EbayClone.Infrastructure.Data.Migrations
                         .HasConstraintName("FK__Inventory__produ__6383C8BA");
 
                     b.Navigation("Product");
+                });
+
+            modelBuilder.Entity("EbayClone.Domain.Entities.LoginHistory", b =>
+                {
+                    b.HasOne("EbayClone.Domain.Entities.User", null)
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EbayClone.Domain.Entities.Message", b =>

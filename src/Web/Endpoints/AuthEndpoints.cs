@@ -1,9 +1,11 @@
 using System.Security.Claims;
+using System.Security.Cryptography;
 using EbayClone.Application.Authentication.Commands.Enable2FA;
 using EbayClone.Application.Authentication.Commands.Login;
 using EbayClone.Application.Authentication.Commands.Verify2FA;
 using EbayClone.Application.Authentication.Commands.Verify2FASetup;
 using EbayClone.Application.Common.Interfaces;
+using EbayClone.Application.Users.Risk;
 using EbayClone.Infrastructure.Services;
 using EbayClone.Web.Infrastructure;
 
@@ -36,6 +38,35 @@ public class Auth : EndpointGroupBase
     }
 
     private const string TwoFactorChallengeCookie = "2fa_challenge";
+    private const string DeviceCookie = "device_id";
+
+    /// Every path that issues a session ends here: remembers the browser (device_id cookie) and records the sign-in
+    /// for device linking and impossible-travel checks. Never blocks the sign-in.
+    private static async Task RecordSignInAsync(HttpContext http, int userId)
+    {
+        var device = http.Request.Cookies[DeviceCookie];
+        if (device is not { Length: 32 } || !device.All(Uri.IsHexDigit))
+        {
+            device = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
+            http.Response.Cookies.Append(DeviceCookie, device, new CookieOptions
+            {
+                HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, Path = "/api/Auth",
+                Expires = DateTimeOffset.UtcNow.AddDays(400), // browsers cap cookie lifetime at ~400 days
+            });
+        }
+        var services = http.RequestServices;
+        try
+        {
+            var deviceHash = services.GetRequiredService<IEncryptionService>().ComputeHmac("device:" + device);
+            // Same source as audit logs and rate limiting: the connection address after trusted-proxy forwarding.
+            await SignInMonitor.RecordAsync(services.GetRequiredService<IApplicationDbContext>(), userId,
+                http.Connection.RemoteIpAddress?.ToString(), deviceHash, DateTime.UtcNow, http.RequestAborted);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            services.GetRequiredService<ILogger<Auth>>().LogError(ex, "Could not record sign-in of user {UserId}", userId);
+        }
+    }
 
     public async Task<IResult> Login(ISender sender, IJwtService jwt, LoginCommand command, HttpContext http)
     {
@@ -57,6 +88,8 @@ public class Auth : EndpointGroupBase
             });
             return Results.Ok(result);
         }
+
+        await RecordSignInAsync(http, result.UserId);
 
         // ✅ Set HttpOnly cookie
         http.Response.Cookies.Append("auth_token", result.Token!, new CookieOptions
@@ -88,6 +121,7 @@ public class Auth : EndpointGroupBase
             return Results.Ok(new Verify2FAResponse { Success = false, ErrorMessage = "Mã 2FA này đã được sử dụng, vui lòng đợi mã mới" });
 
         http.Response.Cookies.Delete(TwoFactorChallengeCookie, new CookieOptions { Path = "/api/Auth" });
+        await RecordSignInAsync(http, userId.Value);
 
         // ✅ Set cookie sau khi 2FA thành công
         http.Response.Cookies.Append("auth_token", result.Token!, new CookieOptions
