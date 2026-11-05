@@ -30,7 +30,8 @@ public class SensitiveWriteTests
     [Test]
     public async Task Withdrawal_StoresEncryptedBankAndAudit_WithoutChangingBalanceRules()
     {
-        _db.Users.Add(new User { Id = 42, Role = "Seller", Username = "seller" });
+        _db.Users.Add(new User { Id = 42, Role = "Seller", Username = "seller",
+            BankAccountMock = """{"bankName":"VCB","accountNumber":"001234567890","accountName":"Nguyễn An"}""" });
         _db.SellerWallets.Add(new SellerWallet { SellerId = 42, AvailableBalance = 100 });
         await _db.SaveChangesAsync();
         var command = new RequestWithdrawalCommand { Amount = 30, BankName = "VCB", BankAccountName = "Nguyễn An", BankAccountNumber = "001234567890" };
@@ -48,9 +49,10 @@ public class SensitiveWriteTests
     [Test]
     public async Task RejectedWithdrawal_DoesNotPersistAuditOrRequest()
     {
+        _db.Users.Add(new User { Id = 42, Role = "Seller", BankAccountMock = """{"accountNumber":"00123456","accountName":"A"}""" });
         _db.SellerWallets.Add(new SellerWallet { SellerId = 42, AvailableBalance = 10 });
         await _db.SaveChangesAsync();
-        var command = new RequestWithdrawalCommand { Amount = 30, BankName = "VCB", BankAccountName = "A", BankAccountNumber = "0012" };
+        var command = new RequestWithdrawalCommand { Amount = 30, BankName = "VCB", BankAccountName = "A", BankAccountNumber = "00123456" };
         Assert.ThrowsAsync<InvalidOperationException>(() => new RequestWithdrawalCommandHandler(_db, SensitiveLogTests.Actor("42", "Seller"), EncryptionServiceTests.Create(), new SensitiveDataLogger(_db, EncryptionServiceTests.Create(), SensitiveLogTests.Actor("42", "Seller"))).Handle(command, default));
         Assert.That(await _db.SensitiveDataLogs.CountAsync(), Is.Zero);
         Assert.That(await _db.WithdrawalRequests.CountAsync(), Is.Zero);

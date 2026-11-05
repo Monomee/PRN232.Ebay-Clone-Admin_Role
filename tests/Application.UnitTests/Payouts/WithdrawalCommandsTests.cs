@@ -147,6 +147,7 @@ public class WithdrawalCommandsTests
     {
         // Arrange: user hiện tại là seller
         _userMock.Setup(u => u.Id).Returns(SellerId.ToString());
+        AddRequestingSeller();
         _context.SellerWallets.Add(new SellerWallet { SellerId = SellerId, AvailableBalance = 300m });
         await _context.SaveChangesAsync();
         var handler = new RequestWithdrawalCommandHandler(_context, _userMock.Object, EncryptionServiceTests.Create(), new SensitiveDataLogger(_context, EncryptionServiceTests.Create(), _userMock.Object));
@@ -175,6 +176,7 @@ public class WithdrawalCommandsTests
     public async Task Request_InsufficientBalance_ShouldThrowAndNotCreateRequest()
     {
         _userMock.Setup(u => u.Id).Returns(SellerId.ToString());
+        AddRequestingSeller();
         _context.SellerWallets.Add(new SellerWallet { SellerId = SellerId, AvailableBalance = 30m });
         await _context.SaveChangesAsync();
         var handler = new RequestWithdrawalCommandHandler(_context, _userMock.Object, EncryptionServiceTests.Create(), new SensitiveDataLogger(_context, EncryptionServiceTests.Create(), _userMock.Object));
@@ -194,6 +196,7 @@ public class WithdrawalCommandsTests
     public async Task Request_NonPositiveAmount_ShouldThrowArgumentException()
     {
         _userMock.Setup(u => u.Id).Returns(SellerId.ToString());
+        AddRequestingSeller();
         _context.SellerWallets.Add(new SellerWallet { SellerId = SellerId, AvailableBalance = 300m });
         await _context.SaveChangesAsync();
         var handler = new RequestWithdrawalCommandHandler(_context, _userMock.Object, EncryptionServiceTests.Create(), new SensitiveDataLogger(_context, EncryptionServiceTests.Create(), _userMock.Object));
@@ -205,5 +208,80 @@ public class WithdrawalCommandsTests
             BankAccountNumber = "0123456789",
             BankAccountName = "NGUYEN VAN A"
         }, CancellationToken.None));
+    }
+
+    /// Seller with a registered (KYC-checked) bank account, as UpdateBankAccount stores it.
+    private User AddRequestingSeller()
+    {
+        var seller = new User
+        {
+            Id = SellerId, Username = "seller", Role = "Seller",
+            BankAccountMock = """{"bankName":"VCB","accountNumber":"0123456789","accountName":"NGUYEN VAN A"}""",
+        };
+        _context.Users.Add(seller);
+        return seller;
+    }
+
+    [Test]
+    public async Task Approve_SellerOnHoldOrBanned_ShouldThrowAndKeepFundsLocked()
+    {
+        await SeedPendingWithdrawalAsync();
+        var seller = await _context.Users.SingleAsync(u => u.Id == SellerId);
+        var handler = new ApproveWithdrawalCommandHandler(_context, _userMock.Object, new SensitiveDataLogger(_context, EncryptionServiceTests.Create(), _userMock.Object));
+
+        seller.PayoutHoldUntil = DateTime.UtcNow.AddDays(1);
+        await Should.ThrowAsync<InvalidOperationException>(() => handler.Handle(new ApproveWithdrawalCommand(1, "TX"), CancellationToken.None));
+        seller.PayoutHoldUntil = null;
+        seller.Status = "Banned";
+        await Should.ThrowAsync<InvalidOperationException>(() => handler.Handle(new ApproveWithdrawalCommand(1, "TX"), CancellationToken.None));
+
+        (await _context.SellerWallets.SingleAsync()).LockedBalance.ShouldBe(150m);
+        (await _context.WithdrawalRequests.SingleAsync()).Status.ShouldBe(WithdrawalRequest.StatusPending);
+    }
+
+    private RequestWithdrawalCommandHandler RequestHandler() =>
+        new(_context, _userMock.Object, EncryptionServiceTests.Create(), new SensitiveDataLogger(_context, EncryptionServiceTests.Create(), _userMock.Object));
+
+    private static RequestWithdrawalCommand Request(string account = "0123456789") =>
+        new() { Amount = 100m, BankName = "VCB", BankAccountNumber = account, BankAccountName = "NGUYEN VAN A" };
+
+    // A withdrawal must not be the way around the payout hold, the KYC name check or the bank-account linking.
+    [Test]
+    public async Task Request_BlockedByHoldUnregisteredAccountOrStanding()
+    {
+        _userMock.Setup(u => u.Id).Returns(SellerId.ToString());
+        var seller = AddRequestingSeller();
+        _context.SellerWallets.Add(new SellerWallet { SellerId = SellerId, AvailableBalance = 300m });
+        await _context.SaveChangesAsync();
+        async Task Rejected(RequestWithdrawalCommand command) =>
+            await Should.ThrowAsync<EbayClone.Application.Common.Exceptions.ValidationException>(() => RequestHandler().Handle(command, CancellationToken.None));
+
+        await Rejected(Request("9999999999"));            // someone else's account
+
+        seller.PayoutHoldUntil = DateTime.UtcNow.AddHours(48);
+        await Rejected(Request());                         // on hold (new bank account, risky approval, ...)
+
+        seller.PayoutHoldUntil = null;
+        seller.Status = "Suspended";
+        await Rejected(Request());
+
+        seller.Status = "Active";
+        seller.BankAccountMock = null;
+        await Rejected(Request());                         // nothing registered yet
+
+        (await _context.WithdrawalRequests.CountAsync()).ShouldBe(0);
+        (await _context.SellerWallets.SingleAsync()).LockedBalance.ShouldBe(0m);
+    }
+
+    [Test]
+    public async Task Request_SameAccountWrittenDifferently_IsAccepted()
+    {
+        _userMock.Setup(u => u.Id).Returns(SellerId.ToString());
+        AddRequestingSeller();
+        _context.SellerWallets.Add(new SellerWallet { SellerId = SellerId, AvailableBalance = 300m });
+        await _context.SaveChangesAsync();
+
+        var id = await RequestHandler().Handle(Request("0123 456 789"), CancellationToken.None);
+        id.ShouldBeGreaterThan(0);
     }
 }

@@ -93,7 +93,18 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
 - **Unique index** `(UserId, Type, ValueHash)` trên `UserIdentifiers`.
 - **`LoginHistories`** cũ hơn 180 ngày bị xóa tự động.
 
-### 1.7 Load test
+### 1.7 Chặn tài khoản chưa duyệt, rút tiền và review chéo
+
+- **`AccountStanding`** (`Users/Risk/AccountStanding.cs`): tài khoản bị ban/reject, `Suspended`, hoặc còn `PendingApproval` (chưa qua duyệt rủi ro) **không được**:
+  - đăng sản phẩm (và chỉ role `Seller` mới đăng được; command thiếu `SellerId` trả 401),
+  - viết review,
+  - tạo yêu cầu rút tiền (admin duyệt rút tiền cũng kiểm lại trạng thái và hold).
+- **Rút tiền** (`RequestWithdrawalCommand`) áp cùng luật với payout engine:
+  - đang `PayoutHoldUntil` thì không rút được,
+  - chỉ rút về **tài khoản ngân hàng đã đăng ký** (`PUT /api/Account/bank-account`, đã so tên KYC). Số tài khoản khác trả 400; tên chủ tài khoản lưu lấy từ tài khoản đã đăng ký.
+- **Review chéo (shill review):** người review có chung CCCD, ngân hàng, email, SĐT, thiết bị hoặc địa chỉ với seller thì review bị giữ ở `PendingReview`, `FlagReason = LinkedToSeller` để moderator xem. Chỉ trùng IP/tọa độ thì không tính (wifi chung, NAT nhà mạng).
+
+### 1.8 Load test
 
 - Cấu hình `Security:AllowApiWithout2FA` cho phép tài khoản chưa bật 2FA gọi API, chỉ dùng khi chạy JMeter. App **từ chối khởi động** nếu bật ở Production. `docker-compose.loadtest.yml` đã bật sẵn.
 - JMeter plan 11 gửi cookie `2fa_challenge` thay cho `userId`.
@@ -126,6 +137,11 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
 | Governance Records | "Lift restrictions" không hiện (bộ lọc chỉ lấy Ban/Reject/Suspend) | Mở rộng bộ lọc |
 | Trọng số / ngưỡng | Hằng số trong code | Đưa vào cấu hình, tinh chỉnh bằng dữ liệu thật |
 | Hiệu năng job | Đồng bộ toàn bộ user mỗi 10 phút | Xử lý theo trang khi dữ liệu lớn (đã ghi chú `ponytail:`) |
+| Xác minh email / SĐT | Không có; email và SĐT do user tự khai nên có thể khai thông tin của người khác | OTP email (đã có `EmailService`), OTP SMS (cần nhà cung cấp); chỉ tính định danh đã xác minh khi chấm điểm |
+| eKYC CCCD | `CCCD` tự nhập; `IsVerified` chưa chặn chức năng nào | Dịch vụ eKYC (OCR + selfie/NFC); bắt buộc `IsVerified` với seller trước khi đăng bán/nhận tiền |
+| Xác minh tài khoản ngân hàng | Chỉ so tên với tên KYC tự khai | Tra tên chủ tài khoản qua Napas hoặc chuyển thử |
+| Một CCCD một tài khoản ở DB | Chỉ qua điểm rủi ro (CCCD trùng = 80 → từ chối) | Không đặt unique index: tài khoản trùng phải được lưu thì mới bị chấm và từ chối |
+| Captcha / rate limit đăng ký | Chưa có trang đăng ký | Thêm khi làm trang đăng ký |
 | Cookie thiết bị | Dễ né bằng cửa sổ ẩn danh | Cố ý là tín hiệu yếu; không làm fingerprint canvas |
 | JMeter, k8s | Chưa chạy plan JMeter, chưa apply lên cluster thật | Chạy `tests/jmeter`, apply `k8s/` |
 | `App.test.js` | Fail từ trước (Jest không import được axios ESM) | Cấu hình `transformIgnorePatterns` cho axios |
