@@ -117,7 +117,7 @@ Tổng hợp các thay đổi trong PR #17 → #20: thay đổi gì, cần chú 
   - Mã 6 số, DB chỉ lưu HMAC, hết hạn sau 10 phút, sai 5 lần thì phải xin mã mới, xin lại tối đa 1 lần/phút (`POST /api/Auth/resend-email-code`).
   - Nhập đúng (`POST /api/Auth/verify-email`) thì chuyển sang `Pending` → `AutoReviewUsersService` chấm điểm như trước.
   - `verify-email` và `resend-email-code` trả cùng một câu cho email không tồn tại, để không lộ email nào đã đăng ký.
-- **Dev không có SMTP:** `EmailSettings:LogInsteadOfSending=true` in nội dung mail (có mã OTP) ra log thay vì gửi. App **từ chối khởi động** nếu bật ở Production.
+- **Dev:** `EmailSettings:LogInsteadOfSending=true` in nội dung mail (có mã OTP) ra log thay vì gửi, kể cả khi đã cấu hình SMTP (không gửi nhầm mail thật lúc test). App **từ chối khởi động** nếu bật ở Production.
 
 ### 1.9 Load test
 

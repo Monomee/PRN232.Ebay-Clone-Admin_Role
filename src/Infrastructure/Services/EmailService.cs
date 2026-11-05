@@ -23,6 +23,14 @@ public class EmailService : IEmailService
     {
         try
         {
+            // Development: print the mail (it may hold a verification code) instead of sending it, even when SMTP is
+            // configured, so testing never mails real addresses. Refused in Production at startup (Web/DependencyInjection).
+            if (bool.TryParse(_config["EmailSettings:LogInsteadOfSending"], out var logOnly) && logOnly)
+            {
+                _logger.LogWarning("EmailSettings:LogInsteadOfSending - mail to {To}: {Subject} {Body}", to, subject, body);
+                return;
+            }
+
             // 1. Lấy thông tin cấu hình từ appsettings.json
             var smtpServer = _config["EmailSettings:SmtpServer"] ?? "smtp.gmail.com";
             var port = int.Parse(_config["EmailSettings:Port"] ?? "587");
@@ -32,13 +40,6 @@ public class EmailService : IEmailService
             // Kiểm tra xem đã cấu hình email chưa
             if (string.IsNullOrEmpty(senderEmail) || string.IsNullOrEmpty(senderPassword))
             {
-                // Development without SMTP: print the mail (it may hold a verification code) instead of failing.
-                // Refused in Production at startup (Web/DependencyInjection).
-                if (bool.TryParse(_config["EmailSettings:LogInsteadOfSending"], out var logOnly) && logOnly)
-                {
-                    _logger.LogWarning("EmailSettings:LogInsteadOfSending - mail to {To}: {Subject} {Body}", to, subject, body);
-                    return;
-                }
                 _logger.LogWarning("Chưa cấu hình EmailSettings trong appsettings.json. Hệ thống sẽ bỏ qua việc gửi mail.");
                 throw new InvalidOperationException("Chưa cấu hình EmailSettings trong appsettings.json.");
             }
