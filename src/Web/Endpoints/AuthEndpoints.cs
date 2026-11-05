@@ -71,7 +71,7 @@ public class Auth : EndpointGroupBase
         return Results.Ok(result);
     }
 
-    public async Task<IResult> Verify2FA(ISender sender, IJwtService jwt, Verify2FARequest req, HttpContext http)
+    public async Task<IResult> Verify2FA(ISender sender, IJwtService jwt, SecurityCache cache, Verify2FARequest req, HttpContext http)
     {
         // userId trong body (nếu client cũ còn gửi) bị bỏ qua: chỉ tin challenge do bước mật khẩu cấp
         var userId = jwt.ValidateTwoFactorChallenge(http.Request.Cookies[TwoFactorChallengeCookie]);
@@ -82,6 +82,10 @@ public class Auth : EndpointGroupBase
 
         if (!result.Success)
             return Results.Ok(result);
+
+        // Một mã TOTP chỉ dùng được một lần: người nhìn thấy mã vừa nhập không thể đăng nhập lại trong cùng 30 giây.
+        if (!await cache.TryUseOnceAsync($"totp:{userId}:{result.TimeStep}", TimeSpan.FromMinutes(2)))
+            return Results.Ok(new Verify2FAResponse { Success = false, ErrorMessage = "Mã 2FA này đã được sử dụng, vui lòng đợi mã mới" });
 
         http.Response.Cookies.Delete(TwoFactorChallengeCookie, new CookieOptions { Path = "/api/Auth" });
 
@@ -94,10 +98,11 @@ public class Auth : EndpointGroupBase
             Expires = DateTimeOffset.UtcNow.Add(JwtService.TokenLifetime) // cookie dies with the JWT inside it
         });
 
+        result.Token = null; // ❌ không trả token về body (giống login): JS không được đọc JWT
         return Results.Ok(result);
     }
 
-    public async Task<IResult> Logout(HttpContext http, RevokedTokenStore revoked)
+    public async Task<IResult> Logout(HttpContext http, SecurityCache revoked)
     {
         // Deleting the cookie is not enough: a copied token would stay valid until it expires.
         var jti = http.User.FindFirst(System.IdentityModel.Tokens.Jwt.JwtRegisteredClaimNames.Jti)?.Value;

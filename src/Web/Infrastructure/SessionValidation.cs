@@ -21,20 +21,27 @@ public static class SessionValidation
         var principal = ctx.Principal!;
         var services = ctx.HttpContext.RequestServices;
 
+        // Every token we issue carries a jti; one without it could never be revoked by logout.
         var jti = principal.FindFirstValue(JwtRegisteredClaimNames.Jti);
-        if (jti != null && await services.GetRequiredService<RevokedTokenStore>().IsRevokedAsync(jti))
+        if (jti == null)
+        {
+            ctx.Fail("Token has no id (issued before logout revocation existed): sign in again.");
+            return;
+        }
+        if (await services.GetRequiredService<SecurityCache>().IsRevokedAsync(jti))
         {
             ctx.Fail("Token was revoked (logged out).");
             return;
         }
 
-        // ponytail: one PK lookup per authenticated request; add a short cache if it ever shows up in profiling
+        // ponytail: two indexed lookups (user, admin role) per authenticated request; add a short cache if it ever shows up in profiling
         if (!int.TryParse(principal.FindFirstValue(ClaimTypes.NameIdentifier), out var userId))
         {
             ctx.Fail("Token has no user id.");
             return;
         }
-        var user = await services.GetRequiredService<IApplicationDbContext>().Users
+        var db = services.GetRequiredService<IApplicationDbContext>();
+        var user = await db.Users
             .Where(u => u.Id == userId)
             .Select(u => new { u.Status, u.ApprovalStatus, u.Role, u.TwoFactorEnabled })
             .FirstOrDefaultAsync(ctx.HttpContext.RequestAborted);
@@ -52,18 +59,32 @@ public static class SessionValidation
             return;
         }
 
-        if (!user.TwoFactorEnabled && !AllowedWithout2FA.Any(p => ctx.HttpContext.Request.Path.Equals(p, StringComparison.OrdinalIgnoreCase)))
+        // Same for a custom admin role whose permissions were edited or unassigned since sign-in.
+        var granted = await db.GetAdminPermissionsAsync(userId, ctx.HttpContext.RequestAborted);
+        var inToken = principal.FindAll(AdminPermissions.ClaimType).Select(c => c.Value);
+        if (!granted.ToHashSet().SetEquals(inToken))
+        {
+            ctx.Fail("Permissions changed since sign-in.");
+            return;
+        }
+
+        // Security:AllowApiWithout2FA is a load-test switch (JMeter accounts without 2FA); refused in Production at startup.
+        if (!user.TwoFactorEnabled && !services.GetRequiredService<IConfiguration>().GetValue<bool>("Security:AllowApiWithout2FA")
+            && !AllowedWithout2FA.Any(p => ctx.HttpContext.Request.Path.Equals(p, StringComparison.OrdinalIgnoreCase)))
             ctx.Fail("Two-factor authentication must be enabled first.");
     }
 }
 
-/// Logged-out token ids until they expire. Shared through Redis when configured (several pods), in memory otherwise.
-public sealed class RevokedTokenStore
+/// Short-lived security state: logged-out token ids and already-used 2FA codes.
+/// Shared through Redis when configured (several pods), in memory otherwise.
+public sealed class SecurityCache
 {
     private readonly IMemoryCache _memory;
     private readonly Lazy<IDatabase>? _redis;
 
-    public RevokedTokenStore(IConfiguration configuration, IMemoryCache memory)
+    private static readonly object MemoryLock = new();
+
+    public SecurityCache(IConfiguration configuration, IMemoryCache memory)
     {
         _memory = memory;
         var redis = configuration["Redis:ConnectionString"];
@@ -87,4 +108,17 @@ public sealed class RevokedTokenStore
         _redis != null ? await _redis.Value.KeyExistsAsync(Key(jti)) : _memory.TryGetValue(Key(jti), out _);
 
     private static string Key(string jti) => "ebay-revoked-jwt:" + jti;
+
+    /// True the first time a key is used within ttl, false on any repeat (atomic, also across pods with Redis).
+    public async Task<bool> TryUseOnceAsync(string key, TimeSpan ttl)
+    {
+        key = "ebay-used-once:" + key;
+        if (_redis != null) return await _redis.Value.StringSetAsync(key, 1, ttl, When.NotExists);
+        lock (MemoryLock)
+        {
+            if (_memory.TryGetValue(key, out _)) return false;
+            _memory.Set(key, true, ttl);
+            return true;
+        }
+    }
 }

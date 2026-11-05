@@ -39,6 +39,12 @@ data:
             ''        keep-alive;
         }
 
+        # ── Chống brute-force login / 2FA ở tầng gateway ──────────────
+        # Chỉ 1 replica nginx nên bộ đếm này dùng chung cho mọi pod API
+        # (rate limiter trong app đếm riêng từng pod). 429 thay cho 503 mặc định.
+        limit_req_status 429;
+        limit_req_zone $binary_remote_addr zone=auth_zone:10m rate=12r/m;
+
         # ── Load Balance Upstream — Chia tải cho 2 Pods API ──
         upstream backend_api {
             server ebay-api-service:80;
@@ -67,6 +73,17 @@ data:
                 proxy_set_header   X-Forwarded-Proto $scheme;
                 proxy_read_timeout 86400s; # 24h — giữ kết nối WS lâu dài
                 proxy_send_timeout 86400s;
+            }
+
+            # ── Login + xác thực 2FA: giới hạn theo IP cho toàn cụm ─────
+            location ~ ^/api/Auth/(login|verify-2fa)$ {
+                limit_req zone=auth_zone burst=6 nodelay;
+                proxy_pass         http://backend_api;
+                proxy_http_version 1.1;
+                proxy_set_header   Host $host;
+                proxy_set_header   X-Forwarded-For $proxy_add_x_forwarded_for;
+                proxy_set_header   X-Forwarded-Proto $scheme;
+                proxy_set_header   X-Real-IP $remote_addr;
             }
 
             # ── Proxy toàn bộ request HTTP thông thường ──────────────

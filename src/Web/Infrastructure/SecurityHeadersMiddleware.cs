@@ -33,13 +33,19 @@ public class SecurityHeadersMiddleware
         // 5. HSTS: do app.UseHsts() lo (chỉ ngoài Development, tự bỏ qua localhost để không khóa HTTPS cho mọi project localhost)
 
         // 6. Content Security Policy
+        // React app chỉ chạy script từ file của chính nó (build không có inline script / eval).
+        // Riêng trang Swagger UI (/api/*.html) cần inline script nên được nới.
+        var path = context.Request.Path.Value ?? "";
+        var isSwaggerUi = path.StartsWith("/api", StringComparison.OrdinalIgnoreCase)
+            && path.EndsWith(".html", StringComparison.OrdinalIgnoreCase);
         headers["Content-Security-Policy"] =
             "default-src 'self'; " +
-            "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+            (isSwaggerUi ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " : "script-src 'self'; ") +
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; " + // bootstrap-icons (Ebay.css)
             "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; " +
             "img-src 'self' data: blob: https:; " +
             "connect-src 'self' wss: ws:; " +
+            "object-src 'none'; base-uri 'self'; form-action 'self'; " +
             "frame-ancestors 'self';";
 
         // 7. Header Server bị tắt ở Kestrel (AddServerHeader = false trong Program.cs)

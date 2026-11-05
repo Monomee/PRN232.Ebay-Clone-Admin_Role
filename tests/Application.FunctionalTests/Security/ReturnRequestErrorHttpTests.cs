@@ -72,7 +72,7 @@ public class ReturnRequestErrorHttpTests
     }
 
     private static string Sign() => new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
-        "EbayCloneTest", "EbayCloneTest", [new Claim(ClaimTypes.NameIdentifier, "42"), new Claim(ClaimTypes.Role, "SuperAdmin")],
+        "EbayCloneTest", "EbayCloneTest", [new Claim("jti", Guid.NewGuid().ToString()), new Claim(ClaimTypes.NameIdentifier, "42"), new Claim(ClaimTypes.Role, "SuperAdmin")],
         expires: DateTime.UtcNow.AddMinutes(5), signingCredentials: new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SensitiveLogHttpTests.SigningKey)), SecurityAlgorithms.HmacSha256)));
 }

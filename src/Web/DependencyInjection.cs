@@ -131,8 +131,10 @@ public static class DependencyInjection
                 OnTokenValidated = SessionValidation.OnTokenValidated
             };
         });
+        if (builder.Configuration.GetValue<bool>("Security:AllowApiWithout2FA") && builder.Environment.IsProduction())
+            throw new InvalidOperationException("Security:AllowApiWithout2FA is for load tests only and cannot be enabled in Production.");
         builder.Services.AddMemoryCache();
-        builder.Services.AddSingleton<RevokedTokenStore>();
+        builder.Services.AddSingleton<SecurityCache>();
 
         builder.Services.AddCors(options =>
         {

@@ -23,11 +23,15 @@ services:
     image: ebayclone-api:loadtest
     cpus: "1.0"
     mem_limit: 768m
+    environment:
+      Security__AllowApiWithout2FA: "true" # JMeter dùng tài khoản chưa bật 2FA (chỉ load test)
 
   api2:
     image: ebayclone-api:loadtest
     cpus: "1.0"
     mem_limit: 768m
+    environment:
+      Security__AllowApiWithout2FA: "true"
 
   # Replica thứ 3 — chỉ bật khi COMPOSE_PROFILES=r3 hoặc gọi đích danh
   api3:
@@ -47,6 +51,9 @@ services:
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__MyCnn: "Server=db,1433;Database=CloneEbayDB;User Id=sa;Password=${SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
       Jwt__Key: "${JWT_KEY}"
+      Security__EncryptionKey: "${ENCRYPTION_KEY:?Set a persistent 32-byte Base64 ENCRYPTION_KEY}"
+      Security__LegacyEncryptionKey: "${LEGACY_ENCRYPTION_KEY:-}"
+      Security__AllowApiWithout2FA: "true"
       Jwt__Issuer: "EbayClone"
       Jwt__Audience: "EbayCloneUsers"
       EmailSettings__SenderEmail: "${EMAIL_SENDER}"

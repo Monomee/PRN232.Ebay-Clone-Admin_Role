@@ -53,12 +53,15 @@ tests/jmeter/
    - Header Manager của Thread Group chính: `Cookie: auth_token=${__P(token)}`
    - Login admin có thêm assertion `$.requireTwoFactor == false` và header chứa `auth_token=` để báo lỗi ngay nếu không lấy được token
 2. **Login sai vẫn trả HTTP 200** (`success=false`) → kiểm tra bằng JSON Assertion, không dựa vào status code.
-3. **Rate limit login (`strict`: 5 req/60s) là global, không tách theo IP.**
+3. **Rate limit login (`strict`: 5 req/60s) tính theo IP** (trước 2026-11-05 là global). JMeter bắn từ 1 IP nên vẫn dùng chung 1 bộ đếm:
    - Kịch bản 02–04: login **một lần** trong *setUp Thread Group*, chia sẻ token qua property (xem mục 1).
    - Kịch bản 01 chạy **riêng**, sau khi đợi ≥ 60s. `run-all.ps1` đã xử lý việc này.
 4. Assertion kỳ vọng 429 phải tick **Ignore Status**, nếu không JMeter tự đánh fail mọi 4xx.
 5. Tài khoản test: `superadmin@ebay.local` / `Admin123!` (seed sẵn, không bật 2FA). Không dùng `admin@ebay.local` cho kịch bản 03: role Administrator bị **403** ở `/api/Users` (policy `ManageUsers` chỉ cho Support/SuperAdmin).
    **Tài khoản này phải tắt 2FA** (nếu bật, login trả `requireTwoFactor=true` và không có cookie → mọi request 401 `invalid_token`).
+   **Và app phải bật công tắc load test** `ALLOW_API_WITHOUT_2FA=true` trong `.env` rồi `docker compose up -d` lại: từ 2026-11-05 API trả 401 cho
+   mọi tài khoản chưa bật 2FA (trừ `/api/Auth/me|logout|enable-2fa|verify-2fa-setup`). `docker-compose.loadtest.yml` (run-cluster.ps1) đã bật sẵn.
+   Công tắc không có hiệu lực ở Production (app từ chối khởi động). Chạy xong nhớ đặt lại `false`.
    Trạng thái 2FA nằm trong DB local của từng máy. Tắt bằng (chạy ở thư mục gốc project, cờ `-I` bắt buộc):
    ```powershell
    $pw = ((Get-Content .env | Where-Object { $_ -match '^SA_PASSWORD=' }) -replace '^SA_PASSWORD=', '').Trim()
@@ -237,7 +240,7 @@ Tài khoản: `techseller@example.com` / `Password123!` (seed **bật 2FA**), `m
 | 02 | 203.0.113.10 | 403 | 403 | ✅ |
 | 03 | 172.20.0.5 | 200 | 200 | ✅ đối chứng |
 | 04 | 192.168.1.50 | 200 | 200 | ✅ đối chứng |
-| 05 | 100.1.2.3 | 403 | **200** | ❌ **SEC-02** |
+| 05 | 100.1.2.3 | 403 | **200** | ❌ **SEC-02** — đã sửa 2026-11-05 (`"10.*"` khớp nhầm tiền tố `100.`), chưa chạy lại plan |
 
 **11 — 2FA** (tài khoản bật 2FA)
 
@@ -245,6 +248,7 @@ Tài khoản: `techseller@example.com` / `Password123!` (seed **bật 2FA**), `m
 |---|---|---|---|
 | Login đúng mật khẩu | `requireTwoFactor=true`, không có `auth_token` | đúng | ✅ |
 | verify-2fa mã sai `000000` | `success=false`, không có `auth_token` | đúng | ✅ |
+| _(từ 2026-11-05)_ verify-2fa lấy user từ cookie `2fa_challenge` do bước login cấp, body chỉ gửi `code` (`userId` trong body bị bỏ qua) | | | plan đã cập nhật |
 | verify-2fa thiếu mã | không có `auth_token` | 200, không cookie | ✅ (nên trả 400) |
 | `GET /api/Auth/me` sau các bước trên | 401 | 401 | ✅ |
 

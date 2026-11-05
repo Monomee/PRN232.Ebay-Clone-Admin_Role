@@ -5,6 +5,10 @@ import { BrowserRouter } from 'react-router-dom';
 import App from './App';
 import * as serviceWorkerRegistration from './serviceWorkerRegistration';
 import reportWebVitals from './reportWebVitals';
+import axios from 'axios';
+import { installSessionGuard } from './services/sessionGuard';
+
+installSessionGuard(axios); // 401 from the API anywhere -> back to /login
 
 const baseUrl = document.getElementsByTagName('base')[0].getAttribute('href');
 const rootElement = document.getElementById('root');

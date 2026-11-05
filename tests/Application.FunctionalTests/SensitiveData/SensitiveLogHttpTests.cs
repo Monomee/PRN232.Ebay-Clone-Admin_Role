@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using EbayClone.Application.Common.Interfaces;
 using EbayClone.Domain.Entities;
 using EbayClone.Infrastructure.Data;
@@ -47,7 +48,7 @@ public class SensitiveLogHttpTests
 
         /// Every authenticated request is checked against the Users table (status, role, 2FA), so a test token needs
         /// a matching active account with 2FA on. Creates it, or brings an existing row in line with the token.
-        public void EnsureSessionUser(int id, string role)
+        public void EnsureSessionUser(int id, string role, params string[] permissions)
         {
             using var scope = Services.CreateScope();
             var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
@@ -57,6 +58,18 @@ public class SensitiveLogHttpTests
             user.Status = "Active";
             user.ApprovalStatus = "Approved";
             user.TwoFactorEnabled = true;
+            db.SaveChanges();
+
+            // Custom admin role permissions are checked against AdminUserRoles too
+            var assignment = db.AdminUserRoles.Include(a => a.Role).FirstOrDefault(a => a.UserId == id);
+            if (permissions.Length == 0)
+            {
+                if (assignment != null) db.AdminUserRoles.Remove(assignment);
+            }
+            else if (assignment == null)
+                db.AdminUserRoles.Add(new AdminUserRole { UserId = id, Role = new AdminRole { RoleName = $"{role}#{id}", Permissions = JsonSerializer.Serialize(permissions) } });
+            else
+                assignment.Role!.Permissions = JsonSerializer.Serialize(permissions);
             db.SaveChanges();
         }
     }
@@ -81,7 +94,7 @@ public class SensitiveLogHttpTests
             await db.SaveChangesAsync();
         }
         string? token = role == null ? null : new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
-            "EbayCloneTest", "EbayCloneTest", [new Claim(ClaimTypes.NameIdentifier, "42"), new Claim(ClaimTypes.Role, role)],
+            "EbayCloneTest", "EbayCloneTest", [new Claim("jti", Guid.NewGuid().ToString()), new Claim(ClaimTypes.NameIdentifier, "42"), new Claim(ClaimTypes.Role, role)],
             expires: DateTime.UtcNow.AddMinutes(5), signingCredentials: new SigningCredentials(
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SigningKey)), SecurityAlgorithms.HmacSha256)));
         // TestServer has no remote IP by default; use a trusted loopback connection through the real IP middleware.

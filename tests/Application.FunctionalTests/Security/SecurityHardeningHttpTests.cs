@@ -5,6 +5,8 @@ using System.Security.Claims;
 using System.Text;
 using EbayClone.Domain.Entities;
 using EbayClone.Infrastructure.Data;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.IdentityModel.Tokens;
@@ -84,7 +86,9 @@ public class SecurityHardeningHttpTests
         using var verify = new HttpRequestMessage(HttpMethod.Post, "/api/Auth/verify-2fa") { Content = JsonContent.Create(new { code = Code(secret) }) };
         verify.Headers.Add("Cookie", "2fa_challenge=" + challenge);
         var response = await client.SendAsync(verify);
-        Assert.That(await response.Content.ReadAsStringAsync(), Does.Contain("\"success\":true"));
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.That(body, Does.Contain("\"success\":true"));
+        Assert.That(body, Does.Contain("\"token\":null"), "the JWT lives only in the HttpOnly cookie");
         Assert.That(SetCookie(response, "auth_token"), Is.Not.Null.And.Not.Empty);
     }
 
@@ -137,6 +141,26 @@ public class SecurityHardeningHttpTests
         Assert.That(await Get("/api/Users/summary", token), Is.EqualTo(401));
     }
 
+    // Load-test switch: JMeter accounts without 2FA may call the API, but never in Production.
+    [Test]
+    public async Task AllowApiWithout2FA_LoadTestSwitch()
+    {
+        await using var loadTest = new Factory().WithWebHostBuilder(b => b.UseSetting("Security:AllowApiWithout2FA", "true"));
+        using (var scope = loadTest.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.Users.Add(new User { Id = 607, Username = "jmeter", Email = "jmeter@test.local", Role = "SuperAdmin", TwoFactorEnabled = false });
+            await db.SaveChangesAsync();
+        }
+        using var client = new HttpClient(loadTest.Server.CreateHandler(c => c.Connection.RemoteIpAddress = IPAddress.Loopback)) { BaseAddress = new Uri("https://localhost") };
+        client.DefaultRequestHeaders.Authorization = new("Bearer", Sign(607, "SuperAdmin", twoFactorEnabled: false));
+        Assert.That((int)(await client.GetAsync("/api/Users/summary")).StatusCode, Is.EqualTo(200));
+
+        await using var production = new Factory().WithWebHostBuilder(b => b.UseEnvironment("Production").UseSetting("Security:AllowApiWithout2FA", "true"));
+        var startup = Assert.Throws<InvalidOperationException>(() => _ = production.Server);
+        Assert.That(startup!.Message, Does.Contain("AllowApiWithout2FA"));
+    }
+
     [Test]
     public async Task Logout_RevokesTheToken()
     {
@@ -160,8 +184,42 @@ public class SecurityHardeningHttpTests
         Assert.That((int)response.StatusCode, Is.EqualTo(200));
         Assert.That(response.Headers.GetValues("X-Content-Type-Options").Single(), Is.EqualTo("nosniff"));
         Assert.That(response.Headers.GetValues("X-Frame-Options").Single(), Is.EqualTo("SAMEORIGIN"));
-        Assert.That(response.Headers.Contains("Content-Security-Policy"));
+        Assert.That(response.Headers.GetValues("Content-Security-Policy").Single(), Does.Contain("'unsafe-inline'"), "Swagger UI needs inline script");
+        var spa = await client.GetAsync("/login");
+        Assert.That(spa.Headers.GetValues("Content-Security-Policy").Single(), Does.Contain("script-src 'self';"), "the React app gets no inline/eval script");
         Assert.That((int)(await client.GetAsync("/swagger/v1/swagger.json")).StatusCode, Is.EqualTo(200));
+    }
+
+    // Editing a custom role's permissions (or unassigning it) ends sessions that still carry the old ones.
+    [Test]
+    public async Task ChangedPermissions_InvalidateExistingToken()
+    {
+        _factory.EnsureSessionUser(606, "QA Lead", "ManageUsers");
+        var token = SignWithPermissions(606, "QA Lead", "ManageUsers");
+        Assert.That(await Get("/api/Users/summary", token), Is.EqualTo(200));
+
+        _factory.EnsureSessionUser(606, "QA Lead", "ManageOrders");
+        Assert.That(await Get("/api/Users/summary", token), Is.EqualTo(401));
+    }
+
+    private static string SignWithPermissions(int userId, string role, params string[] permissions) =>
+        new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken("EbayCloneTest", "EbayCloneTest",
+            [new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()), new Claim(ClaimTypes.NameIdentifier, userId.ToString()),
+             new Claim(ClaimTypes.Role, role), .. permissions.Select(p => new Claim("permission", p))],
+            expires: DateTime.UtcNow.AddMinutes(5), signingCredentials: new SigningCredentials(
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SensitiveLogHttpTests.SigningKey)), SecurityAlgorithms.HmacSha256)));
+
+    // A token without jti could never be revoked, so it is not accepted at all.
+    [Test]
+    public async Task TokenWithoutJti_IsRejected()
+    {
+        _factory.EnsureSessionUser(605, "SuperAdmin");
+        var noJti = new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken("EbayCloneTest", "EbayCloneTest",
+            [new Claim(ClaimTypes.NameIdentifier, "605"), new Claim(ClaimTypes.Role, "SuperAdmin")],
+            expires: DateTime.UtcNow.AddMinutes(5), signingCredentials: new SigningCredentials(
+                new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SensitiveLogHttpTests.SigningKey)), SecurityAlgorithms.HmacSha256)));
+        Assert.That(await Get("/api/Auth/me", noJti), Is.EqualTo(401));
+        Assert.That(await Get("/api/Auth/me", Sign(605, "SuperAdmin")), Is.EqualTo(200));
     }
 
     private static async Task<int> Get(string path, string token)
@@ -169,6 +227,26 @@ public class SecurityHardeningHttpTests
         using var client = Client();
         client.DefaultRequestHeaders.Authorization = new("Bearer", token);
         return (int)(await client.GetAsync(path)).StatusCode;
+    }
+
+    // A TOTP code is single-use: replaying it (e.g. shoulder-surfed) inside its 30s window does not sign in again.
+    [Test]
+    public async Task SameTotpCode_CannotBeUsedTwice()
+    {
+        var (_, secret) = await SeedTwoFactorUser("replay@test.local");
+        using var client = Client(IPAddress.IPv6Loopback); // own rate-limit partition
+        var secondsLeft = 30 - DateTimeOffset.UtcNow.ToUnixTimeSeconds() % 30;
+        if (secondsLeft < 5) await Task.Delay(TimeSpan.FromSeconds(secondsLeft)); // both sign-ins inside one TOTP window
+        var code = Code(secret);
+        async Task<string> SignIn()
+        {
+            var login = await client.PostAsJsonAsync("/api/Auth/login", new { email = "replay@test.local", password = "Passw0rd!" });
+            using var verify = new HttpRequestMessage(HttpMethod.Post, "/api/Auth/verify-2fa") { Content = JsonContent.Create(new { code }) };
+            verify.Headers.Add("Cookie", "2fa_challenge=" + SetCookie(login, "2fa_challenge"));
+            return await (await client.SendAsync(verify)).Content.ReadAsStringAsync();
+        }
+        Assert.That(await SignIn(), Does.Contain("\"success\":true"));
+        Assert.That(await SignIn(), Does.Contain("\"success\":false").And.Contain("đã được sử dụng"));
     }
 
     private static async Task<(User User, string Secret)> SeedTwoFactorUser(string email, string role = "SuperAdmin")
@@ -200,7 +278,7 @@ public class SecurityHardeningHttpTests
         new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken("EbayCloneTest", "EbayCloneTest",
             [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, role),
              new Claim("twoFactorEnabled", twoFactorEnabled ? "true" : "false"),
-             .. jti == null ? Array.Empty<Claim>() : [new Claim(JwtRegisteredClaimNames.Jti, jti)]],
+             new Claim(JwtRegisteredClaimNames.Jti, jti ?? Guid.NewGuid().ToString())],
             expires: DateTime.UtcNow.AddMinutes(5), signingCredentials: new SigningCredentials(
                 new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SensitiveLogHttpTests.SigningKey)), SecurityAlgorithms.HmacSha256)));
 

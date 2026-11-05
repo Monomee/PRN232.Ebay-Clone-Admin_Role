@@ -92,12 +92,12 @@ public class RbacHttpTests
     {
         if (!SeededRoles.Contains(role)) SeededRoles.Add(role);
         var userId = 1000 + SeededRoles.IndexOf(role);
-        _factory.EnsureSessionUser(userId, role);
+        _factory.EnsureSessionUser(userId, role, permissions);
         return Sign(userId, role, permissions);
     }
 
     private static string Sign(int userId, string role, string[] permissions) => new JwtSecurityTokenHandler().WriteToken(new JwtSecurityToken(
-        "EbayCloneTest", "EbayCloneTest", [new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, role),
+        "EbayCloneTest", "EbayCloneTest", [new Claim("jti", Guid.NewGuid().ToString()), new Claim(ClaimTypes.NameIdentifier, userId.ToString()), new Claim(ClaimTypes.Role, role),
             .. permissions.Select(p => new Claim("permission", p))],
         expires: DateTime.UtcNow.AddMinutes(5), signingCredentials: new SigningCredentials(
             new SymmetricSecurityKey(Encoding.UTF8.GetBytes(SensitiveLogHttpTests.SigningKey)), SecurityAlgorithms.HmacSha256)));
