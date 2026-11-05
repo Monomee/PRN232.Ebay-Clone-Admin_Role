@@ -84,6 +84,7 @@ public static class DependencyInjection
         });
 
         var jwtSettings = builder.Configuration.GetSection("Jwt");
+        JwtKeyPolicy.Ensure(jwtSettings["Key"], builder.Environment);
         var key = Encoding.UTF8.GetBytes(jwtSettings["Key"]!);
 
         builder.Services.AddAuthentication(options =>

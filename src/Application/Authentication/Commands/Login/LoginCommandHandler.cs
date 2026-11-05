@@ -36,6 +36,7 @@ public class LoginCommandHandler
             return new LoginResponse
             {
                 Success = false,
+                InvalidCredentials = true,
                 ErrorMessage = "Email hoặc mật khẩu không đúng"
             };
 
@@ -43,6 +44,7 @@ public class LoginCommandHandler
             return new LoginResponse
             {
                 Success = false,
+                InvalidCredentials = true,
                 ErrorMessage = "Email hoặc mật khẩu không đúng"
             };
 

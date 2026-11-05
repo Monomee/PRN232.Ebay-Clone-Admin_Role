@@ -1,6 +1,6 @@
 # Bảo mật & chống gian lận tài khoản (11/2026)
 
-Tổng hợp các thay đổi trong PR #17 → #24: thay đổi gì, cần chú ý gì, còn thiếu gì, và cách setup bản mới.
+Tổng hợp các thay đổi trong PR #17 → #26: thay đổi gì, cần chú ý gì, còn thiếu gì, và cách setup bản mới.
 
 | PR | Nội dung |
 |---|---|
@@ -12,6 +12,8 @@ Tổng hợp các thay đổi trong PR #17 → #24: thay đổi gì, cần chú 
 | #22 | Chặn tài khoản chưa duyệt/tạm ngưng, rút tiền chỉ về tài khoản đã đăng ký, review chéo |
 | #23 | API đăng ký, captcha Turnstile, OTP email, kiểm tra định dạng CCCD |
 | #24 | `LogInsteadOfSending` được ưu tiên hơn SMTP đã cấu hình |
+| #25 | Cập nhật tài liệu cho PR #22–#24 |
+| #26 | Rà soát bảo mật: secret bị lộ, SignalR hub, endpoint mock, report sản phẩm, khóa đăng nhập, lỗi 500 |
 
 ---
 
@@ -123,7 +125,21 @@ Tổng hợp các thay đổi trong PR #17 → #24: thay đổi gì, cần chú 
   - `verify-email` và `resend-email-code` trả cùng một câu cho email không tồn tại, để không lộ email nào đã đăng ký.
 - **Dev (PR #24):** `EmailSettings:LogInsteadOfSending=true` in nội dung mail (có mã OTP) ra log thay vì gửi, kể cả khi đã cấu hình SMTP (không gửi nhầm mail thật lúc test). App **từ chối khởi động** nếu bật ở Production.
 
-### 1.9 Load test
+### 1.9 Rà soát bảo mật (PR #26)
+
+- **Secret bị lộ trong repo public:** `k8s/secret.yaml` (JWT key, mật khẩu ứng dụng Gmail, mật khẩu SA `123456`) đã nằm trong repo từ commit đầu.
+  - File được thay bằng `k8s/secret.example.yaml`; `k8s/secret.yaml` vào `.gitignore`.
+  - **`JwtKeyPolicy`**: app từ chối khởi động nếu `Jwt:Key` ngắn hơn 32 byte hoặc là key đã bị lộ (mọi môi trường); key mẫu trong file example bị từ chối ở Production. So khớp bằng SHA-256, không lặp lại key trong code.
+  - Lịch sử git vẫn còn các giá trị cũ: **xóa file không đủ, phải đổi key/mật khẩu** (xem mục 2).
+- **SignalR:** `/hubs/dispute` cần quyền `ManageDisputes`, `/hubs/seller` cần `ManageUsers`. Trước đây mọi user đăng nhập (kể cả seller/buyer đăng ký từ PR #23) đều vào nhóm "Admins" và nhận broadcast dispute, chỉ số seller.
+- **Endpoint `/api/Mocking/*`** (đơn, dispute, trả hàng giả, đẩy nhanh settlement, ép payout):
+  - Tắt ở Production; bật lại có chủ đích bằng `Features:MockingEndpoints=true` (ví dụ khi demo trên server).
+  - `accelerate-settlement` và `push-payout` (đụng tới tiền) chỉ `SuperAdmin`.
+- **Report sản phẩm** `POST /api/products/reports`: bắt buộc đăng nhập, tài khoản phải hợp lệ (không chờ duyệt, tạm ngưng, bị khóa), rate limit 60/phút/IP. Server tự quyết `Priority` (VeRO = Critical, còn lại Low); client không gửi được `System`. Mỗi người chỉ có 1 report đang chờ cho mỗi sản phẩm (gửi lại không tăng `ReportCount`). Sản phẩm không tồn tại trả 404.
+- **Khóa theo tài khoản:** sai mật khẩu 10 lần hoặc sai mã 2FA 5 lần trong 15 phút thì khóa 15 phút, **tính trên mọi IP** (rate limit cũ chỉ theo IP). Email không tồn tại cũng bị đếm, nên khóa không lộ email nào có tài khoản. Bộ đếm dùng Redis nếu có (`SecurityCache`).
+- **Lỗi không lường trước** (DB, null reference, ...): trả 500 với câu chung, chi tiết chỉ ghi log. `throw new Exception("...")` (thông báo nghiệp vụ) vẫn trả 400 kèm thông báo như cũ.
+
+### 1.10 Load test
 
 - Cấu hình `Security:AllowApiWithout2FA` cho phép tài khoản chưa bật 2FA gọi API, chỉ dùng khi chạy JMeter. App **từ chối khởi động** nếu bật ở Production. `docker-compose.loadtest.yml` đã bật sẵn.
 - JMeter plan 11 gửi cookie `2fa_challenge` thay cho `userId`.
@@ -143,6 +159,10 @@ Tổng hợp các thay đổi trong PR #17 → #24: thay đổi gì, cần chú 
 9. **Sau PR #22, seller phải đăng ký tài khoản ngân hàng trước khi rút tiền** (`PUT /api/Account/bank-account`). Hiện chưa có endpoint gọi `RequestWithdrawalCommand`/`ApproveWithdrawalCommand`; khi mở endpoint, seller chưa có `BankAccountMock` sẽ nhận 400 "cần đăng ký tài khoản ngân hàng". Tài khoản `PendingApproval`/`Suspended` không còn đăng bán, review hay rút tiền được; role khác `Seller` không đăng bán được.
 10. **Sau PR #23, Production phải có `Captcha:TurnstileSecretKey`**, nếu không mọi lượt đăng ký đều bị từ chối (cố ý: thà không cho đăng ký còn hơn đăng ký không có captcha).
 11. **`LogInsteadOfSending` (PR #24) in mã OTP ra log:** chỉ bật ở máy dev. Bật cờ này thì không mail nào được gửi, kể cả khi đã cấu hình Gmail.
+12. **Sau PR #26, phải đổi JWT key ở mọi nơi** (`Jwt:Key` trong `appsettings.json`, `JWT_KEY` trong `.env`, k8s secret). App **không khởi động** với key cũ đã bị lộ. Tạo key: `openssl rand -base64 64` hoặc PowerShell `[Convert]::ToBase64String([Security.Cryptography.RandomNumberGenerator]::GetBytes(64))`. Đổi key thì mọi phiên đăng nhập cũ hết hiệu lực.
+13. **Thu hồi mật khẩu ứng dụng Gmail từng nằm trong `k8s/secret.yaml`** (Google Account → Security → App passwords) và đổi mật khẩu SA của SQL Server ở các môi trường đã dùng `123456`. Chỉ chủ tài khoản làm được.
+14. **Khóa theo tài khoản có thể bị lợi dụng:** ai biết email admin có thể cố tình nhập sai để khóa admin đó 15 phút. Chấp nhận vì cửa sổ ngắn; khi cần, admin chờ hết 15 phút hoặc xóa key `ebay-count:login-fail:<email>` trong Redis.
+15. **Sau PR #26, nút Mock trên giao diện sẽ lỗi ở Production** (endpoint không còn). Nếu demo trên server chạy Production, đặt `Features:MockingEndpoints=true`, và tắt lại sau buổi demo.
 
 ---
 
@@ -165,6 +185,8 @@ Tổng hợp các thay đổi trong PR #17 → #24: thay đổi gì, cần chú 
 | eKYC CCCD | Đã kiểm định dạng CCCD khi đăng ký; `IsVerified` vẫn chưa chặn chức năng nào | Dịch vụ eKYC (OCR + selfie/NFC); bắt buộc `IsVerified` với seller trước khi đăng bán/nhận tiền |
 | Xác minh tài khoản ngân hàng | Chỉ so tên với tên KYC tự khai | Tra tên chủ tài khoản qua Napas hoặc chuyển thử |
 | Một CCCD một tài khoản ở DB | Chỉ qua điểm rủi ro (CCCD trùng = 80 → từ chối) | Không đặt unique index: tài khoản trùng phải được lưu thì mới bị chấm và từ chối |
+| Swagger UI | Vẫn bật ở mọi môi trường; hiện có `InternalIps` chắn | Tắt ở Production khi mở app cho IP public |
+| Lịch sử git chứa secret cũ | Đã xóa khỏi bản hiện tại, đã chặn JWT key cũ | Đổi toàn bộ secret là đủ; xóa khỏi lịch sử (git filter-repo) không cần thiết sau khi đã đổi |
 | Cookie thiết bị | Dễ né bằng cửa sổ ẩn danh | Cố ý là tín hiệu yếu; không làm fingerprint canvas |
 | JMeter, k8s | Chưa chạy plan JMeter, chưa apply lên cluster thật | Chạy `tests/jmeter`, apply `k8s/` |
 | `App.test.js` | Fail từ trước (Jest không import được axios ESM) | Cấu hình `transformIgnorePatterns` cho axios |
@@ -180,7 +202,7 @@ git pull origin main
 dotnet build EbayClone.slnx
 ```
 
-Có 4 migration mới (3 migration đầu từ PR #18–#20, `EmailVerification` từ PR #23; PR #22 và #24 không đổi DB). Tất cả chỉ thêm, an toàn khi rolling update.
+Có 4 migration mới (3 migration đầu từ PR #18–#20, `EmailVerification` từ PR #23; PR #22, #24 và #26 không đổi DB). Tất cả chỉ thêm, an toàn khi rolling update.
 
 | Migration | Thay đổi |
 |---|---|
@@ -211,6 +233,8 @@ DatabaseInitialization__RunMigrationsOnStartup=true
 | `Security:AllowApiWithout2FA` | `false` | Chỉ đặt `true` khi chạy JMeter (`ALLOW_API_WITHOUT_2FA` trong `.env`) |
 | `Captcha:TurnstileSecretKey` | secret key Turnstile | **Bắt buộc ở Production** để đăng ký được. Key test luôn qua: `1x0000000000000000000000000000000AA` |
 | `EmailSettings:SenderEmail` / `SenderPassword` | Gmail + app password | Để gửi mã OTP thật |
+| `Jwt:Key` | ≥ 32 byte, ngẫu nhiên | **Phải đổi** (PR #26): app từ chối key ngắn, key đã lộ, và key mẫu ở Production |
+| `Features:MockingEndpoints` | không đặt | Mặc định: bật ngoài Production, tắt ở Production. Đặt `true` có chủ đích khi cần demo trên server |
 | `EmailSettings:LogInsteadOfSending` | `false` | Chỉ đặt `true` ở máy dev: mọi mail (cả mã OTP) chỉ in ra log, không gửi, kể cả khi đã có SMTP. App không khởi động nếu bật ở Production |
 
 ### 4.3 Tài khoản
@@ -232,6 +256,7 @@ Kiểm tra trên app:
 3. Log của API có dòng `Account monitor` hoặc `Risk check User …` (chứng tỏ background job đang chạy).
 4. Chạy nhiều replica: mỗi user chờ duyệt chỉ có **1** thông báo.
 5. Đăng ký thử (Swagger hoặc curl): `POST /api/Auth/register` → mã OTP trong mail (hoặc log nếu bật `LogInsteadOfSending`) → `POST /api/Auth/verify-email`. Trước khi xác minh, đăng nhập phải báo "Vui lòng xác minh email". Sau khi xác minh, user ở `Pending` và được job duyệt chấm điểm (cần `BackgroundJobs:Enabled`).
+6. Sau PR #26: app khởi động được với JWT key mới (key cũ sẽ báo lỗi `Jwt:Key is a key that was published...`); seller/buyer kết nối `/hubs/dispute` hoặc `/hubs/seller` bị 403; ở Production `POST /api/Mocking/*` không còn (trừ khi bật `Features:MockingEndpoints`); nhập sai mật khẩu 10 lần thì tài khoản bị khóa 15 phút.
 
 ### 4.5 Test các luật trên một máy
 

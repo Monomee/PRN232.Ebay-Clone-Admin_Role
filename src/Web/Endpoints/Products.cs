@@ -40,7 +40,8 @@ public class Products : EndpointGroupBase
              .RequireAuthorization(Policies.ManageProducts); // GET /api/products/managed
         group.MapGet("managed/summary", (ISender sender) => sender.Send(new GetManagedProductSummaryQuery()))
              .RequireAuthorization(Policies.ManageProducts);
-        group.MapPost("reports", CreateProductReport);
+        group.MapPost("reports", CreateProductReport).RequireAuthorization()
+             .RequireRateLimiting(RateLimitingExtensions.StandardPolicy);
 
         // [MỚI] Lấy danh sách sản phẩm của Seller
         group.MapGet("seller/{sellerId}", GetSellerProducts);
@@ -81,8 +82,8 @@ public class Products : EndpointGroupBase
 
     public async Task<IResult> CreateProductReport(ISender sender, IUser user, CreateProductReportCommand command)
     {
-        // Anonymous reports stay allowed, but the reporter is whoever is signed in, not what the body claims.
-        command.ReporterUserId = int.TryParse(user.Id, out var reporterId) ? reporterId : null;
+        // The reporter is whoever is signed in, never what the body claims.
+        command.ReporterUserId = user.GetRequiredActorId();
         await sender.Send(command);
         return Results.NoContent();
     }

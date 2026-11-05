@@ -58,7 +58,7 @@ Traffic path: `Client → Nginx (nginx-service) → ebay-api-service (ClusterIP 
 
 | Redis | `k8s/redis-deployment.yaml` | SignalR backplane, so real-time messages work across old and new pods. |
 
-| ConfigMap / Secret | `k8s/configmap.yaml`, `k8s/secret.yaml` | Configuration and credentials kept out of the image. |
+| ConfigMap / Secret | `k8s/configmap.yaml`, `k8s/secret.yaml` (tạo từ `k8s/secret.example.yaml`, không commit) | Configuration and credentials kept out of the image. |
 
 | SQL Server | `k8s/db-statefulset.yaml` | Shared by old and new pods during the rollout. |
 
@@ -70,7 +70,7 @@ Traffic path: `Client → Nginx (nginx-service) → ebay-api-service (ClusterIP 
 
 \- Permission to pull from `ghcr.io/monomee/ebay\_clone\_adminrole` (make the package public or add an image pull secret).
 
-\- `k8s/secret.yaml` populated with real values (`SA\_PASSWORD\_ACTUAL`, `JWT\_KEY`, `EMAIL\_PASSWORD`). Do not commit real secrets.
+\- `k8s/secret.yaml` copied from `k8s/secret.example.yaml` and populated with real values (`SA\_PASSWORD\_ACTUAL`, `JWT\_KEY`, `EMAIL\_PASSWORD`). Do not commit real secrets.
 
 \## 4. One-time cluster setup
 
