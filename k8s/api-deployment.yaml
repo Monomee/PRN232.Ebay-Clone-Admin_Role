@@ -43,7 +43,7 @@ spec:
                 secretKeyRef:
                   name: ebay-data-protection
                   key: ENCRYPTION_KEY
-            # 1. Lấy mật khẩu 123456 từ Secret (Key: SA_PASSWORD_ACTUAL)
+            # 1. Lấy mật khẩu SA từ Secret (Key: SA_PASSWORD_ACTUAL, xem k8s/secret.example.yaml)
             - name: SA_PASSWORD_VALUE
               valueFrom:
                 secretKeyRef:

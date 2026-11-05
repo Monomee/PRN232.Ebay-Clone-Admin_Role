@@ -13,15 +13,24 @@ namespace EbayClone.Web.Endpoints;
 
 public class Mocking : EndpointGroupBase
 {
+    /// Fake orders, disputes and forced payouts are test tooling: on a real deployment they let an admin fabricate
+    /// sales and move money. Off in Production unless Features:MockingEndpoints=true is set on purpose (e.g. a demo).
+    public static bool Enabled(IConfiguration config, IHostEnvironment env) =>
+        config.GetValue<bool?>("Features:MockingEndpoints") ?? !env.IsProduction();
+
     public override void Map(RouteGroupBuilder group)
     {
+        var services = ((IEndpointRouteBuilder)group).ServiceProvider;
+        if (!Enabled(services.GetRequiredService<IConfiguration>(), services.GetRequiredService<IHostEnvironment>())) return;
+
         group.RequireAuthorization(Policies.ManageUsers);
         group.MapPost("generate-seller-order", GenerateSellerOrder);
         group.MapPost("generate-mock-defect", GenerateMockDefect);
         group.MapPost("generate-mock-return-request", GenerateMockReturnRequest);
         group.MapPost("generate-mock-dispute", GenerateMockDispute);
-        group.MapPost("accelerate-settlement", AccelerateSettlement);
-        group.MapPost("push-payout", PushPayout);
+        // These two move money (settle funds early, pay out): SuperAdmin only, not every admin who can manage users.
+        group.MapPost("accelerate-settlement", AccelerateSettlement).RequireAuthorization(p => p.RequireRole(Roles.SuperAdmin));
+        group.MapPost("push-payout", PushPayout).RequireAuthorization(p => p.RequireRole(Roles.SuperAdmin));
         group.MapPost("generate-mock-users", GenerateMockUsers);
     }
 

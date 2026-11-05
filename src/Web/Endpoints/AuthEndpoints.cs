@@ -49,6 +49,15 @@ public class Auth : EndpointGroupBase
     }
 
     private const string TwoFactorChallengeCookie = "2fa_challenge";
+
+    // Per-account lockout on top of the per-IP rate limit: guessing one account's password (or TOTP) from many IPs
+    // stops after a few tries. Counted for unknown emails too, so a lock does not reveal whether an account exists.
+    // ponytail: anyone can lock a known email for 15 min by failing on purpose; short window keeps that a nuisance.
+    public const int MaxPasswordFailures = 10, MaxTwoFactorFailures = 5;
+    public static readonly TimeSpan LockoutWindow = TimeSpan.FromMinutes(15);
+    private const string LockedMessage = "Tài khoản tạm thời bị khóa do nhập sai nhiều lần. Vui lòng thử lại sau 15 phút.";
+    private static string PasswordLockKey(string? email) => "login-fail:" + (email ?? "").Trim().ToLowerInvariant();
+    private static string TwoFactorLockKey(int userId) => "2fa-fail:" + userId;
     private const string DeviceCookie = "device_id";
 
     /// Every path that issues a session ends here: remembers the browser (device_id cookie) and records the sign-in
@@ -79,12 +88,21 @@ public class Auth : EndpointGroupBase
         }
     }
 
-    public async Task<IResult> Login(ISender sender, IJwtService jwt, LoginCommand command, HttpContext http)
+    public async Task<IResult> Login(ISender sender, IJwtService jwt, SecurityCache cache, LoginCommand command, HttpContext http)
     {
+        var lockKey = PasswordLockKey(command.Email);
+        // Checked before the password: once locked, even the right password waits for the window to pass.
+        if (await cache.CountAsync(lockKey) >= MaxPasswordFailures)
+            return Results.Ok(new LoginResponse { Success = false, ErrorMessage = LockedMessage });
+
         var result = await sender.Send(command);
 
         if (!result.Success)
+        {
+            if (result.InvalidCredentials) await cache.IncrementAsync(lockKey, LockoutWindow);
             return Results.Ok(result);
+        }
+        await cache.ResetAsync(lockKey);
 
         if (result.RequireTwoFactor)
         {
@@ -122,10 +140,18 @@ public class Auth : EndpointGroupBase
         if (userId == null)
             return Results.Ok(new Verify2FAResponse { Success = false, ErrorMessage = "Phiên xác thực đã hết hạn, vui lòng đăng nhập lại" });
 
+        var lockKey = TwoFactorLockKey(userId.Value);
+        if (await cache.CountAsync(lockKey) >= MaxTwoFactorFailures)
+            return Results.Ok(new Verify2FAResponse { Success = false, ErrorMessage = LockedMessage });
+
         var result = await sender.Send(new Verify2FACommand(userId.Value, req.Code));
 
         if (!result.Success)
+        {
+            await cache.IncrementAsync(lockKey, LockoutWindow);
             return Results.Ok(result);
+        }
+        await cache.ResetAsync(lockKey);
 
         // Một mã TOTP chỉ dùng được một lần: người nhìn thấy mã vừa nhập không thể đăng nhập lại trong cùng 30 giây.
         if (!await cache.TryUseOnceAsync($"totp:{userId}:{result.TimeStep}", TimeSpan.FromMinutes(2)))

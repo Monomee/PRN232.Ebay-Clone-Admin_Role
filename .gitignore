@@ -531,3 +531,6 @@ env
 
 # Nginx config sinh tự động cho load test W8-03
 nginx/nginx.loadtest.generated.conf
+
+# Kubernetes secrets with real values (copy from k8s/*.example.yaml)
+k8s/secret.yaml

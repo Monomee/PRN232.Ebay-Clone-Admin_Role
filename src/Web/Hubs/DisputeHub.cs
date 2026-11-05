@@ -1,3 +1,4 @@
+using EbayClone.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
@@ -11,7 +12,8 @@ namespace EbayClone.Web.Hubs;
 /// 
 /// Hub path: /hubs/dispute
 /// </summary>
-[Authorize]
+// Same permission as the /api/Disputes endpoints: only dispute staff receive the "Admins" broadcasts.
+[Authorize(Policy = Policies.ManageDisputes)]
 public class DisputeHub : Hub
 {
     private const string AdminGroup = "Admins";

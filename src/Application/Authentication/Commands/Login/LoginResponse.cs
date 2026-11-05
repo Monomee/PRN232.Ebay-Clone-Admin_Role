@@ -11,4 +11,8 @@ public class LoginResponse
     public bool Success { get; set; }      // thêm field này
     public string? ErrorMessage { get; set; } // thêm field này
     public string? Role { get; set; } // thêm field này
+
+    /// Wrong email or password (not a ban or an unverified email): counts towards the per-account lockout. Not sent to the client.
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool InvalidCredentials { get; set; }
 }

@@ -109,6 +109,41 @@ public sealed class SecurityCache : IRunOnceGuard
 
     private static string Key(string jti) => "ebay-revoked-jwt:" + jti;
 
+    private sealed record Counter(long Count, DateTimeOffset ExpiresAt);
+
+    /// Adds one to a fixed-window counter (window starts at the first hit) and returns the new count.
+    public async Task<long> IncrementAsync(string key, TimeSpan window)
+    {
+        key = "ebay-count:" + key;
+        if (_redis != null)
+        {
+            var count = await _redis.Value.StringIncrementAsync(key);
+            if (count == 1) await _redis.Value.KeyExpireAsync(key, window);
+            return count;
+        }
+        lock (MemoryLock)
+        {
+            var current = _memory.TryGetValue(key, out Counter? c) && c != null ? c : new Counter(0, DateTimeOffset.UtcNow + window);
+            var next = current with { Count = current.Count + 1 };
+            _memory.Set(key, next, next.ExpiresAt);
+            return next.Count;
+        }
+    }
+
+    public async Task<long> CountAsync(string key)
+    {
+        key = "ebay-count:" + key;
+        if (_redis != null) return (long?)await _redis.Value.StringGetAsync(key) ?? 0;
+        return _memory.TryGetValue(key, out Counter? c) && c != null ? c.Count : 0;
+    }
+
+    public async Task ResetAsync(string key)
+    {
+        key = "ebay-count:" + key;
+        if (_redis != null) await _redis.Value.KeyDeleteAsync(key);
+        else _memory.Remove(key);
+    }
+
     /// True the first time a key is used within ttl, false on any repeat (atomic, also across pods with Redis).
     public async Task<bool> TryUseOnceAsync(string key, TimeSpan ttl)
     {

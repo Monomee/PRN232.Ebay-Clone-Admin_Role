@@ -280,6 +280,7 @@ public class ManhW8BugFixesTests
             SellerId = 2
         };
         _context.Products.Add(product);
+        _context.Users.Add(new User { Id = 30, Username = "reporter30" }); // reports need a real, active account
         await _context.SaveChangesAsync();
 
         var handler = new CreateProductReportCommandHandler(_context);
@@ -320,6 +321,7 @@ public class ManhW8BugFixesTests
             SellerId = 2
         };
         _context.Products.Add(product);
+        _context.Users.Add(new User { Id = 31, Username = "reporter31" }); // reports need a real, active account
         await _context.SaveChangesAsync();
 
         var handler = new CreateProductReportCommandHandler(_context);

@@ -5,7 +5,7 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace EbayClone.Web.Infrastructure;
 
-public class CustomExceptionHandler : IExceptionHandler
+public class CustomExceptionHandler(ILogger<CustomExceptionHandler> logger) : IExceptionHandler
 {
     public async ValueTask<bool> TryHandleAsync(HttpContext httpContext, Exception exception, CancellationToken cancellationToken)
     {
@@ -52,8 +52,23 @@ public class CustomExceptionHandler : IExceptionHandler
                 await HandleNotFoundException(httpContext, exception);
                 return true;
 
-            default:
+            // `throw new Exception("...")` is how handlers here report a user-facing rule ("Tài khoản của bạn đã bị khóa."):
+            // keep showing that message.
+            case not null when exception.GetType() == typeof(Exception):
                 await HandleBadRequestException(httpContext, exception);
+                return true;
+
+            // Anything else (database, null reference, I/O, ...) is a bug or an outage: its message can expose table names,
+            // SQL or file paths, so the client gets a generic 500 and the details go to the log only.
+            default:
+                logger.LogError(exception, "Unhandled exception for {Method} {Path}", httpContext.Request.Method, httpContext.Request.Path);
+                httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
+                await httpContext.Response.WriteAsJsonAsync(new ProblemDetails
+                {
+                    Status = StatusCodes.Status500InternalServerError,
+                    Title = "Đã xảy ra lỗi hệ thống, vui lòng thử lại sau.",
+                    Type = "https://tools.ietf.org/html/rfc7231#section-6.6.1"
+                });
                 return true;
         }
     }

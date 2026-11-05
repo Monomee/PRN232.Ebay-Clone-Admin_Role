@@ -1,9 +1,11 @@
+using EbayClone.Domain.Constants;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.SignalR;
 
 namespace EbayClone.Web.Hubs;
 
-[Authorize]
+// Same permission as /api/Users/seller-metrics: sellers and buyers must not receive every seller's metrics.
+[Authorize(Policy = Policies.ManageUsers)]
 public class SellerHub : Hub
 {
     private const string AdminGroup = "Admins";

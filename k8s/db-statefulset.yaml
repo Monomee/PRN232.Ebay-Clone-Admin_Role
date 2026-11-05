@@ -63,7 +63,7 @@ spec:
                 secretKeyRef:
                   name: ebay-secrets
                   key: SA_PASSWORD_INITIAL 
-            # 2. MẬT KHẨU THẬT: Giá trị '123456' từ Secret của bạn
+            # 2. MẬT KHẨU THẬT: SA_PASSWORD_ACTUAL từ Secret (xem k8s/secret.example.yaml)
             - name: REAL_PASSWORD
               valueFrom:
                 secretKeyRef:
