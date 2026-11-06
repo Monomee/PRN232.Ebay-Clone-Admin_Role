@@ -1,6 +1,6 @@
 # Bảo mật & chống gian lận tài khoản (11/2026)
 
-Tổng hợp các thay đổi trong PR #17 → #28: thay đổi gì, cần chú ý gì, còn thiếu gì, và cách setup bản mới.
+Tổng hợp các thay đổi trong PR #17 → #29: thay đổi gì, cần chú ý gì, còn thiếu gì, và cách setup bản mới.
 
 | PR | Nội dung |
 |---|---|
@@ -16,6 +16,7 @@ Tổng hợp các thay đổi trong PR #17 → #28: thay đổi gì, cần chú 
 | #26 | Rà soát bảo mật: secret bị lộ, SignalR hub, endpoint mock, report sản phẩm, khóa đăng nhập, lỗi 500 |
 | #27 | Tắt Swagger ở Production, giải phóng email `Unverified` quá 24 giờ, Governance Records đủ action, sửa `App.test.js` |
 | #28 | Email cảnh báo bảo mật, trọng số rủi ro trong cấu hình, tải dải IP datacenter AWS/Google, chạy JMeter |
+| #29 | Giao diện đăng ký (Turnstile + OTP), trang tài khoản ngân hàng của seller, hàng chờ Risk Review |
 
 ---
 
@@ -114,7 +115,7 @@ Tổng hợp các thay đổi trong PR #17 → #28: thay đổi gì, cần chú 
 
 ### 1.8 Đăng ký, captcha, OTP email, kiểm tra CCCD (PR #23, #24)
 
-- **API đăng ký** `POST /api/Auth/register` (chỉ API, chưa có giao diện). Chỉ tạo được `Buyer` hoặc `Seller`.
+- **API đăng ký** `POST /api/Auth/register` (giao diện: `/register`, PR #29). Chỉ tạo được `Buyer` hoặc `Seller`.
   - **Captcha** Cloudflare Turnstile (`Captcha:TurnstileSecretKey`). Không có key: Production **từ chối** đăng ký; môi trường khác bỏ qua captcha và ghi log cảnh báo.
   - Rate limit strict (5 lần/phút/IP) cho `register`, `verify-email`, `resend-email-code`.
   - Ghi IP đăng ký (`LastLoginIp`) và cookie `device_id` + `LoginHistories`: nhiều tài khoản đăng ký từ cùng một trình duyệt sẽ bị liên kết qua định danh `Device`.
@@ -154,7 +155,16 @@ Tổng hợp các thay đổi trong PR #17 → #28: thay đổi gì, cần chú 
 - **Trọng số và ngưỡng điểm rủi ro** đọc từ section `Risk` (`RiskOptions`), mặc định giữ nguyên bảng ở mục 1.2. Chỉ cần ghi khóa muốn đổi, ví dụ `Risk:RejectThreshold=90`, `Risk:LinkWeights:Ip:Active=5`. Cấu hình sai (ngưỡng ngược, trọng số âm, `Banned < Active`) thì app **không khởi động**. Giới hạn seller mới và luật của `AccountMonitor` vẫn là hằng số trong code.
 - **Dải IP datacenter** (`DatacenterRangesService`, chạy khi `BackgroundJobs:Enabled`): khi khởi động và mỗi 24 giờ tải `ip-ranges.json` của AWS (chỉ EC2, khoảng 4.500 dải) và `cloud.json` của Google Cloud (khoảng 1.150 dải), thay cho dải mẫu của hai nhà cung cấp này. Một feed lỗi thì giữ bản đã tải trước đó. Azure, DigitalOcean, Linode, Hetzner, Vultr vẫn dùng bảng mẫu (Azure không có URL cố định). Mỗi pod tự tải, không ghi DB. Cần mở outbound HTTPS tới `ip-ranges.amazonaws.com` và `www.gstatic.com`.
 
-### 1.12 Load test
+### 1.12 Giao diện đăng ký, tài khoản ngân hàng, hàng chờ rủi ro (PR #29)
+
+- **`/register`** (công khai, link từ trang đăng nhập): chọn Buyer/Seller, điền thông tin (Seller bắt buộc họ tên, CCCD, ngày sinh), captcha Turnstile, rồi nhập mã 6 số gửi qua email (có nút gửi lại). Sau khi xác minh, tài khoản chờ duyệt rủi ro như trước.
+  - Site key lấy từ `GET /api/Auth/captcha-config` (`Captcha:TurnstileSiteKey`, chỉ trả site key, không trả secret). Không có site key thì không hiện widget (server bỏ qua captcha ngoài Production).
+  - CSP cho phép `https://challenges.cloudflare.com` ở `script-src` và `frame-src`; React app vẫn không có inline script.
+- **`/seller-bank-account`** (role Seller, link ở sidebar): form gọi `PUT /api/Account/bank-account`. Lỗi validation (tên chủ tài khoản không khớp KYC...) hiện đúng câu của server.
+- **Tab Risk Review** ở trang Users (và card đếm số lượng): tài khoản đã được chấm điểm và đang chờ admin duyệt (`PendingApproval` + `RiskCheckedAt` khác null), điểm cao nhất lên đầu. Mở thẳng bằng `/users?tab=RiskReview`.
+- `apiRequest` (frontend) hiện câu lỗi trong `errors` của ValidationProblemDetails thay cho câu chung "One or more validation errors occurred.".
+
+### 1.13 Load test
 
 - Cấu hình `Security:AllowApiWithout2FA` cho phép tài khoản chưa bật 2FA gọi API, chỉ dùng khi chạy JMeter. App **từ chối khởi động** nếu bật ở Production. `docker-compose.loadtest.yml` đã bật sẵn.
 - JMeter plan 11 gửi cookie `2fa_challenge` thay cho `userId`.
@@ -203,10 +213,8 @@ Tổng hợp các thay đổi trong PR #17 → #28: thay đổi gì, cần chú 
 | Mục | Hiện trạng | Hướng làm |
 |---|---|---|
 | Vị trí IP | Bảng mẫu cấp quốc gia (VN, US, JP) | MaxMind GeoLite2 (cần đăng ký key) |
-| UI đăng ký, buyer/seller | Đã có API đăng ký, chưa có giao diện | Form gọi `register` → `verify-email`, nhúng widget Turnstile |
-| UI đổi tài khoản ngân hàng | Chỉ gọi qua Swagger/API | Form gọi `PUT /api/Account/bank-account` |
 | Xác minh thêm khi đăng nhập lạ | Chỉ gắn cờ | Yêu cầu nhập lại 2FA hoặc xác nhận qua email |
-| Báo cho admin | Chỉ badge và banner trong trang user | Hàng chờ "tài khoản rủi ro", widget trên dashboard |
+| Báo cho admin | Tab Risk Review và card ở trang Users; chưa có widget trên dashboard | Widget/badge số tài khoản chờ duyệt trên dashboard và sidebar |
 | Hiệu năng job | Đồng bộ toàn bộ user mỗi 10 phút | Xử lý theo trang khi dữ liệu lớn (đã ghi chú `ponytail:`) |
 | OTP SMS | SĐT vẫn do user tự khai | Cần nhà cung cấp SMS; dùng lại cơ chế của `EmailOtp` |
 | eKYC CCCD | Đã kiểm định dạng CCCD khi đăng ký; `IsVerified` vẫn chưa chặn chức năng nào | Dịch vụ eKYC (OCR + selfie/NFC); bắt buộc `IsVerified` với seller trước khi đăng bán/nhận tiền |
@@ -259,6 +267,7 @@ DatabaseInitialization__RunMigrationsOnStartup=true
 | `InternalIps` | IP hoặc CIDR | Ai được vào app |
 | `Security:EncryptionKey` | 32 byte Base64 | Đã có từ trước; cũng là khóa cho các HMAC định danh |
 | `Security:AllowApiWithout2FA` | `false` | Chỉ đặt `true` khi chạy JMeter (`ALLOW_API_WITHOUT_2FA` trong `.env`) |
+| `Captcha:TurnstileSiteKey` | site key Turnstile | Cho widget trên `/register`. Key test: `1x00000000000000000000AA` (đi cùng secret test bên dưới) |
 | `Captcha:TurnstileSecretKey` | secret key Turnstile | **Bắt buộc ở Production** để đăng ký được. Key test luôn qua: `1x0000000000000000000000000000000AA` |
 | `EmailSettings:SenderEmail` / `SenderPassword` | Gmail + app password | Để gửi mã OTP thật |
 | `Jwt:Key` | ≥ 32 byte, ngẫu nhiên | **Phải đổi** (PR #26): app từ chối key ngắn, key đã lộ, và key mẫu ở Production |
