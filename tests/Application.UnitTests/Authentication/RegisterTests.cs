@@ -141,6 +141,30 @@ public class RegisterTests
         (await _db.Users.CountAsync()).ShouldBe(1);
     }
 
+    // Squatting someone else's address only lasts until UnverifiedExpiry; a verified account is never displaced.
+    [Test]
+    public async Task Register_UnverifiedOlderThanExpiry_ReleasesTheEmail()
+    {
+        await Register(Seller());
+        var squatter = await _db.Users.SingleAsync();
+        await Should.ThrowAsync<ValidationException>(() => Register(Seller()));
+
+        squatter.CreatedAt = DateTimeOffset.UtcNow - EmailOtp.UnverifiedExpiry - TimeSpan.FromMinutes(1);
+        await _db.SaveChangesAsync();
+        await Register(Seller());
+
+        (await _db.Users.CountAsync()).ShouldBe(2);
+        squatter.Email.ShouldBe($"released-{squatter.Id}@invalid.local");
+        squatter.Status.ShouldBe("Unverified");
+        (await _db.Users.CountAsync(u => u.Email == "shop@example.com")).ShouldBe(1);
+
+        var owner = await _db.Users.SingleAsync(u => u.Email == "shop@example.com");
+        (await Verify("shop@example.com", LastCode())).ShouldBeNull();
+        owner.CreatedAt = DateTimeOffset.UtcNow.AddDays(-30);
+        await _db.SaveChangesAsync();
+        await Should.ThrowAsync<ValidationException>(() => Register(Seller()));
+    }
+
     [Test]
     public async Task Register_MailDown_AccountKeptAndCodeCanBeResent()
     {

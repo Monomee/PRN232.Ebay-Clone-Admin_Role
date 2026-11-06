@@ -16,6 +16,9 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
 
     private readonly IUser _currentUser;
 
+    // Enforcement actions whose names the Ban/Reject/Suspend match misses (suspensions are written as UpdateUserStatus).
+    private static readonly string[] GovernanceActions = ["LiftRestrictions", "UpdateUserStatus", "ApplySellerPenalty", "UnbanUser"];
+
     public GetUserByIdQueryHandler(IApplicationDbContext context, IUser currentUser, IEncryptionService encryption, ISensitiveDataLogger sensitiveLog)
     {
         _context = context;
@@ -89,7 +92,7 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
 
         dto.ViolationHistory = await _context.AdminActions
             .Where(a => a.TargetType == "User" && a.TargetId == request.Id)
-            .Where(a => a.Action.Contains("Ban") || a.Action.Contains("Reject") || a.Action.Contains("Suspend"))
+            .Where(a => GovernanceActions.Contains(a.Action) || a.Action.Contains("Ban") || a.Action.Contains("Reject") || a.Action.Contains("Suspend"))
             .OrderByDescending(a => a.CreatedAt)
             .Take(10)
             .Select(a => new UserViolationHistoryDto

@@ -65,6 +65,11 @@
     "eject": "react-scripts eject",
     "lint": "eslint ./src/"
   },
+  "jest": {
+    "moduleNameMapper": {
+      "^axios$": "axios/dist/node/axios.cjs"
+    }
+  },
   "eslintConfig": {
     "extends": [
       "react-app"

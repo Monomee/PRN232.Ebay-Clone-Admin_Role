@@ -90,12 +90,15 @@ app.MapRazorPages();
 
 // Register your endpoint groups
 
-app.UseOpenApi();
-
-app.UseSwaggerUi(settings =>
+// Swagger lists every endpoint and lets anyone try them: off in Production unless Features:Swagger=true (e.g. a demo).
+if (app.Configuration.GetValue<bool?>("Features:Swagger") ?? !app.Environment.IsProduction())
 {
-    settings.Path = "/api";
-});
+    app.UseOpenApi();
+    app.UseSwaggerUi(settings =>
+    {
+        settings.Path = "/api";
+    });
+}
 
 // ── SignalR Hubs ─────────────────────────────────────────────────
 // ① MapHub phải đến TRƯỚC MapFallbackToFile

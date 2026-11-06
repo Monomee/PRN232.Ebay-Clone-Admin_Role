@@ -63,6 +63,20 @@ public class SecurityReviewHttpTests
     }
 
     [Test]
+    public async Task Swagger_SwitchedOffByConfig()
+    {
+        using (var on = new Factory())
+        using (var client = Client(on))
+            Assert.That(await client.GetStringAsync("/swagger/v1/swagger.json"), Does.Contain("EbayClone API"));
+        using (var off = new Factory { Settings = { ["Features:Swagger"] = "false" } })
+        using (var client = Client(off))
+        {
+            var response = await client.GetAsync("/swagger/v1/swagger.json");
+            Assert.That(await response.Content.ReadAsStringAsync(), Does.Not.Contain("EbayClone API"));
+        }
+    }
+
+    [Test]
     public void Mocking_OffInProductionByDefault()
     {
         var config = new Microsoft.Extensions.Configuration.ConfigurationBuilder().Build();
