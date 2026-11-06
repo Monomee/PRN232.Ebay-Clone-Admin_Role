@@ -11,10 +11,12 @@ namespace EbayClone.Application.Users.Commands.UpdateBankAccount;
 /// account, withdraw. So the holder must be the verified owner, and the first payouts wait 48h while the owner is told.
 public record UpdateBankAccountCommand(string BankName, string AccountNumber, string AccountName) : IRequest;
 
-public class UpdateBankAccountCommandHandler(IApplicationDbContext db, IUser actor, IEncryptionService encryption, ISensitiveDataLogger log)
+public class UpdateBankAccountCommandHandler(IApplicationDbContext db, IUser actor, IEncryptionService encryption, ISensitiveDataLogger log,
+    IEmailService email)
     : IRequestHandler<UpdateBankAccountCommand>
 {
     public static readonly TimeSpan PayoutHoldAfterChange = TimeSpan.FromHours(48);
+    public const string BankChangedTitle = "Payout bank account changed";
 
     public async Task Handle(UpdateBankAccountCommand request, CancellationToken ct)
     {
@@ -36,17 +38,14 @@ public class UpdateBankAccountCommandHandler(IApplicationDbContext db, IUser act
         }));
         if (hadBank && !(user.PayoutHoldUntil > now + PayoutHoldAfterChange)) user.PayoutHoldUntil = now + PayoutHoldAfterChange;
 
-        db.Notifications.Add(new Notification
-        {
-            UserId = userId, Title = "Payout bank account changed",
-            Content = hadBank
-                ? "Your payout bank account was changed. Payouts are paused for 48 hours. If this was not you, contact support now."
-                : "A payout bank account was added to your account.",
-            Type = "InApp", Status = "Sent", SentAt = now, CreatedAt = now,
-        });
+        var alert = hadBank
+            ? "Your payout bank account was changed. Payouts are paused for 48 hours. If this was not you, contact support now."
+            : "A payout bank account was added to your account. If this was not you, contact support now.";
+        SecurityAlert.Add(db, user, BankChangedTitle, alert, now);
         var last4 = new string(request.AccountNumber.Where(char.IsLetterOrDigit).ToArray())[^4..];
         log.Add("UpdatePaymentInfo", "User", userId.ToString(), "Financial", new { request.BankName, accountLast4 = last4, replaced = hadBank });
         await db.SaveChangesAsync(ct);
+        await SecurityAlert.EmailAsync(email, user, BankChangedTitle, alert);
 
         // Link the new account right away (shared with a banned seller?) instead of waiting for the 10-minute sync.
         // The bank change is already saved: if this races the background sync (unique index), that sync covers it.

@@ -1,7 +1,10 @@
+using EbayClone.Application.Common.Interfaces;
+using EbayClone.Application.Users.Commands.UpdateBankAccount;
 using EbayClone.Application.Users.Risk;
 using EbayClone.Domain.Entities;
 using EbayClone.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using NUnit.Framework;
 
 namespace EbayClone.Application.UnitTests.Security;
@@ -25,6 +28,46 @@ public class SignInRulesTests
         Assert.That(IpIntelligence.Locate("27.70.1.1")!.Latitude, Is.EqualTo(IpIntelligence.Locate(Hanoi)!.Latitude),
             "two VN ISPs = same place: switching Wi-Fi to 4G is not travel");
         Assert.That(IpIntelligence.DistanceKm(21.03, 105.85, 35.68, 139.69), Is.InRange(3600, 3750)); // Hà Nội - Tokyo
+    }
+
+    // Shapes of the real feeds (trimmed). EC2 only from AWS: Amazon's own retail ranges are not rented servers.
+    private const string AwsFeed = """
+        { "prefixes": [ { "ip_prefix": "3.5.140.0/22", "service": "AMAZON" }, { "ip_prefix": "3.5.140.0/22", "service": "EC2" },
+                        { "ip_prefix": "54.239.0.0/16", "service": "AMAZON" } ],
+          "ipv6_prefixes": [ { "ipv6_prefix": "2600:1f00::/24", "service": "EC2" } ] }
+        """;
+    private const string GoogleFeed = """
+        { "prefixes": [ { "ipv4Prefix": "34.1.208.0/20", "service": "Google Cloud" }, { "ipv6Prefix": "2600:1900::/35", "service": "Google Cloud" } ] }
+        """;
+
+    [Test]
+    public void DatacenterRanges_DownloadedFeedsReplaceTheSample_PerProvider()
+    {
+        var aws = IpIntelligence.ParseAwsRanges(AwsFeed);
+        Assert.That(aws.Select(r => r.Item1.ToString()), Is.EquivalentTo(new[] { "3.5.140.0/22", "2600:1f00::/24" }));
+        var google = IpIntelligence.ParseGoogleCloudRanges(GoogleFeed);
+        Assert.That(google, Has.Count.EqualTo(2));
+
+        try
+        {
+            IpIntelligence.UseDatacenterRanges(aws);
+            Assert.That(IpIntelligence.DatacenterProvider("2600:1f00::1"), Is.EqualTo("AWS"));
+            Assert.That(IpIntelligence.DatacenterProvider("52.1.1.1"), Is.Null, "AWS sample row replaced by the feed");
+            Assert.That(IpIntelligence.DatacenterProvider("54.239.1.1"), Is.Null, "Amazon retail is not a datacenter");
+            Assert.That(IpIntelligence.DatacenterProvider("35.192.0.1"), Is.EqualTo("Google Cloud"), "no Google feed yet: sample kept");
+
+            IpIntelligence.UseDatacenterRanges(google); // later refresh where only Google answered
+            Assert.That(IpIntelligence.DatacenterProvider("34.1.208.9"), Is.EqualTo("Google Cloud"));
+            Assert.That(IpIntelligence.DatacenterProvider("35.192.0.1"), Is.Null);
+            Assert.That(IpIntelligence.DatacenterProvider("2600:1f00::1"), Is.EqualTo("AWS"), "earlier AWS download kept");
+        }
+        finally
+        {
+            // back to the sample rows other tests rely on
+            IpIntelligence.UseDatacenterRanges([
+                (System.Net.IPNetwork.Parse("3.0.0.0/8"), "AWS"), (System.Net.IPNetwork.Parse("52.0.0.0/10"), "AWS"),
+                (System.Net.IPNetwork.Parse("34.64.0.0/10"), "Google Cloud"), (System.Net.IPNetwork.Parse("35.192.0.0/12"), "Google Cloud")]);
+        }
     }
 
     [TestCase("NGUYEN VAN A", "Nguyễn  Văn A", true)]
@@ -55,27 +98,54 @@ public class SignInRulesTests
     public async Task ImpossibleTravel_HoldsSellerPayouts_NormalTravelDoesNot()
     {
         using var db = Db();
-        db.Users.Add(new User { Id = 1, Username = "seller", Role = "Seller" });
+        db.Users.Add(new User { Id = 1, Username = "seller", Role = "Seller", Email = "seller@example.com" });
         await db.SaveChangesAsync();
+        var mail = new Mock<IEmailService>();
 
-        var first = await SignInMonitor.RecordAsync(db, 1, Hanoi, "dev-a", T0, default);
+        var first = await SignInMonitor.RecordAsync(db, 1, Hanoi, "dev-a", T0, default, mail.Object);
         Assert.That(first.Flags, Is.Null);
 
         // Hà Nội -> USA in 10 minutes: not a plane, a second person.
-        var jump = await SignInMonitor.RecordAsync(db, 1, Comcast, "dev-b", T0.AddMinutes(10), default);
+        var jump = await SignInMonitor.RecordAsync(db, 1, Comcast, "dev-b", T0.AddMinutes(10), default, mail.Object);
         Assert.That(jump.Flags, Does.Contain("ImpossibleTravel").And.Contain("NewDevice"));
         var seller = await db.Users.SingleAsync();
         Assert.That(seller.PayoutHoldUntil, Is.EqualTo(T0.AddMinutes(10) + SignInMonitor.TakeoverPayoutHold));
         Assert.That(seller.LastLoginIp, Is.EqualTo(Comcast));
         Assert.That(await db.Notifications.CountAsync(n => n.Title == "New sign-in location"), Is.EqualTo(1));
+        // The owner's mailbox too: whoever took the account over can dismiss the in-app copy.
+        mail.Verify(m => m.SendEmailAsync("seller@example.com", It.Is<string>(t => t.Contains(SignInMonitor.NewLocationTitle)),
+            It.Is<string>(b => b.Contains("United States"))), Times.Once);
 
         // Back home 20 hours later: a real flight is possible.
-        var back = await SignInMonitor.RecordAsync(db, 1, Hanoi, "dev-a", T0.AddHours(20), default);
+        var back = await SignInMonitor.RecordAsync(db, 1, Hanoi, "dev-a", T0.AddHours(20), default, mail.Object);
         Assert.That(back.Flags, Is.Null);
 
         var vps = await SignInMonitor.RecordAsync(db, 1, Aws, "dev-a", T0.AddHours(21), default);
         Assert.That(vps.Flags, Is.EqualTo("Datacenter"));
         Assert.That(vps.Place, Is.EqualTo("AWS"));
+        mail.Verify(m => m.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>()), Times.Once, "normal sign-ins send nothing");
+    }
+
+    // Changing where payouts go is mailed to the owner; a mail server outage never undoes the (already saved) change.
+    [TestCase(false)]
+    [TestCase(true)]
+    public async Task BankAccountChange_MailsTheOwner_MailFailureKeepsTheChange(bool mailDown)
+    {
+        using var db = Db();
+        db.Users.Add(new User { Id = 1, Username = "seller", Role = "Seller", Email = "seller@example.com" });
+        await db.SaveChangesAsync();
+        var crypto = EncryptionServiceTests.Create();
+        var actor = SensitiveLogTests.Actor("1", "Seller");
+        var mail = new Mock<IEmailService>();
+        if (mailDown) mail.Setup(m => m.SendEmailAsync(It.IsAny<string>(), It.IsAny<string>(), It.IsAny<string>())).ThrowsAsync(new InvalidOperationException("smtp"));
+
+        await new UpdateBankAccountCommandHandler(db, actor, crypto, new EbayClone.Infrastructure.Services.SensitiveDataLogger(db, crypto, actor), mail.Object)
+            .Handle(new UpdateBankAccountCommand("VCB", "0011223344", "Seller"), default);
+
+        mail.Verify(m => m.SendEmailAsync("seller@example.com", It.Is<string>(t => t.Contains(UpdateBankAccountCommandHandler.BankChangedTitle)),
+            It.IsAny<string>()), Times.Once);
+        Assert.That((await db.Users.SingleAsync()).BankAccountMock, Is.Not.Null);
+        Assert.That(await db.Notifications.CountAsync(n => n.Title == UpdateBankAccountCommandHandler.BankChangedTitle), Is.EqualTo(1));
     }
 
     [Test]

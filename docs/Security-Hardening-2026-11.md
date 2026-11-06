@@ -1,6 +1,6 @@
 # Bảo mật & chống gian lận tài khoản (11/2026)
 
-Tổng hợp các thay đổi trong PR #17 → #27: thay đổi gì, cần chú ý gì, còn thiếu gì, và cách setup bản mới.
+Tổng hợp các thay đổi trong PR #17 → #28: thay đổi gì, cần chú ý gì, còn thiếu gì, và cách setup bản mới.
 
 | PR | Nội dung |
 |---|---|
@@ -15,6 +15,7 @@ Tổng hợp các thay đổi trong PR #17 → #27: thay đổi gì, cần chú 
 | #25 | Cập nhật tài liệu cho PR #22–#24 |
 | #26 | Rà soát bảo mật: secret bị lộ, SignalR hub, endpoint mock, report sản phẩm, khóa đăng nhập, lỗi 500 |
 | #27 | Tắt Swagger ở Production, giải phóng email `Unverified` quá 24 giờ, Governance Records đủ action, sửa `App.test.js` |
+| #28 | Email cảnh báo bảo mật, trọng số rủi ro trong cấu hình, tải dải IP datacenter AWS/Google, chạy JMeter |
 
 ---
 
@@ -147,10 +148,31 @@ Tổng hợp các thay đổi trong PR #17 → #27: thay đổi gì, cần chú 
 - **Governance Records** trên trang user hiện thêm `LiftRestrictions`, `UpdateUserStatus` (tạm ngưng/kích hoạt), `ApplySellerPenalty`, `UnbanUser`.
 - **`App.test.js`** chạy được: Jest map `axios` sang bản CommonJS, `setupTests.js` thêm `TextEncoder` và thẻ `<base>`.
 
-### 1.11 Load test
+### 1.11 Email cảnh báo, cấu hình điểm rủi ro, dải IP datacenter (PR #28)
+
+- **Email cảnh báo bảo mật** (`SecurityAlert`): đổi/thêm tài khoản ngân hàng và đăng nhập ở hai nơi xa nhau (`ImpossibleTravel`) gửi thêm email cho chủ tài khoản, ngoài thông báo in-app như trước. Người chiếm tài khoản xóa được thông báo in-app nhưng không vào được hộp thư của chủ thật. Email gửi sau khi đã lưu thay đổi; gửi lỗi thì chỉ ghi log, không hoàn tác.
+- **Trọng số và ngưỡng điểm rủi ro** đọc từ section `Risk` (`RiskOptions`), mặc định giữ nguyên bảng ở mục 1.2. Chỉ cần ghi khóa muốn đổi, ví dụ `Risk:RejectThreshold=90`, `Risk:LinkWeights:Ip:Active=5`. Cấu hình sai (ngưỡng ngược, trọng số âm, `Banned < Active`) thì app **không khởi động**. Giới hạn seller mới và luật của `AccountMonitor` vẫn là hằng số trong code.
+- **Dải IP datacenter** (`DatacenterRangesService`, chạy khi `BackgroundJobs:Enabled`): khi khởi động và mỗi 24 giờ tải `ip-ranges.json` của AWS (chỉ EC2, khoảng 4.500 dải) và `cloud.json` của Google Cloud (khoảng 1.150 dải), thay cho dải mẫu của hai nhà cung cấp này. Một feed lỗi thì giữ bản đã tải trước đó. Azure, DigitalOcean, Linode, Hetzner, Vultr vẫn dùng bảng mẫu (Azure không có URL cố định). Mỗi pod tự tải, không ghi DB. Cần mở outbound HTTPS tới `ip-ranges.amazonaws.com` và `www.gstatic.com`.
+
+### 1.12 Load test
 
 - Cấu hình `Security:AllowApiWithout2FA` cho phép tài khoản chưa bật 2FA gọi API, chỉ dùng khi chạy JMeter. App **từ chối khởi động** nếu bật ở Production. `docker-compose.loadtest.yml` đã bật sẵn.
 - JMeter plan 11 gửi cookie `2fa_challenge` thay cho `userId`.
+- **Kết quả chạy 2026-11-06** (JMeter 5.6.3, Docker local: 2 replica API sau nginx, `docker-compose.loadtest.yml`, DB mới seed `Demo`, 100 threads, 2 phút mỗi plan):
+
+  | Plan | Request | Lỗi | p95 |
+  |---|---|---|---|
+  | 00 login smoke | 1 | 0 | 250 ms |
+  | 02 dashboard/stats | 6 166 | 0 | 50 ms |
+  | 03 users/orders paging | 5 101 | 0 | 244 ms |
+  | 04 dispute detail | 5 023 | 0 | 390 ms |
+  | 11 2FA | 4 | 0 | |
+  | 12 RBAC | 16 | 0 | |
+  | 10 IP whitelist | 5 | 1 | |
+  | 01 brute-force | 6 | 1 | |
+
+  - **Plan 10, case 03** (`172.20.0.5` phải được vào) fail vì `appsettings.json` của máy chỉ cho `172.24.0.1`, không phải cả dải `172.x`. Dữ liệu test (`data/ip-cases.csv`) và `InternalIps` của từng máy phải khớp nhau; app chạy đúng theo cấu hình.
+  - **Plan 01**: request thứ 6 không bị 429 khi có 2 replica, vì rate limit của app nằm trong bộ nhớ **từng replica** (xem mục 2, ghi chú 16). Chạy 1 replica thì có 429.
 
 ---
 
@@ -171,6 +193,8 @@ Tổng hợp các thay đổi trong PR #17 → #27: thay đổi gì, cần chú 
 13. **Thu hồi mật khẩu ứng dụng Gmail từng nằm trong `k8s/secret.yaml`** (Google Account → Security → App passwords) và đổi mật khẩu SA của SQL Server ở các môi trường đã dùng `123456`. Chỉ chủ tài khoản làm được.
 14. **Khóa theo tài khoản có thể bị lợi dụng:** ai biết email admin có thể cố tình nhập sai để khóa admin đó 15 phút. Chấp nhận vì cửa sổ ngắn; khi cần, admin chờ hết 15 phút hoặc xóa key `ebay-count:login-fail:<email>` trong Redis.
 15. **Sau PR #26, nút Mock trên giao diện sẽ lỗi ở Production** (endpoint không còn). Nếu demo trên server chạy Production, đặt `Features:MockingEndpoints=true`, và tắt lại sau buổi demo.
+16. **Rate limit của app tính riêng từng replica** (bộ nhớ trong process): N replica thì giới hạn login thực tế là 5 × N lần/phút/IP. Lớp chặn chung là `limit_req` của nginx (`login_gateway_zone`, 12 lần/phút) và khóa theo tài khoản (Redis, PR #26). **Không bỏ `limit_req` ở nginx khi chạy thật** (chỉ `nginx.loadtest.conf.template` bỏ để đo tải).
+17. **`InternalIps` phải có gateway của mạng Docker trên máy chạy** (`docker network inspect <project>_default`). File mẫu có `172.24.0.1`; máy khác có thể là `172.18.0.1`, khi đó mọi request qua nginx bị 403 "Unauthorized IP".
 
 ---
 
@@ -179,13 +203,10 @@ Tổng hợp các thay đổi trong PR #17 → #27: thay đổi gì, cần chú 
 | Mục | Hiện trạng | Hướng làm |
 |---|---|---|
 | Vị trí IP | Bảng mẫu cấp quốc gia (VN, US, JP) | MaxMind GeoLite2 (cần đăng ký key) |
-| Dải IP datacenter | Bảng mẫu vài dải | Job tải định kỳ `ip-ranges.json` (AWS), `cloud.json` (Google), Azure ServiceTags |
 | UI đăng ký, buyer/seller | Đã có API đăng ký, chưa có giao diện | Form gọi `register` → `verify-email`, nhúng widget Turnstile |
 | UI đổi tài khoản ngân hàng | Chỉ gọi qua Swagger/API | Form gọi `PUT /api/Account/bank-account` |
-| Thông báo bảo mật | Chỉ in-app (bảng Notification) | Gửi email khi đổi ngân hàng hoặc đăng nhập từ nơi lạ |
 | Xác minh thêm khi đăng nhập lạ | Chỉ gắn cờ | Yêu cầu nhập lại 2FA hoặc xác nhận qua email |
 | Báo cho admin | Chỉ badge và banner trong trang user | Hàng chờ "tài khoản rủi ro", widget trên dashboard |
-| Trọng số / ngưỡng | Hằng số trong code | Đưa vào cấu hình, tinh chỉnh bằng dữ liệu thật |
 | Hiệu năng job | Đồng bộ toàn bộ user mỗi 10 phút | Xử lý theo trang khi dữ liệu lớn (đã ghi chú `ponytail:`) |
 | OTP SMS | SĐT vẫn do user tự khai | Cần nhà cung cấp SMS; dùng lại cơ chế của `EmailOtp` |
 | eKYC CCCD | Đã kiểm định dạng CCCD khi đăng ký; `IsVerified` vẫn chưa chặn chức năng nào | Dịch vụ eKYC (OCR + selfie/NFC); bắt buộc `IsVerified` với seller trước khi đăng bán/nhận tiền |
@@ -193,7 +214,10 @@ Tổng hợp các thay đổi trong PR #17 → #27: thay đổi gì, cần chú 
 | Một CCCD một tài khoản ở DB | Chỉ qua điểm rủi ro (CCCD trùng = 80 → từ chối) | Không đặt unique index: tài khoản trùng phải được lưu thì mới bị chấm và từ chối |
 | Lịch sử git chứa secret cũ | Đã xóa khỏi bản hiện tại, đã chặn JWT key cũ | Đổi toàn bộ secret là đủ; xóa khỏi lịch sử (git filter-repo) không cần thiết sau khi đã đổi |
 | Cookie thiết bị | Dễ né bằng cửa sổ ẩn danh | Cố ý là tín hiệu yếu; không làm fingerprint canvas |
-| JMeter, k8s | Chưa chạy plan JMeter, chưa apply lên cluster thật | Chạy `tests/jmeter`, apply `k8s/` |
+| Dải IP Azure và VPS nhỏ | Bảng mẫu (AWS, Google đã tải đầy đủ) | Azure ServiceTags qua API có xác thực; danh sách ASN của DigitalOcean/Linode/Hetzner/Vultr |
+| Luật seller mới, monitor | Hằng số trong code (`SellingLimits`, `AccountMonitor`) | Đưa vào section `Risk` khi cần tinh chỉnh |
+| k8s | Chưa apply lên cluster thật | Apply `k8s/` |
+| Rate limit nhiều replica | Bộ đếm trong bộ nhớ từng replica; nginx và khóa theo tài khoản (Redis) bù lại | Bộ đếm rate limit dùng Redis nếu bỏ nginx hoặc chạy sau ingress không giới hạn |
 
 ---
 
@@ -238,6 +262,7 @@ DatabaseInitialization__RunMigrationsOnStartup=true
 | `Captcha:TurnstileSecretKey` | secret key Turnstile | **Bắt buộc ở Production** để đăng ký được. Key test luôn qua: `1x0000000000000000000000000000000AA` |
 | `EmailSettings:SenderEmail` / `SenderPassword` | Gmail + app password | Để gửi mã OTP thật |
 | `Jwt:Key` | ≥ 32 byte, ngẫu nhiên | **Phải đổi** (PR #26): app từ chối key ngắn, key đã lộ, và key mẫu ở Production |
+| `Risk:*` | không đặt | Trọng số/ngưỡng điểm rủi ro (mục 1.11). Không đặt = mặc định ở mục 1.2 |
 | `Features:Swagger` | không đặt | Mặc định: bật ngoài Production, tắt ở Production. Đặt `true` khi cần Swagger trên server demo |
 | `Features:MockingEndpoints` | không đặt | Mặc định: bật ngoài Production, tắt ở Production. Đặt `true` có chủ đích khi cần demo trên server |
 | `EmailSettings:LogInsteadOfSending` | `false` | Chỉ đặt `true` ở máy dev: mọi mail (cả mã OTP) chỉ in ra log, không gửi, kể cả khi đã có SMTP. App không khởi động nếu bật ở Production |

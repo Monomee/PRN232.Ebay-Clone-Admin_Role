@@ -80,7 +80,8 @@ public class Auth : EndpointGroupBase
             var deviceHash = services.GetRequiredService<IEncryptionService>().ComputeHmac("device:" + device);
             // Same source as audit logs and rate limiting: the connection address after trusted-proxy forwarding.
             await SignInMonitor.RecordAsync(services.GetRequiredService<IApplicationDbContext>(), userId,
-                http.Connection.RemoteIpAddress?.ToString(), deviceHash, DateTime.UtcNow, http.RequestAborted);
+                http.Connection.RemoteIpAddress?.ToString(), deviceHash, DateTime.UtcNow, http.RequestAborted,
+                services.GetRequiredService<IEmailService>());
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
