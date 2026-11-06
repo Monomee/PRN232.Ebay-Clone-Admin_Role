@@ -40,7 +40,9 @@ public class SecurityHeadersMiddleware
             && path.EndsWith(".html", StringComparison.OrdinalIgnoreCase);
         headers["Content-Security-Policy"] =
             "default-src 'self'; " +
-            (isSwaggerUi ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " : "script-src 'self'; ") +
+            // Cloudflare Turnstile (captcha on /register): its script and the iframe it renders.
+            (isSwaggerUi ? "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " : "script-src 'self' https://challenges.cloudflare.com; ") +
+            "frame-src https://challenges.cloudflare.com; " +
             "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net; " + // bootstrap-icons (Ebay.css)
             "font-src 'self' data: https://fonts.gstatic.com https://cdn.jsdelivr.net; " +
             "img-src 'self' data: blob: https:; " +

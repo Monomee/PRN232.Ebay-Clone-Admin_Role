@@ -56,7 +56,10 @@ export const NavMenu = ({ isOpen, toggleSidebar, closeSidebar }) => {
             {user?.role !== 'Seller' && <SidebarLink to="/dashboard" icon="bi bi-speedometer2">Dashboard</SidebarLink>}
             
             {user?.role === 'Seller' && (
-              <SidebarLink to="/seller-products" icon="bi bi-box-seam">Your products</SidebarLink>
+              <>
+                <SidebarLink to="/seller-products" icon="bi bi-box-seam">Your products</SidebarLink>
+                <SidebarLink to="/seller-bank-account" icon="bi bi-bank">Payout bank account</SidebarLink>
+              </>
             )}
 
             {/* Same roles/permissions as the routes in AppRoutes.js */}

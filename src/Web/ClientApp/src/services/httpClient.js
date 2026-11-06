@@ -44,6 +44,14 @@ function extractErrorMessage(payload) {
     return payload.message;
   }
 
+  // ValidationProblemDetails: { errors: { Field: ["message", ...] } } says what is actually wrong
+  if (payload.errors && typeof payload.errors === "object") {
+    const messages = Object.values(payload.errors).flat().filter(Boolean);
+    if (messages.length > 0) {
+      return messages.join(" ");
+    }
+  }
+
   if (payload.title) {
     return payload.title;
   }

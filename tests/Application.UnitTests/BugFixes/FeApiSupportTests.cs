@@ -6,10 +6,13 @@ using EbayClone.Application.AuditLogs.Queries.GetAuditLogSummary;
 using EbayClone.Application.Orders.Queries.GetOrderSummary;
 using EbayClone.Application.Products.Queries.GetManagedProductSummary;
 using EbayClone.Application.Products.Queries.GetProductById;
+using EbayClone.Application.Common.Interfaces;
+using EbayClone.Application.Users.Queries.GetUsers;
 using EbayClone.Application.Users.Queries.GetUserSummary;
 using EbayClone.Domain.Entities;
 using EbayClone.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
+using Moq;
 using NUnit.Framework;
 using Shouldly;
 
@@ -36,7 +39,25 @@ public class FeApiSupportTests
         await _db.SaveChangesAsync();
 
         (await new GetUserSummaryQueryHandler(_db).Handle(new GetUserSummaryQuery(), CancellationToken.None))
-            .ShouldBe(new UserSummaryDto(3, 1, 1));
+            .ShouldBe(new UserSummaryDto(3, 1, 1, 0));
+    }
+
+    // Risk review queue: scored and held for an admin, riskiest first; not-yet-scored sign-ups stay out.
+    [Test]
+    public async Task RiskReviewTab_HeldAccountsHighestRiskFirst_AndCounted()
+    {
+        var scored = DateTime.UtcNow;
+        _db.Users.AddRange(
+            new User { Username = "low", ApprovalStatus = "PendingApproval", RiskScore = 35, RiskCheckedAt = scored },
+            new User { Username = "high", ApprovalStatus = "PendingApproval", RiskScore = 75, RiskCheckedAt = scored },
+            new User { Username = "unscored", ApprovalStatus = "PendingApproval" },
+            new User { Username = "approved", ApprovalStatus = "Approved", RiskScore = 50, RiskCheckedAt = scored });
+        await _db.SaveChangesAsync();
+
+        var page = await new GetUsersQueryHandler(_db, new Mock<IUser>().Object, new Mock<IIdentityService>().Object)
+            .Handle(new GetUsersQuery { Tab = "RiskReview" }, CancellationToken.None);
+        page.Items.Select(u => u.Username).ShouldBe(new[] { "high", "low" });
+        (await new GetUserSummaryQueryHandler(_db).Handle(new GetUserSummaryQuery(), CancellationToken.None)).RiskReview.ShouldBe(2);
     }
 
     // z8rp3fchtc, z8rp3fchta

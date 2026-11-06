@@ -458,6 +458,10 @@ export default function LoginPage() {
                   </button>
                 </form>
 
+                <p style={{ marginTop: 18, fontSize: 13, color: "#6b7a99", textAlign: "center" }}>
+                  Buyer or seller without an account? <a href="/register" style={{ color: "#0064D2", fontWeight: 600 }}>Create one</a>
+                </p>
+
                 <div style={{ marginTop: 28, paddingTop: 24, borderTop: "1.5px solid #f0f3f9" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, color: "#9aa5be", fontSize: 12 }}>
                     <LockIcon />

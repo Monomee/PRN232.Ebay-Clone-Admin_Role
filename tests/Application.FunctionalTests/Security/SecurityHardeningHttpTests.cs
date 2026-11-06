@@ -186,7 +186,7 @@ public class SecurityHardeningHttpTests
         Assert.That(response.Headers.GetValues("X-Frame-Options").Single(), Is.EqualTo("SAMEORIGIN"));
         Assert.That(response.Headers.GetValues("Content-Security-Policy").Single(), Does.Contain("'unsafe-inline'"), "Swagger UI needs inline script");
         var spa = await client.GetAsync("/login");
-        Assert.That(spa.Headers.GetValues("Content-Security-Policy").Single(), Does.Contain("script-src 'self';"), "the React app gets no inline/eval script");
+        Assert.That(spa.Headers.GetValues("Content-Security-Policy").Single(), Does.Contain("script-src 'self' https://challenges.cloudflare.com;"), "the React app gets no inline/eval script (only the captcha script)");
         Assert.That((int)(await client.GetAsync("/swagger/v1/swagger.json")).StatusCode, Is.EqualTo(200));
     }
 
