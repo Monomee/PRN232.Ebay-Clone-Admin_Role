@@ -55,4 +55,19 @@ public class RegisterHttpTests
         Assert.That(verified.Status, Is.EqualTo("Pending"));
         Assert.That(verified.ApprovalStatus, Is.EqualTo("PendingApproval"));
     }
+
+    // The sign-up page gets the public site key only, and the CSP lets the Turnstile widget load.
+    [Test]
+    public async Task CaptchaConfig_GivesSiteKeyOnly_AndCspAllowsTurnstile()
+    {
+        using var factory = new Factory { Settings = { ["Captcha:TurnstileSiteKey"] = "site-key-1", ["Captcha:TurnstileSecretKey"] = "secret-1" } };
+        using var client = new HttpClient(factory.Server.CreateHandler(c => c.Connection.RemoteIpAddress = IPAddress.Loopback))
+            { BaseAddress = new Uri("https://localhost") };
+
+        var response = await client.GetAsync("/api/Auth/captcha-config");
+        var body = await response.Content.ReadAsStringAsync();
+        Assert.That(body, Does.Contain("site-key-1").And.Not.Contain("secret-1"));
+        var csp = string.Join(" ", response.Headers.GetValues("Content-Security-Policy"));
+        Assert.That(csp, Does.Contain("script-src 'self' https://challenges.cloudflare.com").And.Contain("frame-src https://challenges.cloudflare.com"));
+    }
 }

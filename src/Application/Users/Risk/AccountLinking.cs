@@ -90,6 +90,11 @@ public static class AccountLinking
     public static readonly Expression<Func<User, bool>> BannedFilter =
         u => u.Status == "Banned" || u.ApprovalStatus == "Rejected";
     private static readonly Func<User, bool> BannedCheck = BannedFilter.Compile();
+
+    /// Risk review queue: the sign-up review scored the account between the review and reject thresholds and left it
+    /// for an admin (AutoReviewUsersService), as opposed to accounts that have not been scored yet.
+    public static readonly Expression<Func<User, bool>> AwaitingRiskReview =
+        u => u.ApprovalStatus == "PendingApproval" && u.RiskCheckedAt != null;
     public static bool IsBanned(User u) => BannedCheck(u);
 
     // ---- normalization: different spellings of the same value must hash the same ----

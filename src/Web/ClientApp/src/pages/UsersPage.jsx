@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { LoadingIndicator } from "../components/LoadingIndicator";
 import { ToastMessage } from "../components/ToastMessage";
 import { getCurrentAdminId } from "../services/adminSession";
@@ -9,15 +9,20 @@ const tabDefinitions = [
   { label: "All Users", value: "All" },
   { label: "Pending Approval", value: "PendingApproval" },
   { label: "Banned", value: "Banned" },
+  { label: "Risk Review", value: "RiskReview" },
 ];
 
 export function UsersPage() {
-  const [tab, setTab] = useState("All");
+  const [searchParams] = useSearchParams();
+  const [tab, setTab] = useState(() => {
+    const fromUrl = searchParams.get("tab");
+    return tabDefinitions.some((t) => t.value === fromUrl) ? fromUrl : "All";
+  });
   const [search, setSearch] = useState("");
   const [pageNumber, setPageNumber] = useState(1);
   const [pageSize] = useState(10);
   const [usersData, setUsersData] = useState({ items: [], totalCount: 0, totalPages: 0 });
-  const [summary, setSummary] = useState({ pendingApproval: 0, banned: 0 });
+  const [summary, setSummary] = useState({ pendingApproval: 0, banned: 0, riskReview: 0 });
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "success" });
   const [modalConfig, setModalConfig] = useState({ isOpen: false, type: "", userId: null });
@@ -124,7 +129,7 @@ export function UsersPage() {
             { label: 'Total Registered', value: usersData.totalCount, icon: 'bi-people-fill', color: 'primary' },
             { label: 'Pending Approval', value: summary.pendingApproval, icon: 'bi-person-badge-fill', color: 'warning' },
             { label: 'Recently Banned', value: summary.banned, icon: 'bi-person-x-fill', color: 'danger' },
-            { label: 'Platform Admins', value: 'Active', icon: 'bi-shield-check', color: 'success' },
+            { label: 'Risk Review', value: summary.riskReview, icon: 'bi-shield-exclamation', color: 'info' },
           ].map((stat, idx) => (
             <div key={idx} className="col-12 col-sm-6 col-lg-3">
               <div className="bg-white border rounded-4 p-3 shadow-sm d-flex align-items-center gap-3 h-100 transition-all">

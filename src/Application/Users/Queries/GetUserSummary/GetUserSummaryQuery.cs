@@ -1,10 +1,11 @@
 using EbayClone.Application.Common.Interfaces;
+using EbayClone.Application.Users.Risk;
 using Microsoft.EntityFrameworkCore;
 
 namespace EbayClone.Application.Users.Queries.GetUserSummary;
 
 /// Totals for the Users page cards, over all users rather than the loaded page.
-public record UserSummaryDto(int Total, int PendingApproval, int Banned);
+public record UserSummaryDto(int Total, int PendingApproval, int Banned, int RiskReview);
 
 public record GetUserSummaryQuery : IRequest<UserSummaryDto>;
 
@@ -20,6 +21,7 @@ public class GetUserSummaryQueryHandler : IRequestHandler<GetUserSummaryQuery, U
         return new UserSummaryDto(
             await _context.Users.CountAsync(cancellationToken),
             await _context.Users.CountAsync(u => u.ApprovalStatus == "PendingApproval" || u.Status == "Pending", cancellationToken),
-            await _context.Users.CountAsync(u => u.Status == "Banned", cancellationToken));
+            await _context.Users.CountAsync(u => u.Status == "Banned", cancellationToken),
+            await _context.Users.CountAsync(AccountLinking.AwaitingRiskReview, cancellationToken));
     }
 }

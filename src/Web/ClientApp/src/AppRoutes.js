@@ -31,6 +31,8 @@ import { SellerPendingFundsPage } from "./pages/SellerPendingFundsPage";
 import PayoutEnginePage from "./pages/PayoutEnginePage";
 import ActiveConnectionsPage from "./pages/ActiveConnectionsPage.jsx";
 import OrdersPage from "./pages/OrdersPage.jsx";
+import RegisterPage from "./pages/RegisterPage";
+import SellerBankAccountPage from "./pages/SellerBankAccountPage";
 
 // Helper cho gọn
 // permission: the API policy a custom admin role must grant to open the page
@@ -45,6 +47,11 @@ const AppRoutes = [
   {
     path: "/login",
     element: <LoginPage />,
+    noLayout: true
+  },
+  {
+    path: "/register",
+    element: <RegisterPage />,
     noLayout: true
   },
   // ── Cần login nhưng chưa cần 2FA ─────────────────────────────────
@@ -134,6 +141,10 @@ const AppRoutes = [
   {
     path: "/seller-products",
     element: protect(<SellerProductManagementPage />, ["SuperAdmin", "Support", "Seller"])
+  },
+  {
+    path: "/seller-bank-account",
+    element: protect(<SellerBankAccountPage />, ["Seller"])
   },
   {
     path: "/product/:id",

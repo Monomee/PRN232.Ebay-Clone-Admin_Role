@@ -1,5 +1,6 @@
 using EbayClone.Application.Common.Interfaces;
 using EbayClone.Application.Common.Models;
+using EbayClone.Application.Users.Risk;
 using EbayClone.Domain.Constants;
 using EbayClone.Domain.Entities;
 using Microsoft.EntityFrameworkCore;
@@ -10,7 +11,7 @@ public record GetUsersQuery : IRequest<PaginatedList<UserBriefDto>>
 {
     public int PageNumber { get; init; } = 1;
     public int PageSize { get; init; } = 10;
-    public string? Tab { get; init; } // All, PendingApproval, Banned
+    public string? Tab { get; init; } // All, PendingApproval, Banned, RiskReview (highest risk first)
     public string? Status { get; init; }
     public string? ApprovalStatus { get; init; }
     public string? Role { get; init; }
@@ -56,6 +57,7 @@ public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PaginatedList
             {
                 "pendingapproval" or "pending" => query.Where(u => u.ApprovalStatus == "PendingApproval" || u.Status == "Pending"),
                 "banned" => query.Where(u => u.Status == "Banned"),
+                "riskreview" => query.Where(AccountLinking.AwaitingRiskReview),
                 _ => query
             };
         }
@@ -93,6 +95,9 @@ public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PaginatedList
             "lastloginat" => request.IsDescending ? query.OrderByDescending(u => u.LastLoginAt) : query.OrderBy(u => u.LastLoginAt),
             _ => request.IsDescending ? query.OrderByDescending(u => u.Id) : query.OrderBy(u => u.Id)
         };
+
+        if (string.Equals(request.Tab?.Trim(), "RiskReview", StringComparison.OrdinalIgnoreCase))
+            query = query.OrderByDescending(u => u.RiskScore).ThenBy(u => u.Id);
 
         // Get total count
         var totalCount = await query.CountAsync(cancellationToken);

@@ -27,6 +27,11 @@ public class Auth : EndpointGroupBase
         group.MapPost("register", Register)
              .RequireRateLimiting(RateLimitingExtensions.StrictPolicy);
 
+        // Public site key for the sign-up page's captcha widget (the secret key never leaves the server).
+        group.MapGet("captcha-config", (IConfiguration config) =>
+            Results.Ok(new { turnstileSiteKey = config["Captcha:TurnstileSiteKey"] }))
+             .RequireRateLimiting(RateLimitingExtensions.StandardPolicy);
+
         group.MapPost("verify-email", VerifyEmail)
              .RequireRateLimiting(RateLimitingExtensions.StrictPolicy);
 
