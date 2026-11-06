@@ -1,4 +1,5 @@
 using EbayClone.Application.Common.Interfaces;
+using EbayClone.Application.Users.Risk;
 using EbayClone.Domain.Constants;
 using EbayClone.Infrastructure.Data;
 using EbayClone.Infrastructure.Data.Interceptors;
@@ -75,12 +76,15 @@ public static class DependencyInjection
 
         builder.Services.AddHttpClient<IContentModerationService, OpenAiModerationService>();
         builder.Services.AddHttpClient<ICaptchaVerifier, TurnstileCaptchaVerifier>(c => c.Timeout = TimeSpan.FromSeconds(10));
+        AccountLinking.Configure(builder.Configuration.GetSection("Risk").Get<RiskOptions>() ?? new RiskOptions());
 
         if (builder.Configuration.GetValue<bool>("BackgroundJobs:Enabled"))
         {
             builder.Services.AddHostedService<AutoReviewUsersService>();
             builder.Services.AddHostedService<ReturnRequestEscalationService>();
             builder.Services.AddHostedService<ScheduledBroadcastService>();
+            builder.Services.AddHttpClient(nameof(DatacenterRangesService), c => c.Timeout = TimeSpan.FromSeconds(30));
+            builder.Services.AddHostedService<DatacenterRangesService>();
         }
 
         // Payout Engine

@@ -1,4 +1,5 @@
 using EbayClone.Application.Users.Risk;
+using Microsoft.Extensions.Configuration;
 using NUnit.Framework;
 using T = EbayClone.Application.Users.Risk.AccountLinking.Types;
 
@@ -36,5 +37,25 @@ public class AccountLinkingTests
         Assert.That(AccountLinking.Assess([new(9, T.Bank, false)], []).Decision, Is.EqualTo("Review"));
         Assert.That(AccountLinking.Assess([new(9, T.Bank, true)], []).Decision, Is.EqualTo("Reject"));
         Assert.That(AccountLinking.Assess([new(9, T.Phone, false), new(9, T.Address, false)], [new RiskSignal("Email dùng một lần", AccountLinking.DisposableEmailWeight)]).Score, Is.EqualTo(30 + 15 + 20));
+    }
+
+    // "Risk" config overrides only what it names; a typo that would approve or reject everyone stops the app at startup.
+    [Test]
+    public void RiskOptions_PartialConfigKeepsDefaults_BadConfigFails()
+    {
+        static RiskOptions Bind(Dictionary<string, string?> values) =>
+            new ConfigurationBuilder().AddInMemoryCollection(values).Build().GetSection("Risk").Get<RiskOptions>() ?? new RiskOptions();
+
+        var options = Bind(new() { ["Risk:RejectThreshold"] = "90", ["Risk:LinkWeights:Ip:Active"] = "5" }).Validate();
+        Assert.That(options.RejectThreshold, Is.EqualTo(90));
+        Assert.That(options.ReviewThreshold, Is.EqualTo(30));
+        Assert.That(options.LinkWeights[T.Ip].Active, Is.EqualTo(5));
+        Assert.That(options.LinkWeights[T.Ip].Banned, Is.EqualTo(30), "the other half of the pair keeps its default");
+        Assert.That(options.LinkWeights[T.Cccd].Banned, Is.EqualTo(100));
+
+        Assert.Throws<InvalidOperationException>(() => Bind(new() { ["Risk:ReviewThreshold"] = "90" }).Validate());
+        Assert.Throws<InvalidOperationException>(() => Bind(new() { ["Risk:LinkWeights:Bank:Banned"] = "10" }).Validate());
+        Assert.Throws<InvalidOperationException>(() => Bind(new() { ["Risk:DatacenterIpWeight"] = "-1" }).Validate());
+        Assert.DoesNotThrow(() => new RiskOptions().Validate());
     }
 }

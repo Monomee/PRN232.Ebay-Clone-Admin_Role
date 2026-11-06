@@ -10,6 +10,7 @@ public static class SignInMonitor
     public const double MaxPlausibleSpeedKmh = 900;      // airliner
     public const double MinTravelKm = 500;               // below this, IP geolocation is too coarse to judge
     public static readonly TimeSpan TakeoverPayoutHold = TimeSpan.FromHours(48);
+    public const string NewLocationTitle = "New sign-in location";
 
     /// Sign-in rows hold raw IPs (personal data): kept long enough for the device (90 days) and travel checks, then deleted.
     public static readonly TimeSpan Retention = TimeSpan.FromDays(180);
@@ -25,8 +26,9 @@ public static class SignInMonitor
         return old.Count;
     }
 
+    /// `email`: also mails the owner about a sign-in from far away (null = in-app only).
     public static async Task<LoginHistory> RecordAsync(IApplicationDbContext db, int userId, string? ip, string? deviceHash,
-        DateTime now, CancellationToken ct)
+        DateTime now, CancellationToken ct, IEmailService? email = null)
     {
         var user = await db.Users.FirstAsync(u => u.Id == userId, ct);
         var location = IpIntelligence.Locate(ip);
@@ -54,20 +56,18 @@ public static class SignInMonitor
         user.LastLoginAt = now;
         if (location != null) (user.Latitude, user.Longitude) = (location.Latitude, location.Longitude);
 
+        string? alert = null;
         if (flags.Contains("ImpossibleTravel"))
         {
             // A seller account used from two continents within minutes: money must not leave before the owner reacts.
             if (user.Role == "Seller" && !(user.PayoutHoldUntil > now + TakeoverPayoutHold)) user.PayoutHoldUntil = now + TakeoverPayoutHold;
-            db.Notifications.Add(new Notification
-            {
-                UserId = userId, Title = "New sign-in location",
-                Content = $"Your account was signed in from {location!.Place}, far from your previous sign-in ({lastPlace!.Place}). "
-                        + "If this was not you, change your password and contact support.",
-                Type = "InApp", Status = "Sent", SentAt = now, CreatedAt = now,
-            });
+            alert = $"Your account was signed in from {location!.Place}, far from your previous sign-in ({lastPlace!.Place}). "
+                  + "If this was not you, change your password and contact support.";
+            SecurityAlert.Add(db, user, NewLocationTitle, alert, now);
         }
 
         await db.SaveChangesAsync(ct);
+        if (alert != null) await SecurityAlert.EmailAsync(email, user, NewLocationTitle, alert);
         return entry;
     }
 

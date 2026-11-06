@@ -15,8 +15,8 @@ public record RiskSignal(string Reason, int Weight);
 
 public record RiskAssessment(int Score, IReadOnlyList<string> Reasons)
 {
-    public const int ReviewThreshold = 30;
-    public const int RejectThreshold = 80;
+    public static int ReviewThreshold => AccountLinking.Options.ReviewThreshold;
+    public static int RejectThreshold => AccountLinking.Options.RejectThreshold;
     public string Decision => Score >= RejectThreshold ? "Reject" : Score >= ReviewThreshold ? "Review" : "Approve";
 }
 
@@ -31,19 +31,14 @@ public static class AccountLinking
         public const string Cccd = "Cccd", Email = "Email", Phone = "Phone", Bank = "Bank", Address = "Address", Ip = "Ip", Geo = "Geo", Device = "Device";
     }
 
-    // (linked to an active account, linked to a banned/rejected account)
-    private static readonly Dictionary<string, (int Active, int Banned)> Weights = new()
-    {
-        [Types.Cccd] = (80, 100),   // same citizen: the project allows one account per CCCD
-        [Types.Bank] = (50, 100),   // money goes to the same person
-        [Types.Email] = (40, 60),   // same mailbox behind gmail dots / +tags
-        [Types.Phone] = (30, 60),
-        [Types.Address] = (15, 40),
-        [Types.Ip] = (15, 30),      // NAT, cafés, mobile carriers: weak on its own
-        [Types.Geo] = (15, 20),
-        [Types.Device] = (30, 60),  // same browser (device_id cookie); a shared family PC is innocent, so not decisive
-    };
-    public const int DisposableEmailWeight = 20, DatacenterIpWeight = 20, NameMismatchWeight = 40;
+    /// Weights and thresholds (configuration section "Risk"). Set once at startup by Configure.
+    // ponytail: process-wide static, like the rest of this static class; becomes IOptionsMonitor if it ever needs reloading
+    public static RiskOptions Options { get; private set; } = new();
+    public static void Configure(RiskOptions options) => Options = options.Validate();
+
+    public static int DisposableEmailWeight => Options.DisposableEmailWeight;
+    public static int DatacenterIpWeight => Options.DatacenterIpWeight;
+    public static int NameMismatchWeight => Options.NameMismatchWeight;
     public static readonly TimeSpan DeviceMemory = TimeSpan.FromDays(90);
 
     private static readonly HashSet<string> DisposableDomains = new(StringComparer.OrdinalIgnoreCase)
@@ -73,7 +68,7 @@ public static class AccountLinking
         foreach (var byType in links.GroupBy(l => l.Type))
         {
             var banned = byType.Where(l => l.Banned).Select(l => l.UserId).Distinct().ToList();
-            var weight = banned.Count > 0 ? Weights[byType.Key].Banned : Weights[byType.Key].Active;
+            var weight = banned.Count > 0 ? Options.LinkWeights[byType.Key].Banned : Options.LinkWeights[byType.Key].Active;
             score += weight;
             var others = byType.Select(l => l.UserId).Distinct().Count();
             reasons.Add(banned.Count > 0
