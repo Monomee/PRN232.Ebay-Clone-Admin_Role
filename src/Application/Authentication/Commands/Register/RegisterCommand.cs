@@ -66,12 +66,20 @@ public class RegisterCommandHandler(IApplicationDbContext db, IEncryptionService
             throw Fail("CaptchaToken", "Xác minh captcha không thành công, vui lòng thử lại.");
 
         var email = request.Email.Trim().ToLowerInvariant();
-        if (await db.Users.AnyAsync(u => u.Email == email, cancellationToken))
-            throw Fail("Email", "Email đã được sử dụng.");
-        // ponytail: someone else's address can be squatted until its owner signs up; expire unverified sign-ups
-        // (e.g. after 24h) once there is a real sign-up page.
-
         var now = DateTime.UtcNow;
+        var existing = await db.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
+        if (existing != null)
+        {
+            // Anti-squatting: a sign-up that never proved the mailbox within UnverifiedExpiry gives the address back.
+            // The old row is kept (renamed, still Unverified so it can never sign in) as risk-linking evidence.
+            if (existing.Status != EmailOtp.UnverifiedStatus || existing.CreatedAt > now - EmailOtp.UnverifiedExpiry)
+                throw Fail("Email", "Email đã được sử dụng.");
+            existing.Email = $"released-{existing.Id}@invalid.local";
+            existing.EmailOtpHash = null;
+            existing.EmailOtpSentAt = null;
+            await db.SaveChangesAsync(cancellationToken); // free the unique email before the new row is inserted
+        }
+
         var user = new User
         {
             Email = email,

@@ -14,6 +14,8 @@ public static class EmailOtp
     public static readonly TimeSpan ResendCooldown = TimeSpan.FromMinutes(1);
     public const int MaxAttempts = 5;
     public const string UnverifiedStatus = "Unverified";
+    /// After this, someone else may register the same address (the unverified account loses it).
+    public static readonly TimeSpan UnverifiedExpiry = TimeSpan.FromHours(24);
 
     /// Sets a fresh code on the user (caller saves) and returns it for sending.
     public static string Issue(User user, IEncryptionService encryption, DateTime now)

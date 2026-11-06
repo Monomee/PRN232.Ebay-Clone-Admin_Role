@@ -1,6 +1,6 @@
 # Bảo mật & chống gian lận tài khoản (11/2026)
 
-Tổng hợp các thay đổi trong PR #17 → #26: thay đổi gì, cần chú ý gì, còn thiếu gì, và cách setup bản mới.
+Tổng hợp các thay đổi trong PR #17 → #27: thay đổi gì, cần chú ý gì, còn thiếu gì, và cách setup bản mới.
 
 | PR | Nội dung |
 |---|---|
@@ -14,6 +14,7 @@ Tổng hợp các thay đổi trong PR #17 → #26: thay đổi gì, cần chú 
 | #24 | `LogInsteadOfSending` được ưu tiên hơn SMTP đã cấu hình |
 | #25 | Cập nhật tài liệu cho PR #22–#24 |
 | #26 | Rà soát bảo mật: secret bị lộ, SignalR hub, endpoint mock, report sản phẩm, khóa đăng nhập, lỗi 500 |
+| #27 | Tắt Swagger ở Production, giải phóng email `Unverified` quá 24 giờ, Governance Records đủ action, sửa `App.test.js` |
 
 ---
 
@@ -139,7 +140,14 @@ Tổng hợp các thay đổi trong PR #17 → #26: thay đổi gì, cần chú 
 - **Khóa theo tài khoản:** sai mật khẩu 10 lần hoặc sai mã 2FA 5 lần trong 15 phút thì khóa 15 phút, **tính trên mọi IP** (rate limit cũ chỉ theo IP). Email không tồn tại cũng bị đếm, nên khóa không lộ email nào có tài khoản. Bộ đếm dùng Redis nếu có (`SecurityCache`).
 - **Lỗi không lường trước** (DB, null reference, ...): trả 500 với câu chung, chi tiết chỉ ghi log. `throw new Exception("...")` (thông báo nghiệp vụ) vẫn trả 400 kèm thông báo như cũ.
 
-### 1.10 Load test
+### 1.10 Swagger, chiếm email, Governance Records (PR #27)
+
+- **Swagger** (`/api`, `/swagger/v1/swagger.json`) tắt ở Production; bật có chủ đích bằng `Features:Swagger=true` (ví dụ khi demo).
+- **Chiếm email:** đăng ký bằng email của một tài khoản `Unverified` tạo quá 24 giờ thì email được giải phóng: dòng cũ đổi email thành `released-<id>@invalid.local`, vẫn `Unverified` (không đăng nhập được), giữ lại làm bằng chứng liên kết rủi ro. Tài khoản đã xác minh không bao giờ bị thay.
+- **Governance Records** trên trang user hiện thêm `LiftRestrictions`, `UpdateUserStatus` (tạm ngưng/kích hoạt), `ApplySellerPenalty`, `UnbanUser`.
+- **`App.test.js`** chạy được: Jest map `axios` sang bản CommonJS, `setupTests.js` thêm `TextEncoder` và thẻ `<base>`.
+
+### 1.11 Load test
 
 - Cấu hình `Security:AllowApiWithout2FA` cho phép tài khoản chưa bật 2FA gọi API, chỉ dùng khi chạy JMeter. App **từ chối khởi động** nếu bật ở Production. `docker-compose.loadtest.yml` đã bật sẵn.
 - JMeter plan 11 gửi cookie `2fa_challenge` thay cho `userId`.
@@ -177,19 +185,15 @@ Tổng hợp các thay đổi trong PR #17 → #26: thay đổi gì, cần chú 
 | Thông báo bảo mật | Chỉ in-app (bảng Notification) | Gửi email khi đổi ngân hàng hoặc đăng nhập từ nơi lạ |
 | Xác minh thêm khi đăng nhập lạ | Chỉ gắn cờ | Yêu cầu nhập lại 2FA hoặc xác nhận qua email |
 | Báo cho admin | Chỉ badge và banner trong trang user | Hàng chờ "tài khoản rủi ro", widget trên dashboard |
-| Governance Records | "Lift restrictions" không hiện (bộ lọc chỉ lấy Ban/Reject/Suspend) | Mở rộng bộ lọc |
 | Trọng số / ngưỡng | Hằng số trong code | Đưa vào cấu hình, tinh chỉnh bằng dữ liệu thật |
 | Hiệu năng job | Đồng bộ toàn bộ user mỗi 10 phút | Xử lý theo trang khi dữ liệu lớn (đã ghi chú `ponytail:`) |
 | OTP SMS | SĐT vẫn do user tự khai | Cần nhà cung cấp SMS; dùng lại cơ chế của `EmailOtp` |
-| Chiếm email | Đăng ký trước bằng email của người khác thì chủ thật không đăng ký được (email unique) | Xóa hoặc cho đăng ký đè tài khoản `Unverified` quá 24 giờ |
 | eKYC CCCD | Đã kiểm định dạng CCCD khi đăng ký; `IsVerified` vẫn chưa chặn chức năng nào | Dịch vụ eKYC (OCR + selfie/NFC); bắt buộc `IsVerified` với seller trước khi đăng bán/nhận tiền |
 | Xác minh tài khoản ngân hàng | Chỉ so tên với tên KYC tự khai | Tra tên chủ tài khoản qua Napas hoặc chuyển thử |
 | Một CCCD một tài khoản ở DB | Chỉ qua điểm rủi ro (CCCD trùng = 80 → từ chối) | Không đặt unique index: tài khoản trùng phải được lưu thì mới bị chấm và từ chối |
-| Swagger UI | Vẫn bật ở mọi môi trường; hiện có `InternalIps` chắn | Tắt ở Production khi mở app cho IP public |
 | Lịch sử git chứa secret cũ | Đã xóa khỏi bản hiện tại, đã chặn JWT key cũ | Đổi toàn bộ secret là đủ; xóa khỏi lịch sử (git filter-repo) không cần thiết sau khi đã đổi |
 | Cookie thiết bị | Dễ né bằng cửa sổ ẩn danh | Cố ý là tín hiệu yếu; không làm fingerprint canvas |
 | JMeter, k8s | Chưa chạy plan JMeter, chưa apply lên cluster thật | Chạy `tests/jmeter`, apply `k8s/` |
-| `App.test.js` | Fail từ trước (Jest không import được axios ESM) | Cấu hình `transformIgnorePatterns` cho axios |
 
 ---
 
@@ -234,6 +238,7 @@ DatabaseInitialization__RunMigrationsOnStartup=true
 | `Captcha:TurnstileSecretKey` | secret key Turnstile | **Bắt buộc ở Production** để đăng ký được. Key test luôn qua: `1x0000000000000000000000000000000AA` |
 | `EmailSettings:SenderEmail` / `SenderPassword` | Gmail + app password | Để gửi mã OTP thật |
 | `Jwt:Key` | ≥ 32 byte, ngẫu nhiên | **Phải đổi** (PR #26): app từ chối key ngắn, key đã lộ, và key mẫu ở Production |
+| `Features:Swagger` | không đặt | Mặc định: bật ngoài Production, tắt ở Production. Đặt `true` khi cần Swagger trên server demo |
 | `Features:MockingEndpoints` | không đặt | Mặc định: bật ngoài Production, tắt ở Production. Đặt `true` có chủ đích khi cần demo trên server |
 | `EmailSettings:LogInsteadOfSending` | `false` | Chỉ đặt `true` ở máy dev: mọi mail (cả mã OTP) chỉ in ra log, không gửi, kể cả khi đã có SMTP. App không khởi động nếu bật ở Production |
 

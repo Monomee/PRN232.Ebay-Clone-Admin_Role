@@ -37,6 +37,19 @@ public class SensitiveReadAndSeedTests
     }
 
     [Test]
+    public async Task UserProfile_GovernanceRecords_IncludeLiftAndStatusChanges()
+    {
+        var crypto = EncryptionServiceTests.Create();
+        _db.Users.AddRange(new User { Id = 1, Username = "fixture" }, new User { Id = 42, Username = "admin" });
+        foreach (var action in new[] { "BanUser", "LiftRestrictions", "UpdateUserStatus", "ResetPassword" })
+            _db.AdminActions.Add(new AdminAction { AdminId = 42, Action = action, TargetType = "User", TargetId = 1 });
+        await _db.SaveChangesAsync();
+        var dto = await new GetUserByIdQueryHandler(_db, SensitiveLogTests.Actor("42", "Support"), crypto, Logger()).Handle(new(1), default);
+        Assert.That(dto!.ViolationHistory.Select(v => v.Action),
+            Is.EquivalentTo(new[] { "BanUser", "LiftRestrictions", "UpdateUserStatus" }));
+    }
+
+    [Test]
     public async Task FinancialLists_DoNotExposeBankPlaintextOrCiphertext()
     {
         var crypto = EncryptionServiceTests.Create();
