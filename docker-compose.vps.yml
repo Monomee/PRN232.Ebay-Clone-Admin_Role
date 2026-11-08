@@ -1,0 +1,127 @@
+# ==============================================================================
+# docker-compose.vps.yml
+# Tối ưu hóa đặc biệt cho VPS 2 Core / 4GB RAM / 35GB SSD NVMe (Chạy chung với Petlify)
+#
+# Chiến lược phân bổ RAM (Tổng 4GB):
+# - Hệ điều hành + Docker Daemon: ~500MB
+# - Petlify (petlify-db + petlify-web + proxy): ~800MB - 1GB
+# - eBay SQL Server 2022 (Giới hạn trần): ~1.3GB - 1.4GB
+# - eBay Redis: ~64MB
+# - eBay API (1 instance tối ưu): ~280MB - 350MB
+# - eBay Internal Nginx: ~20MB
+# ==> Tổng RAM thực tế: ~3.1GB / 4.0GB (Dư ~900MB đệm + 4GB NVMe Swap chống sập OOM)
+# ==============================================================================
+
+services:
+  # ── 1. SQL Server 2022 (Tối ưu RAM cho máy 4GB) ─────────────────────────────
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    container_name: ebay_sqlserver
+    restart: unless-stopped
+    environment:
+      ACCEPT_EULA: "Y"
+      MSSQL_SA_PASSWORD: "${SA_PASSWORD}"
+      # Khống chế SQL Server không được ngốn quá 1350MB RAM
+      MSSQL_MEMORY_LIMIT_MB: "1350"
+    ports:
+      - "127.0.0.1:1433:1433" # Chỉ cho phép localhost trên VPS kết nối
+    volumes:
+      - ebay_sqlserver_data:/var/opt/mssql
+    deploy:
+      resources:
+        limits:
+          memory: 1500M
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools18/bin/sqlcmd -S localhost -U sa -P '${SA_PASSWORD}' -Q 'SELECT 1' -C -b -o /dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 40s
+    networks:
+      - ebay-net
+
+  # ── 2. Redis — SignalR Backplane (Giới hạn trần 128MB) ───────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: ebay_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 128mb --maxmemory-policy allkeys-lru
+    ports:
+      - "127.0.0.1:6379:6379"
+    deploy:
+      resources:
+        limits:
+          memory: 128M
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    networks:
+      - ebay-net
+
+  # ── 3. API Web (.NET 10 + React SPA) ────────────────────────────────────────
+  api1:
+    image: ${WEB_IMAGE:-ghcr.io/monomee/ebay_clone_adminrole:latest}
+    container_name: ebay_api_1
+    restart: unless-stopped
+    expose:
+      - "8080"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
+      ConnectionStrings__MyCnn: "Server=db,1433;Database=CloneEbayDB;User Id=sa;Password=${SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
+      DatabaseInitialization__RunMigrationsOnStartup: "${RUN_MIGRATIONS:-true}"
+      Seeding__Mode: "${SEEDING_MODE:-System}"
+      Jwt__Key: "${JWT_KEY}"
+      Security__EncryptionKey: "${ENCRYPTION_KEY:?Set a persistent 32-byte Base64 ENCRYPTION_KEY}"
+      Security__LegacyEncryptionKey: "${LEGACY_ENCRYPTION_KEY:-}"
+      Jwt__Issuer: "EbayClone"
+      Jwt__Audience: "EbayCloneUsers"
+      EmailSettings__SenderEmail: "${EMAIL_SENDER}"
+      EmailSettings__SenderPassword: "${EMAIL_PASSWORD}"
+      EmailSettings__SmtpServer: "smtp.gmail.com"
+      EmailSettings__Port: "587"
+      Redis__ConnectionString: "redis:6379"
+      # Duyệt rủi ro user mới, monitor, IP datacenter update, settlement, payout (Bắt buộc chạy trên instance duy nhất này)
+      BackgroundJobs__Enabled: "true"
+      # Cho phép truy cập từ Internet & Reverse Proxy
+      InternalIps__0: "${INTERNAL_IPS_ALLOW:-*}"
+      Security__AllowApiWithout2FA: "false"
+    deploy:
+      resources:
+        limits:
+          memory: 450M
+    networks:
+      - ebay-net
+
+  # ── 4. Internal Nginx (Load Balancer & SignalR WebSocket Proxy) ──────────────
+  nginx:
+    image: nginx:alpine
+    container_name: ebay_nginx_lb
+    restart: unless-stopped
+    ports:
+      # Port 5000: Dùng cho IP trực tiếp http://<IP_VPS>:5000 hoặc Reverse Proxy từ Nginx chính
+      - "5000:80"
+    volumes:
+      - ./nginx/nginx.vps.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api1
+    deploy:
+      resources:
+        limits:
+          memory: 64M
+    networks:
+      - ebay-net
+
+volumes:
+  ebay_sqlserver_data:
+    name: ebay_sqlserver_data
+
+networks:
+  ebay-net:
+    name: ebay-net
