@@ -181,6 +181,20 @@ public class RegisterTests
         (await _db.Users.CountAsync(u => u.Username == "shop_1")).ShouldBe(2);
     }
 
+    // A blocked network cannot sign up; the message does not say the IP is the reason.
+    [Test]
+    public async Task Register_FromBlockedNetwork_IsRefused()
+    {
+        _db.IpBlocks.Add(new EbayClone.Domain.Entities.IpBlock { Network = "14.161.1.1/32", Reason = "test", CreatedAt = DateTime.UtcNow, ExpiresAt = DateTime.UtcNow.AddDays(1) });
+        await _db.SaveChangesAsync();
+        var ex = await Should.ThrowAsync<ValidationException>(() => Register(Seller()));
+        ex.Errors.SelectMany(e => e.Value).ShouldAllBe(m => !m.Contains("IP"));
+        (await _db.Users.CountAsync()).ShouldBe(0);
+
+        await Register(Seller() with { RemoteIp = "14.161.1.2" });
+        (await _db.Users.CountAsync()).ShouldBe(1);
+    }
+
     [Test]
     public async Task Register_MailDown_AccountKeptAndCodeCanBeResent()
     {

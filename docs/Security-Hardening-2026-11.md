@@ -209,6 +209,30 @@ Tổng hợp các thay đổi trong PR #17 → #29: thay đổi gì, cần chú 
 - **Đăng nhập ở hai nơi xa nhau:** hai lần đăng nhập **cùng quốc gia không bao giờ** tính là di chuyển (dữ liệu cấp thành phố hay đặt 4G ở TP.HCM về trạm Hà Nội, cách 1.140 km). Khác quốc gia thì giữ luật cũ (≥ 500 km, > 900 km/h).
 - Docker/k8s chưa mount file: không đặt `GeoIp:DatabasePath` thì vẫn chạy bằng bảng mẫu.
 
+### 1.16 Blacklist IP khi đăng ký (`IpBlocklist`, bảng `IpBlocks`)
+
+Chặn theo **mức độ bằng chứng**, vì một IP thường là của nhiều người (4G dùng CGNAT, wifi trường/quán) và kẻ gian đổi IP rất dễ:
+
+| Mức | Điều kiện | Xử lý khi đăng ký từ IP đó |
+|---|---|---|
+| Theo dõi | IP trùng ≥ 1 tài khoản bị ban/từ chối | Như cũ: liên kết `Ip` với tài khoản bị khóa +30 điểm → admin duyệt (mục 1.2) |
+| **Chặn đăng ký** | ≥ 3 tài khoản bị ban/từ chối trong 30 ngày dùng IP này, **hoặc** IP datacenter/VPS có ≥ 1 tài khoản bị ban | Từ chối đăng ký trong **30 ngày**, hết hạn tự gỡ |
+| Admin chặn tay | Admin nhập IP hoặc dải CIDR, lý do, số ngày (1–365) | Từ chối đăng ký đến hết hạn |
+
+- **Chỉ chặn đăng ký**, không chặn đăng nhập: tài khoản thật đang chung IP vẫn dùng bình thường.
+- **Đơn vị chặn:** IPv4 là đúng địa chỉ đó (`/32`); IPv6 là cả dải `/64` (một thuê bao giữ cả `/64`, đổi địa chỉ trong đó rất dễ). Admin chặn được dải rộng nhất `/16` (IPv4) hoặc `/32` (IPv6), để gõ nhầm không chặn cả một nhà mạng.
+- **IP tính vào bằng chứng:** IP lúc đăng ký và mọi IP đăng nhập (`LoginHistories`) của tài khoản bị ban. IP private (proxy, Docker) không tính.
+- **Job tự động** chạy cùng monitor (mỗi 10 phút, cần `BackgroundJobs:Enabled`).
+- **Admin gỡ (Lift) thì giữ dòng** (`LiftedAt`): job không chặn lại trên cùng bằng chứng, chỉ chặn lại khi có tài khoản **mới** bị ban sau đó. Tương tự, block hết hạn không tự tạo lại nếu không có bằng chứng mới.
+- **Thông báo chung chung:** "Không thể đăng ký lúc này. Vui lòng thử lại sau hoặc liên hệ bộ phận hỗ trợ." Không cho kẻ gian biết bị chặn vì IP. Log server ghi rõ block nào chặn.
+- **Giao diện:** trang **Network Connections** (`/active-connections`, chỉ `SuperAdmin`):
+  - nút **Block** ở từng IP đang truy cập,
+  - form chặn tay,
+  - bảng blocklist với trạng thái `Active`/`Expired`/`Lifted` và nút **Lift**.
+- **API** (`SuperAdmin`): `GET /api/SystemAdmin/ip-blocks`, `POST /api/SystemAdmin/ip-blocks` (`{ network, reason, days }`), `POST /api/SystemAdmin/ip-blocks/{id}/lift`.
+- **Log:** `SensitiveDataLog` ghi `IpBlockAuto`, `IpBlock`, `IpBlockLift`.
+- **Thử trên một máy:** ban 3 tài khoản có cùng `LastLoginIp` public (ví dụ `14.161.1.1`), chờ job (≤ 10 phút) hoặc chặn tay, rồi đăng ký với header `X-Forwarded-For: 14.161.1.1` (mục 4.5).
+
 ---
 
 ## 2. Chú ý
@@ -263,7 +287,7 @@ git pull origin main
 dotnet build EbayClone.slnx
 ```
 
-Có 4 migration mới (3 migration đầu từ PR #18–#20, `EmailVerification` từ PR #23; PR #22, #24 và #26 không đổi DB). Tất cả chỉ thêm, an toàn khi rolling update.
+Có 5 migration mới (3 migration đầu từ PR #18–#20, `EmailVerification` từ PR #23, `IpBlocklist` mục 1.16; các PR khác không đổi DB). Tất cả chỉ thêm, an toàn khi rolling update.
 
 | Migration | Thay đổi |
 |---|---|
@@ -271,6 +295,7 @@ Có 4 migration mới (3 migration đầu từ PR #18–#20, `EmailVerification`
 | `20261105084303_SignInHistory` | Bảng `LoginHistories` |
 | `20261105090812_UniqueUserIdentifier` | Xóa dòng trùng, unique index `(UserId, Type, ValueHash)` |
 | `20261105181302_EmailVerification` | Cột `EmailVerifiedAt`, `EmailOtpHash`, `EmailOtpSentAt`, `EmailOtpAttempts` trên `User` |
+| `20261108095927_IpBlocklist` | Bảng `IpBlocks` (blacklist IP khi đăng ký, mục 1.16) |
 
 Áp migration bằng một trong hai cách:
 

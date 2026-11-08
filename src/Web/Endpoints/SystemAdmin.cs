@@ -1,3 +1,4 @@
+using EbayClone.Application.SystemAdmin.IpBlocks;
 using EbayClone.Domain.Constants;
 using EbayClone.Web.Infrastructure;
 using Microsoft.AspNetCore.Http.HttpResults;
@@ -13,6 +14,12 @@ public class SystemAdmin : EndpointGroupBase
         group.RequireAuthorization(policy => policy.RequireRole(Roles.SuperAdmin));
         
         group.MapGet("active-ips", GetActiveIps);
+
+        // Sign-up blocklist (IpBlocklist): automatic blocks from repeated bans plus manual ones; lifting keeps the row.
+        group.MapGet("ip-blocks", (ISender sender) => sender.Send(new GetIpBlocksQuery()));
+        group.MapPost("ip-blocks", async (ISender sender, BlockIpCommand command) => Results.Ok(new { id = await sender.Send(command) }));
+        group.MapPost("ip-blocks/{id:int}/lift", async (ISender sender, int id) =>
+            await sender.Send(new LiftIpBlockCommand(id)) ? Results.NoContent() : Results.NotFound());
     }
 
     public Ok<IEnumerable<ActiveConnection>> GetActiveIps(IActiveConnectionTracker tracker)

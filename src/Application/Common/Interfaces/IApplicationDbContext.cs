@@ -55,6 +55,8 @@ public interface IApplicationDbContext
     DbSet<UserIdentifier> UserIdentifiers { get; }
     DbSet<LoginHistory> LoginHistories { get; }
 
+    DbSet<IpBlock> IpBlocks { get; }
+
 
     // 2. Hàm lưu thay đổi (Quan trọng nhất)
 

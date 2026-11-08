@@ -595,6 +595,51 @@ namespace EbayClone.Infrastructure.Data.Migrations
                     b.ToTable("Inventory", (string)null);
                 });
 
+            modelBuilder.Entity("EbayClone.Domain.Entities.IpBlock", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("CreatedBy")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsAutomatic")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("LiftedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int?>("LiftedBy")
+                        .HasColumnType("int");
+
+                    b.Property<string>("Network")
+                        .IsRequired()
+                        .HasMaxLength(64)
+                        .HasColumnType("nvarchar(64)");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Network");
+
+                    b.HasIndex("LiftedAt", "ExpiresAt");
+
+                    b.ToTable("IpBlocks");
+                });
+
             modelBuilder.Entity("EbayClone.Domain.Entities.LoginHistory", b =>
                 {
                     b.Property<int>("Id")
