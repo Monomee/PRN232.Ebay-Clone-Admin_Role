@@ -6,18 +6,18 @@ using System.Text.Json;
 
 namespace EbayClone.Application.AuditLogs.Queries.GetAuditLogs;
 
-public record GetAuditLogsQuery : IRequest<PaginatedList<AuditLogDto>>
-{
-    public int PageNumber { get; init; } = 1;
-    public int PageSize { get; init; } = 20;
-    public int? AdminId { get; init; }
-    public string? AdminUsername { get; init; }
-    public string? TargetType { get; init; }
-    public int? TargetId { get; init; }
-    public string? Action { get; init; }
-    public DateTime? FromDate { get; init; }
-    public DateTime? ToDate { get; init; }
-}
+// Positional with defaults: [AsParameters] only treats a query value as optional when the constructor gives it a default
+// (property initializers are ignored), so a missing ?pageNumber= falls back here instead of failing the request.
+public record GetAuditLogsQuery(
+    int PageNumber = 1,
+    int PageSize = 20,
+    int? AdminId = null,
+    string? AdminUsername = null,
+    string? TargetType = null,
+    int? TargetId = null,
+    string? Action = null,
+    DateTime? FromDate = null,
+    DateTime? ToDate = null) : IRequest<PaginatedList<AuditLogDto>>;
 
 public class GetAuditLogsQueryHandler : IRequestHandler<GetAuditLogsQuery, PaginatedList<AuditLogDto>>
 {

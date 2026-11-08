@@ -5,12 +5,12 @@ using EbayClone.Application.Products.Queries.DTOs;
 
 namespace EbayClone.Application.Products.Queries.GetSellerProducts;
 
-public record GetSellerProductsQuery : IRequest<PaginatedList<ProductDto>>
-{
-    public int SellerId { get; set; }
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 10;
-}
+// Positional with defaults: [AsParameters] only treats a query value as optional when the constructor gives it a default
+// (property initializers are ignored), so a missing ?pageNumber= falls back here instead of failing the request.
+public record GetSellerProductsQuery(
+    int SellerId = 0,
+    int PageNumber = 1,
+    int PageSize = 10) : IRequest<PaginatedList<ProductDto>>;
 
 public class GetSellerProductsQueryHandler : IRequestHandler<GetSellerProductsQuery, PaginatedList<ProductDto>>
 {

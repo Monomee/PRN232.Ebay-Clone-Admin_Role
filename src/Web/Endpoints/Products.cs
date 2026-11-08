@@ -109,7 +109,6 @@ public class Products : EndpointGroupBase
 
     public async Task<PaginatedList<ProductDto>> GetSellerProducts(ISender sender, int sellerId, [AsParameters] GetSellerProductsQuery query)
     {
-        query.SellerId = sellerId;
-        return await sender.Send(query);
+        return await sender.Send(query with { SellerId = sellerId });
     }
 }

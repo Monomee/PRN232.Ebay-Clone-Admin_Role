@@ -4,13 +4,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EbayClone.Application.Broadcasts.Queries.GetBroadcasts;
 
-public record GetBroadcastsQuery : IRequest<PaginatedList<BroadcastDto>>
-{
-    public int PageNumber { get; init; } = 1;
-    public int PageSize { get; init; } = 10;
-    public string? Status { get; init; } // Pending, Sent, Scheduled
-    public string? Type { get; init; } // Email, InApp, SMS
-}
+// Positional with defaults: [AsParameters] only treats a query value as optional when the constructor gives it a default
+// (property initializers are ignored), so a missing ?pageNumber= falls back here instead of failing the request.
+public record GetBroadcastsQuery(
+    int PageNumber = 1,
+    int PageSize = 10,
+    string? Status = null, // Pending, Sent, Scheduled
+    string? Type = null) : IRequest<PaginatedList<BroadcastDto>>;
 
 public class GetBroadcastsQueryHandler : IRequestHandler<GetBroadcastsQuery, PaginatedList<BroadcastDto>>
 {

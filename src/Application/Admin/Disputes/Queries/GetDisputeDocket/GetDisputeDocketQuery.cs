@@ -6,24 +6,22 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EbayClone.Application.Admin.Disputes.Queries.GetDisputeDocket;
 
-public record GetDisputeDocketQuery : IRequest<PaginatedList<DisputeDto>>
-{
-    public int PageNumber { get; init; } = 1;
-    public int PageSize { get; init; } = 10;
-    
+// Positional with defaults: [AsParameters] only treats a query value as optional when the constructor gives it a default
+// (property initializers are ignored), so a missing ?pageNumber= falls back here instead of failing the request.
+public record GetDisputeDocketQuery(
+    int PageNumber = 1,
+    int PageSize = 10,
     // Filters
-    public string? Status { get; init; }
-    public string? Priority { get; init; }
-    public string? Type { get; init; }
-    public int? AssignedTo { get; init; }
-    public bool? OnlyMyDisputes { get; init; }
-    public bool? OnlyUrgent { get; init; }
-    public string? SearchTerm { get; init; }
-    
+    string? Status = null,
+    string? Priority = null,
+    string? Type = null,
+    int? AssignedTo = null,
+    bool? OnlyMyDisputes = null,
+    bool? OnlyUrgent = null,
+    string? SearchTerm = null,
     // Sorting
-    public string SortBy { get; init; } = "Deadline"; // Deadline, Amount, Priority, CreatedAt
-    public bool Descending { get; init; } = false;
-}
+    string SortBy = "Deadline", // Deadline, Amount, Priority, CreatedAt
+    bool Descending = false) : IRequest<PaginatedList<DisputeDto>>;
 
 public class GetDisputeDocketQueryHandler : IRequestHandler<GetDisputeDocketQuery, PaginatedList<DisputeDto>>
 {
