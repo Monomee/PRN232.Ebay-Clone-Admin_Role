@@ -58,7 +58,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    environment:
+    environment: &api-env
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Development}"
       ConnectionStrings__MyCnn: "Server=db,1433;Database=CloneEbayDB;User Id=sa;Password=${SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
       Jwt__Key: "${JWT_KEY}"
@@ -84,6 +84,10 @@ services:
   api2:
     <<: *api-common
     container_name: ebay_api_2
+    # `<<` chép nguyên environment của api1 (kể cả BackgroundJobs). Ghi đè lại để chỉ api1 chạy job.
+    environment:
+      <<: *api-env
+      BackgroundJobs__Enabled: "false"
 
   # ============================================================
   # Nginx Load Balancer (Cân bằng tải cho 2 instances API)
