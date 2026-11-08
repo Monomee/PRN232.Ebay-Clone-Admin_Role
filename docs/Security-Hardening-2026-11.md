@@ -184,6 +184,31 @@ Tổng hợp các thay đổi trong PR #17 → #29: thay đổi gì, cần chú 
   - **Plan 10, case 03** (`172.20.0.5` phải được vào) fail vì `appsettings.json` của máy chỉ cho `172.24.0.1`, không phải cả dải `172.x`. Dữ liệu test (`data/ip-cases.csv`) và `InternalIps` của từng máy phải khớp nhau; app chạy đúng theo cấu hình.
   - **Plan 01**: request thứ 6 không bị 429 khi có 2 replica, vì rate limit của app nằm trong bộ nhớ **từng replica** (xem mục 2, ghi chú 16). Chạy 1 replica thì có 429.
 
+### 1.14 Chống tạo nhiều tài khoản (nhánh `security/w9-anti-clone`)
+
+- **Email dùng một lần** (mailinator, yopmail, ...): bị từ chối ngay ở `register` (trước chỉ +20 điểm). Tài khoản tạo trước đó vẫn được chấm +20 như cũ.
+- **Username không được trùng** (kiểm ở `register`; tài khoản `Unverified` quá 24 giờ không giữ tên). Chỉ kiểm trong code, chưa có unique index.
+- **Một tài khoản ngân hàng chỉ cho một seller:** `PUT /api/Account/bank-account` trả 400 nếu số tài khoản đã thuộc tài khoản khác, và ghi `SensitiveDataLog` `BankAccountReuse` (kèm id tài khoản liên quan). Trước đây hai seller đang hoạt động dùng chung một tài khoản ngân hàng không bị gì, vì monitor chỉ xử lý khi trùng với tài khoản bị ban.
+- **Đăng ký hàng loạt từ một IP:** từ 3 tài khoản khác đã đăng ký từ cùng IP public trong 24 giờ trước đó thì cộng `Risk:SignupBurstWeight` (mặc định 30, tức chuyển admin duyệt). Bắt được kiểu tạo tài khoản bằng cửa sổ ẩn danh (cookie thiết bị mới mỗi lần). IP private (Docker, localhost) không tính. Chỉnh bằng `Risk:SignupBurstAccounts`, `Risk:SignupBurstWeight`.
+- **nginx** (cả bản k8s): `register`, `verify-email`, `resend-email-code` dùng chung giới hạn `limit_req` với `login` (12 lần/phút/IP, tính chung mọi replica).
+- **Background job** trong `docker-compose.yml`: `BackgroundJobs__Enabled=true` chỉ ở `api1` (settlement/payout chưa có khóa chạy một lần, bật hai replica có thể trả tiền hai lần).
+- Functional test thay `IEmailService` bằng bản giả: test không bao giờ gửi mail thật, kể cả khi `src/Web/appsettings.json` có Gmail thật.
+
+### 1.15 Vị trí IP cấp thành phố (DB-IP Lite)
+
+- **Dữ liệu:** DB-IP "IP to City Lite" (miễn phí, giấy phép CC BY 4.0, không cần tài khoản), cùng định dạng `.mmdb` với MaxMind GeoLite2. Đọc bằng thư viện `MaxMind.GeoIP2` (`GeoIpLocator`). Trang chi tiết user hiện dòng ghi nguồn "IP Geolocation by DB-IP" theo yêu cầu giấy phép.
+- **Cấu hình:** `GeoIp:DatabasePath` trỏ tới file. Không đặt thì dùng bảng mẫu cấp quốc gia như trước. Đặt mà file không tồn tại thì app **không khởi động**.
+- **Tải file** (~60 MB nén, ~120 MB giải nén, cập nhật hằng tháng, **không commit**: `data/geoip/` trong `.gitignore`):
+
+  ```bash
+  mkdir -p data/geoip
+  curl -L https://download.db-ip.com/free/dbip-city-lite-$(date +%Y-%m).mmdb.gz | gunzip > data/geoip/dbip-city-lite.mmdb
+  ```
+
+  rồi đặt `"GeoIp": { "DatabasePath": "<đường dẫn tuyệt đối>/data/geoip/dbip-city-lite.mmdb" }` trong `appsettings.Development.json`. Có thể dùng file GeoLite2 City của MaxMind thay thế (cần tài khoản MaxMind có quyền GeoLite).
+- **Đăng nhập ở hai nơi xa nhau:** hai lần đăng nhập **cùng quốc gia không bao giờ** tính là di chuyển (dữ liệu cấp thành phố hay đặt 4G ở TP.HCM về trạm Hà Nội, cách 1.140 km). Khác quốc gia thì giữ luật cũ (≥ 500 km, > 900 km/h).
+- Docker/k8s chưa mount file: không đặt `GeoIp:DatabasePath` thì vẫn chạy bằng bảng mẫu.
+
 ---
 
 ## 2. Chú ý
@@ -212,13 +237,13 @@ Tổng hợp các thay đổi trong PR #17 → #29: thay đổi gì, cần chú 
 
 | Mục | Hiện trạng | Hướng làm |
 |---|---|---|
-| Vị trí IP | Bảng mẫu cấp quốc gia (VN, US, JP) | MaxMind GeoLite2 (cần đăng ký key) |
+| Vị trí IP | Đã làm cấp thành phố bằng DB-IP Lite (mục 1.15) | Mount file vào Docker/k8s; cập nhật file hằng tháng |
 | Xác minh thêm khi đăng nhập lạ | Chỉ gắn cờ | Yêu cầu nhập lại 2FA hoặc xác nhận qua email |
 | Báo cho admin | Tab Risk Review và card ở trang Users; chưa có widget trên dashboard | Widget/badge số tài khoản chờ duyệt trên dashboard và sidebar |
 | Hiệu năng job | Đồng bộ toàn bộ user mỗi 10 phút | Xử lý theo trang khi dữ liệu lớn (đã ghi chú `ponytail:`) |
-| OTP SMS | SĐT vẫn do user tự khai | Cần nhà cung cấp SMS; dùng lại cơ chế của `EmailOtp` |
-| eKYC CCCD | Đã kiểm định dạng CCCD khi đăng ký; `IsVerified` vẫn chưa chặn chức năng nào | Dịch vụ eKYC (OCR + selfie/NFC); bắt buộc `IsVerified` với seller trước khi đăng bán/nhận tiền |
-| Xác minh tài khoản ngân hàng | Chỉ so tên với tên KYC tự khai | Tra tên chủ tài khoản qua Napas hoặc chuyển thử |
+| OTP SMS | SĐT vẫn do user tự khai | Xem `Identity-Verification-Roadmap.md` |
+| eKYC CCCD | Đã kiểm định dạng CCCD khi đăng ký; `IsVerified` vẫn chưa chặn chức năng nào | Xem `Identity-Verification-Roadmap.md` |
+| Xác minh tài khoản ngân hàng | Chỉ so tên với tên KYC tự khai | Xem `Identity-Verification-Roadmap.md` |
 | Một CCCD một tài khoản ở DB | Chỉ qua điểm rủi ro (CCCD trùng = 80 → từ chối) | Không đặt unique index: tài khoản trùng phải được lưu thì mới bị chấm và từ chối |
 | Lịch sử git chứa secret cũ | Đã xóa khỏi bản hiện tại, đã chặn JWT key cũ | Đổi toàn bộ secret là đủ; xóa khỏi lịch sử (git filter-repo) không cần thiết sau khi đã đổi |
 | Cookie thiết bị | Dễ né bằng cửa sổ ẩn danh | Cố ý là tín hiệu yếu; không làm fingerprint canvas |

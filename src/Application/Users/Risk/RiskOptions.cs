@@ -28,6 +28,10 @@ public class RiskOptions
     public int DisposableEmailWeight { get; set; } = 20;
     public int DatacenterIpWeight { get; set; } = 20;
     public int NameMismatchWeight { get; set; } = 40;
+    /// Account farming from one network with private windows (a fresh device cookie each time): this many earlier
+    /// sign-ups from the same public IP within SignupBurstWindow adds SignupBurstWeight (default: manual review).
+    public int SignupBurstAccounts { get; set; } = 3;
+    public int SignupBurstWeight { get; set; } = 30;
 
     /// Fails at startup instead of silently approving everyone (or rejecting everyone) because of a typo.
     public RiskOptions Validate()
@@ -43,7 +47,7 @@ public class RiskOptions
         foreach (var type in types)
             if (!LinkWeights.TryGetValue(type, out var w)) errors.Add($"Risk:LinkWeights:{type} is missing.");
             else if (w.Active < 0 || w.Banned < w.Active) errors.Add($"Risk:LinkWeights:{type}: 0 <= Active <= Banned is required.");
-        if (DisposableEmailWeight < 0 || DatacenterIpWeight < 0 || NameMismatchWeight < 0)
+        if (DisposableEmailWeight < 0 || DatacenterIpWeight < 0 || NameMismatchWeight < 0 || SignupBurstWeight < 0 || SignupBurstAccounts < 1)
             errors.Add("Risk: signal weights must not be negative.");
         if (errors.Count > 0) throw new InvalidOperationException(string.Join(" ", errors));
         return this;

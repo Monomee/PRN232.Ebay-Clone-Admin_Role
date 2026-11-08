@@ -30,7 +30,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         builder
             .UseEnvironment("Testing")
             .UseSetting("ConnectionStrings:MyCnn", _connectionString)
-            .UseSetting("Jwt:Key", "functional-test-signing-key-32bytes!")
+            .UseSetting("Captcha:TurnstileSecretKey", "") // a real key in src/Web/appsettings.json would demand a real captcha
+                .UseSetting("Jwt:Key", "functional-test-signing-key-32bytes!")
             .UseSetting("Security:EncryptionKey", Convert.ToBase64String(Enumerable.Repeat((byte)7, 32).ToArray()))
             .UseSetting("Jwt:Issuer", "EbayCloneTest")
             .UseSetting("Jwt:Audience", "EbayCloneTest");
@@ -38,6 +39,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IHostedService>();
+            // src/Web/appsettings.json may hold real Gmail credentials: tests must never mail anyone.
+            services.RemoveAll<IEmailService>().AddSingleton(new Mock<IEmailService>().Object);
 
             services
                 .RemoveAll<IUser>()

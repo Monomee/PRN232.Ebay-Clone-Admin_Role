@@ -148,6 +148,76 @@ public class SignInRulesTests
         Assert.That(await db.Notifications.CountAsync(n => n.Title == UpdateBankAccountCommandHandler.BankChangedTitle), Is.EqualTo(1));
     }
 
+    // City-level data puts 4G in Saigon at a Hanoi hub: same country is never travel, another country still is.
+    [Test]
+    public void ImpossibleTravel_NeverWithinOneCountry()
+    {
+        var hanoi = new LoginHistory { IpAddress = Hanoi, Latitude = 21.03, Longitude = 105.85, CreatedAt = T0 };
+        Assert.That(SignInMonitor.IsImpossibleTravel(hanoi, new IpLocation(10.82, 106.63, "Ho Chi Minh City, Vietnam", "VN"), T0.AddMinutes(5)), Is.False);
+        Assert.That(SignInMonitor.IsImpossibleTravel(hanoi, new IpLocation(39.83, -98.58, "Kansas, United States", "US"), T0.AddMinutes(5)), Is.True);
+    }
+
+    // The real database file (data/geoip, downloaded, not committed): city-level answers with the country code.
+    [Test]
+    public void GeoIpDatabase_LocatesCityWithCountry()
+    {
+        var path = Path.GetFullPath(Path.Combine(TestContext.CurrentContext.TestDirectory, "../../../../data/geoip/dbip-city-lite.mmdb"));
+        if (!File.Exists(path)) Assert.Ignore($"{path} not downloaded");
+        try
+        {
+            EbayClone.Infrastructure.Services.GeoIpLocator.Configure(path);
+            var vn = IpIntelligence.Locate(Hanoi)!;
+            Assert.That((vn.Country, vn.Place.Contains(',')), Is.EqualTo(("VN", true)), vn.Place);
+            Assert.That(IpIntelligence.Locate("8.8.8.8")!.Country, Is.EqualTo("US"));
+            Assert.That(IpIntelligence.Locate("10.0.0.1"), Is.Null);
+        }
+        finally { IpIntelligence.UseLocator(null); }
+    }
+
+    // One bank account, one seller: a second account pointing payouts at it is refused and the attempt is logged.
+    [Test]
+    public async Task BankAccount_UsedByAnotherAccount_IsRefused()
+    {
+        using var db = Db();
+        var crypto = EncryptionServiceTests.Create();
+        db.Users.AddRange(new User { Id = 1, Username = "a", Role = "Seller", Email = "a@example.com" },
+            new User { Id = 2, Username = "b", Role = "Seller", Email = "b@example.com" });
+        await db.SaveChangesAsync();
+        UpdateBankAccountCommandHandler Handler(string id)
+        {
+            var actor = SensitiveLogTests.Actor(id, "Seller");
+            return new(db, actor, crypto, new EbayClone.Infrastructure.Services.SensitiveDataLogger(db, crypto, actor), new Mock<IEmailService>().Object);
+        }
+
+        await Handler("1").Handle(new UpdateBankAccountCommand("VCB", "0011223344", "A"), default);
+        Assert.ThrowsAsync<EbayClone.Application.Common.Exceptions.ValidationException>(() =>
+            Handler("2").Handle(new UpdateBankAccountCommand("VCB", "0011-2233-44", "B"), default));
+        Assert.That((await db.Users.SingleAsync(u => u.Id == 2)).BankAccountMock, Is.Null);
+        Assert.That(await db.SensitiveDataLogs.CountAsync(l => l.Action == "BankAccountReuse"), Is.EqualTo(1));
+
+        await Handler("1").Handle(new UpdateBankAccountCommand("VCB", "0011223344", "A"), default); // own account again: fine
+    }
+
+    // Farming with private windows (new device cookie each time) from one network still adds up.
+    [Test]
+    public async Task SignupBurst_FromOnePublicIp_SendsToReview()
+    {
+        using var db = Db();
+        var crypto = EncryptionServiceTests.Create();
+        var t = DateTimeOffset.UtcNow;
+        for (var i = 1; i <= 4; i++)
+            db.Users.Add(new User { Id = i, Username = "u" + i, LastLoginIp = Hanoi, CreatedAt = t.AddMinutes(i) });
+        db.Users.Add(new User { Id = 9, Username = "dev", LastLoginIp = "172.18.0.1", CreatedAt = t.AddMinutes(9) });
+        db.Users.Add(new User { Id = 10, Username = "old", LastLoginIp = Hanoi, CreatedAt = t.AddDays(-3) });
+        await db.SaveChangesAsync();
+
+        async Task<int> Burst(int id) =>
+            (await AccountLinking.OwnSignalsAsync(db, await db.Users.SingleAsync(u => u.Id == id), crypto, default)).Sum(s => s.Weight);
+        Assert.That(await Burst(3), Is.Zero, "2 earlier sign-ups: under the bar");
+        Assert.That(await Burst(4), Is.EqualTo(AccountLinking.Options.SignupBurstWeight), "3 earlier in 24h");
+        Assert.That(await Burst(9), Is.Zero, "private IP is our proxy, never counted");
+    }
+
     [Test]
     public async Task OldSignIns_AreDeleted_AfterRetention()
     {

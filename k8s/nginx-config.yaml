@@ -76,7 +76,7 @@ data:
             }
 
             # ── Login + xác thực 2FA: giới hạn theo IP cho toàn cụm ─────
-            location ~ ^/api/Auth/(login|verify-2fa)$ {
+            location ~ ^/api/Auth/(login|verify-2fa|register|verify-email|resend-email-code)$ {
                 limit_req zone=auth_zone burst=6 nodelay;
                 proxy_pass         http://backend_api;
                 proxy_http_version 1.1;
