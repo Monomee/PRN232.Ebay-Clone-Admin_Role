@@ -7,18 +7,18 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EbayClone.Application.Users.Queries.GetUsers;
 
-public record GetUsersQuery : IRequest<PaginatedList<UserBriefDto>>
-{
-    public int PageNumber { get; init; } = 1;
-    public int PageSize { get; init; } = 10;
-    public string? Tab { get; init; } // All, PendingApproval, Banned, RiskReview (highest risk first)
-    public string? Status { get; init; }
-    public string? ApprovalStatus { get; init; }
-    public string? Role { get; init; }
-    public string? Search { get; init; }
-    public string? OrderBy { get; init; } = "Id";
-    public bool IsDescending { get; init; } = false;
-}
+// Positional with defaults: [AsParameters] only treats a query value as optional when the constructor gives it a default
+// (property initializers are ignored), so a missing ?pageNumber= falls back here instead of failing the request.
+public record GetUsersQuery(
+    int PageNumber = 1,
+    int PageSize = 10,
+    string? Tab = null, // All, PendingApproval, Banned, RiskReview (highest risk first)
+    string? Status = null,
+    string? ApprovalStatus = null,
+    string? Role = null,
+    string? Search = null,
+    string? OrderBy = "Id",
+    bool IsDescending = false) : IRequest<PaginatedList<UserBriefDto>>;
 
 public class GetUsersQueryHandler : IRequestHandler<GetUsersQuery, PaginatedList<UserBriefDto>>
 {

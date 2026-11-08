@@ -5,15 +5,15 @@ using EbayClone.Application.Products.Queries.DTOs;
 using MediatR;
 using Microsoft.EntityFrameworkCore;
 
-public record GetManagedProductsQuery : IRequest<PaginatedList<ManagedProductDto>>
-{
-    public string Tab { get; set; } = "All"; // "All" hoặc "Reported"
-    public int? CategoryId { get; set; }
-    public string? ShopName { get; set; }
-    public string? Search { get; set; } // Title or product id
-    public int PageNumber { get; set; } = 1;
-    public int PageSize { get; set; } = 10;
-}
+// Positional with defaults: [AsParameters] only treats a query value as optional when the constructor gives it a default
+// (property initializers are ignored), so a missing ?pageNumber= falls back here instead of failing the request.
+public record GetManagedProductsQuery(
+    string Tab = "All", // "All" hoặc "Reported"
+    int? CategoryId = null,
+    string? ShopName = null,
+    string? Search = null, // Title or product id
+    int PageNumber = 1,
+    int PageSize = 10) : IRequest<PaginatedList<ManagedProductDto>>;
 
 public class GetManagedProductsQueryHandler : IRequestHandler<GetManagedProductsQuery, PaginatedList<ManagedProductDto>>
 {

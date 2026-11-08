@@ -11,6 +11,18 @@ public class CustomExceptionHandler(ILogger<CustomExceptionHandler> logger) : IE
     {
         switch (exception)
         {
+            // Request binding failed (missing/malformed query value, bad JSON): the client's fault, not a server error.
+            case BadHttpRequestException badRequest:
+                httpContext.Response.StatusCode = badRequest.StatusCode;
+                await httpContext.Response.WriteAsJsonAsync(new ProblemDetails
+                {
+                    Status = badRequest.StatusCode,
+                    Title = "Yêu cầu không hợp lệ.",
+                    Detail = badRequest.Message,
+                    Type = "https://tools.ietf.org/html/rfc7231#section-6.5.1"
+                });
+                return true;
+
             case EbayClone.Application.Common.Exceptions.ValidationException validationException:
                 await HandleCustomValidationException(httpContext, validationException);
                 return true;

@@ -16,13 +16,13 @@ public record OrderBriefDto
     public int ItemCount { get; init; }
 }
 
-public record GetOrdersWithPaginationQuery : IRequest<PaginatedList<OrderBriefDto>>
-{
-    public int PageNumber { get; init; } = 1;
-    public int PageSize { get; init; } = 10;
-    public string? Status { get; init; }
-    public string? Search { get; init; }
-}
+// Positional with defaults: [AsParameters] only treats a query value as optional when the constructor gives it a default
+// (property initializers are ignored), so a missing ?pageNumber= falls back here instead of failing the request.
+public record GetOrdersWithPaginationQuery(
+    int PageNumber = 1,
+    int PageSize = 10,
+    string? Status = null,
+    string? Search = null) : IRequest<PaginatedList<OrderBriefDto>>;
 
 public class GetOrdersWithPaginationQueryHandler : IRequestHandler<GetOrdersWithPaginationQuery, PaginatedList<OrderBriefDto>>
 {

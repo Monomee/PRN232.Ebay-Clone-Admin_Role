@@ -5,13 +5,13 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EbayClone.Application.AdminRoles.Queries.GetAdminUsers;
 
-public record GetAdminUsersQuery : IRequest<PaginatedList<AdminUserRoleDto>>
-{
-    public int PageNumber { get; init; } = 1;
-    public int PageSize { get; init; } = 10;
-    public int? RoleId { get; init; }
-    public string? Search { get; init; }
-}
+// Positional with defaults: [AsParameters] only treats a query value as optional when the constructor gives it a default
+// (property initializers are ignored), so a missing ?pageNumber= falls back here instead of failing the request.
+public record GetAdminUsersQuery(
+    int PageNumber = 1,
+    int PageSize = 10,
+    int? RoleId = null,
+    string? Search = null) : IRequest<PaginatedList<AdminUserRoleDto>>;
 
 public class GetAdminUsersQueryHandler : IRequestHandler<GetAdminUsersQuery, PaginatedList<AdminUserRoleDto>>
 {
