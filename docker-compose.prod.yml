@@ -1,10 +1,14 @@
 # ============================================================
 # docker-compose.prod.yml
-# Dùng image đã build sẵn từ GitHub Container Registry
+# Dùng image đã build sẵn từ GitHub Container Registry (Multi-replica 2 API)
 # Đồng đội KHÔNG cần build — chỉ pull là chạy được
 #
+# LƯU Ý: File này chạy 2 instances API và mở port 80/5000.
+# NẾU TRIỂN KHAI TRÊN VPS 4GB CHẠY CHUNG PETLIFY:
+#   -> BẮT BUỘC dùng: docker-compose.vps.yml (1 instance, cap RAM, port 5000)
+#
 # Cách dùng:
-#   docker-compose -f docker-compose.prod.yml up
+#   docker-compose -f docker-compose.prod.yml up -d
 # ============================================================
 
 services:
@@ -39,7 +43,7 @@ services:
 
   # ── API Instance 1 (pull image từ GHCR) ────────────────────
   api1: &api-common-prod
-    image: ghcr.io/monomee/ebay_clone_adminrole:latest
+    image: ${WEB_IMAGE:-ghcr.io/monomee/ebay_clone_adminrole:latest}
     container_name: ebay_api_1
     expose:
       - "8080"
@@ -48,9 +52,11 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    environment:
+    environment: &api-env-prod
       ASPNETCORE_ENVIRONMENT: "${ASPNETCORE_ENVIRONMENT:-Production}"
       ConnectionStrings__MyCnn: "Server=db,1433;Database=CloneEbayDB;User Id=sa;Password=${SA_PASSWORD};Encrypt=True;TrustServerCertificate=True;"
+      DatabaseInitialization__RunMigrationsOnStartup: "${RUN_MIGRATIONS:-true}"
+      Seeding__Mode: "${SEEDING_MODE:-System}"
       Jwt__Key: "${JWT_KEY}"
       Security__EncryptionKey: "${ENCRYPTION_KEY:?Set a persistent 32-byte Base64 ENCRYPTION_KEY}"
       Security__LegacyEncryptionKey: "${LEGACY_ENCRYPTION_KEY:-}"
@@ -62,12 +68,20 @@ services:
       EmailSettings__Port: "587"
       # Redis backplane cho SignalR (load balancing real-time)
       Redis__ConnectionString: "redis:6379"
+      # Whitelist IP
+      InternalIps__0: "${INTERNAL_IPS_ALLOW:-*}"
+      Security__AllowApiWithout2FA: "${ALLOW_API_WITHOUT_2FA:-false}"
+      # CHỈ bật background jobs ở instance 1 (tránh thanh toán/settlement trùng lặp)
+      BackgroundJobs__Enabled: "true"
     restart: unless-stopped
 
   # ── API Instance 2 (pull image từ GHCR) ────────────────────
   api2:
     <<: *api-common-prod
     container_name: ebay_api_2
+    environment:
+      <<: *api-env-prod
+      BackgroundJobs__Enabled: "false"
 
   # ── Nginx Load Balancer ─────────────────────────────────────
   nginx:
