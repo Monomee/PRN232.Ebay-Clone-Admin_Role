@@ -89,8 +89,10 @@ services:
       Redis__ConnectionString: "redis:6379"
       # Duyệt rủi ro user mới, monitor, IP datacenter update, settlement, payout (Bắt buộc chạy trên instance duy nhất này)
       BackgroundJobs__Enabled: "true"
-      # Cho phép truy cập từ Internet & Reverse Proxy
-      InternalIps__0: "${INTERNAL_IPS_ALLOW:-*}"
+      # Cho phép truy cập từ Internet & Reverse Proxy (InternalIpMiddleware dùng chuẩn CIDR 0.0.0.0/0 & ::/0)
+      InternalIps__0: "${INTERNAL_IPS_ALLOW:-0.0.0.0/0}"
+      InternalIps__1: "::/0"
+      Features__Swagger: "${ENABLE_SWAGGER:-true}"
       Security__AllowApiWithout2FA: "false"
     deploy:
       resources:

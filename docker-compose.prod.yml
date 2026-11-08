@@ -68,8 +68,9 @@ services:
       EmailSettings__Port: "587"
       # Redis backplane cho SignalR (load balancing real-time)
       Redis__ConnectionString: "redis:6379"
-      # Whitelist IP
-      InternalIps__0: "${INTERNAL_IPS_ALLOW:-*}"
+      # Whitelist IP (CIDR 0.0.0.0/0 cho IPv4 & ::/0 cho IPv6)
+      InternalIps__0: "${INTERNAL_IPS_ALLOW:-0.0.0.0/0}"
+      InternalIps__1: "::/0"
       Security__AllowApiWithout2FA: "${ALLOW_API_WITHOUT_2FA:-false}"
       # CHỈ bật background jobs ở instance 1 (tránh thanh toán/settlement trùng lặp)
       BackgroundJobs__Enabled: "true"
