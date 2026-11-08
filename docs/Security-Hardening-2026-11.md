@@ -233,6 +233,14 @@ Chặn theo **mức độ bằng chứng**, vì một IP thường là của nhi
 - **Log:** `SensitiveDataLog` ghi `IpBlockAuto`, `IpBlock`, `IpBlockLift`.
 - **Thử trên một máy:** ban 3 tài khoản có cùng `LastLoginIp` public (ví dụ `14.161.1.1`), chờ job (≤ 10 phút) hoặc chặn tay, rồi đăng ký với header `X-Forwarded-For: 14.161.1.1` (mục 4.5).
 
+### 1.17 Sửa quyền custom role, branch protection, secret k8s
+
+- **Sửa quyền của custom role:** `PUT /api/AdminRoles/roles/{id}` (`{ description, permissions }`, chỉ `SuperAdmin`), nút **Edit** ở trang Admin Roles. Admin đang giữ role đó bị từ chối phiên ở request kế tiếp (`SessionValidation` so quyền trong token với role) và phải đăng nhập lại. Ghi `AdminActions` `UpdateAdminRole` (trước/sau) và `SensitiveDataLog` (`AdminPrivilege`).
+- **Chỉ nhận quyền cấp được** (`AdminPermissions.Grantable`: `ViewDashboard`, `ViewReports`, `ManageUsers`, `ManageProducts`, `ManageOrders`, `ManageDisputes`, `ModerateReviews`, `ManageBroadcasts`) khi tạo và khi sửa role. Tên sai hoặc quyền chỉ dành cho SuperAdmin (`ManageAdminRoles`, `ViewAuditLogs`) trả 400. Trước đây ô quyền là text tự do, lưu được tên không có tác dụng như `orders.read`; giờ là checkbox. Role cũ đã lưu tên sai vẫn đọc được, chỉ bị chặn khi lưu lại.
+- **`docker-compose.yml`:** `api2` kế thừa toàn bộ `environment` của `api1` qua `<<: *api-common`, nên trước đây **cả hai** đều bật `BackgroundJobs` (settlement/payout có thể chạy hai lần). `api2` giờ ghi đè `BackgroundJobs__Enabled: "false"`.
+- **`k8s/data-protection-secret.yaml`** (chứa `ENCRYPTION_KEY` thật) đã vào `.gitignore`, giống `k8s/secret.yaml`.
+- **Branch protection cho `main`** (cài trên GitHub, 2026-11-08): bắt buộc qua PR, check CI `Build & Test` phải xanh, áp dụng cả admin, cấm force push và xóa nhánh. Tắt tạm khi cần ở *Settings → Branches*.
+
 ---
 
 ## 2. Chú ý

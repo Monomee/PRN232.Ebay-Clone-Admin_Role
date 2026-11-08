@@ -43,9 +43,8 @@ Nếu v2 lỗi (migration hỏng, không kết nối được DB): pod v2 không
 kubectl config use-context docker-desktop
 kubectl apply -f k8s/namespace.yaml
 cp k8s/secret.example.yaml k8s/secret.yaml                       # điền SA_PASSWORD_*, JWT_KEY, EMAIL_PASSWORD (không commit)
-# ENCRYPTION_KEY: tạo thẳng bằng lệnh. KHÔNG copy ra k8s/data-protection-secret.yaml, vì file đó không nằm trong .gitignore
-kubectl -n ebay-clone create secret generic ebay-data-protection --from-literal=ENCRYPTION_KEY="<key Base64 32 byte, giống .env>"
-kubectl apply -f k8s/configmap.yaml -f k8s/secret.yaml
+cp k8s/data-protection-secret.example.yaml k8s/data-protection-secret.yaml   # điền ENCRYPTION_KEY (giống .env); file đã nằm trong .gitignore
+kubectl apply -f k8s/configmap.yaml -f k8s/secret.yaml -f k8s/data-protection-secret.yaml
 kubectl apply -f k8s/db-statefulset.yaml -f k8s/redis-deployment.yaml
 kubectl apply -f k8s/api-deployment.yaml -f k8s/api-service.yaml
 kubectl apply -f k8s/nginx-config.yaml -f k8s/nginx-deployment.yaml -f k8s/nginx-service.yaml

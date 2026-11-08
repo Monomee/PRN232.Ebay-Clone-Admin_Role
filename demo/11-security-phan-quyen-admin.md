@@ -28,8 +28,11 @@ Tóm tắt:
 ### Custom role (vai trò tự tạo)
 
 - Trang **Admin Roles** (`/admin-roles`, SuperAdmin).
-  - Tạo role mới, ví dụ *"QA Lead"*, và tick các quyền trong **Permission Matrix**.
+  - Tạo role mới, ví dụ *"QA Lead"*, và tick các quyền (checkbox).
+  - Bấm **Edit** ở một role để sửa mô tả và quyền (`PUT /api/AdminRoles/roles/{id}`).
   - Tạo tài khoản admin và gán role cho tài khoản đó.
+- Server chỉ nhận **8 quyền cấp được** (`AdminPermissions.Grantable`). Gõ sai tên, hoặc cố cấp quyền chỉ dành cho SuperAdmin như `ManageAdminRoles`, thì bị 400.
+- Mỗi lần sửa role ghi `AdminActions` `UpdateAdminRole` (trước/sau) và `SensitiveDataLog` (`AdminPrivilege`).
 - Quyền được lưu trong `AdminRole.Permissions` (mảng JSON). Lúc đăng nhập, quyền được đưa vào JWT dưới dạng claim `permission` (`AdminPermissions.cs`).
 - Server cấp quyền theo **danh sách quyền được cấp**, **không theo tên role**. Đặt tên role là "SuperAdmin 2" cũng không có thêm quyền.
 
@@ -45,7 +48,7 @@ Tóm tắt:
 - `SessionValidation` kiểm ở **mỗi request**.
 - Token cũ bị từ chối ngay khi:
   - role của user đổi (gán sang role khác);
-  - quyền của custom role đổi trong DB.
+  - quyền của custom role bị sửa (nút **Edit**).
 - Không phải chờ token hết hạn sau 60 phút.
 
 ### Mọi thao tác admin đều có audit
@@ -92,24 +95,23 @@ Chuẩn bị 3 cửa sổ: **A** = SuperAdmin, **B** = Support, **C** = Monitor.
 
 ### Demo 3: tạo custom role và thấy có hiệu lực (2 phút)
 
-1. Cửa sổ **A**, vào **Admin Roles**, tạo role *"Review Moderator"*. Chỉ tick `ViewDashboard` và `ModerateReviews`.
+1. Cửa sổ **A**, vào **Admin Roles**, tạo role *"Review Moderator"*. Chỉ tick **View dashboard** và **Reviews & feedback**.
 2. Tạo tài khoản admin mới, ví dụ `qa@ebay.local`, gán role vừa tạo.
 3. Đăng nhập `qa@ebay.local` ở cửa sổ ẩn danh mới và bật 2FA.
    - Sidebar chỉ có Dashboard và Review Monitoring.
    - `/api/Users` trả 403; `/api/Reviews/flagged` trả 200.
 4. **Thu hồi quyền tức thì:**
-   - ở cửa sổ A, tạo thêm role *"Viewer"* chỉ có `ViewDashboard`;
-   - gán `qa@ebay.local` sang role *Viewer* (**Modify Access**);
+   - ở cửa sổ A, bấm **Edit** ở role *Review Moderator*, bỏ tick **Reviews & feedback**, bấm **Save Permissions**;
    - ở cửa sổ qa, refresh trang Review Monitoring: **phiên bị từ chối ngay** (401), phải đăng nhập lại;
    - đăng nhập lại thì không còn mục Reviews.
-   - Ghi chú: hiện chưa có API sửa quyền của một role đã tạo (chỉ có tạo role và gán role). Muốn đổi quyền thì tạo role mới rồi gán lại. `SessionValidation` cũng xử lý trường hợp quyền của role bị đổi trong DB (test `ChangedPermissions_InvalidateExistingToken`).
+   - Cách khác: gán `qa@ebay.local` sang một role khác (**Modify Access**) cũng cho kết quả như vậy.
 5. Ý nghĩa: nhân viên nghỉ việc hoặc bị đổi vị trí thì mất quyền ngay, không chờ token hết hạn.
 
 ### Demo 4: audit log ghi đúng người làm (1 phút)
 
 1. Ở cửa sổ **B (Support)**, ban rồi unban một user.
 2. Ở cửa sổ **A**, vào **Audit Logs**, lọc theo admin `support`. Thấy 2 dòng `BanUser` và `UnbanUser`, kèm thời gian và đối tượng.
-3. Mở **Admin Roles**, phần **Governance Logs**: thấy lịch sử tạo role và gán role vừa làm ở Demo 3.
+3. Mở **Admin Roles**, phần **Governance Logs**: thấy lịch sử tạo role, sửa role (`UpdateAdminRole`, có quyền trước và sau) và gán role vừa làm ở Demo 3.
 
 ### Demo 5: seller hoặc buyer không vào được kênh của admin (30 giây, tùy chọn)
 
@@ -127,7 +129,7 @@ Trước bản vá, mọi user đăng nhập (kể cả seller) đều nhận br
 
 | Câu hỏi | Trả lời |
 |---|---|
-| Custom role có tự cấp được quyền SuperAdmin không? | Không. `ManageAdminRoles`, `ViewAuditLogs` và các trang hệ thống kiểm bằng **role SuperAdmin**, không cấp được qua permission |
+| Custom role có tự cấp được quyền SuperAdmin không? | Không. `ManageAdminRoles`, `ViewAuditLogs` và các trang hệ thống kiểm bằng **role SuperAdmin**. Server còn từ chối luôn việc lưu các quyền này vào role (400) |
 | Đổi quyền thì có phải chờ token hết hạn không? | Không, xem Demo 3, bước 4 |
 | Sao Administrator không vào được `/api/Users` trong JMeter? | Đúng thiết kế ban đầu (phân tách tài chính và vận hành). Ghi chú trong `tests/jmeter/README.md` |
 
@@ -135,5 +137,6 @@ Trước bản vá, mọi user đăng nhập (kể cả seller) đều nhận br
 
 ```bash
 dotnet test tests/Application.FunctionalTests --filter "FullyQualifiedName~RbacHttpTests|ChangedPermissions_InvalidateExistingToken|CustomRole_IsAuthorizedByGrantedPermissionsOnly"
+dotnet test tests/Application.UnitTests --filter "FullyQualifiedName~UpdateAdminRoleTests"
 # JMeter: tests/jmeter/plans/12-security-rbac.jmx
 ```

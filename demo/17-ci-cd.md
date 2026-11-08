@@ -52,7 +52,9 @@ git commit -am "demo: CI phát hiện test hỏng" && git push -u origin demo/ci
 gh pr create --title "demo: CI đỏ" --body "Demo CI" --draft
 ```
 
-- Tab **Checks** của PR hiện ❌ `build-and-test`, chỉ rõ test nào fail.
+- Tab **Checks** của PR hiện ❌ `Build & Test`, chỉ rõ test nào fail.
+- Nút **Merge** bị khóa (*Required status check "Build & Test" is failing*), kể cả với admin.
+- Thử `git push origin HEAD:main` thẳng lên `main`: bị từ chối (*protected branch*).
 - Sau demo: `gh pr close --delete-branch`.
 
 ### Demo 3: image trên GHCR (1 phút)
@@ -70,4 +72,4 @@ gh pr create --title "demo: CI đỏ" --body "Demo CI" --draft
 | Câu hỏi | Trả lời |
 |---|---|
 | Sao CD chưa tự `kubectl apply`? | Cluster thật chưa có. CD dừng ở bước đẩy image. Bước deploy chạy bằng `scripts/demo-rolling-update.sh` (file 20). Khi có cluster thì thêm job `kubectl set image` với kubeconfig để trong GitHub Secrets |
-| Có chặn merge khi CI đỏ không? | Quy ước nhóm: không merge khi CI đỏ. Branch protection trên GitHub **chưa bật**. Nên bật *Require status checks* cho `main` |
+| Có chặn merge khi CI đỏ không? | Có. Branch protection của `main` (bật 08/11): bắt buộc qua PR, check `Build & Test` phải xanh, áp dụng cả cho admin, cấm force push và xóa nhánh. PR có CI đỏ thì nút Merge bị khóa |
