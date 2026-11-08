@@ -96,7 +96,7 @@ const ActiveConnectionsPage = () => {
   const newlySeenCount = connections.filter(c => new Date(c.lastSeen) >= fiveMinsAgo).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: "'Inter', sans-serif", padding: '28px 20px' }}>
+    <div style={{ minHeight: '100%', background: 'transparent', fontFamily: "inherit", padding: '4px 0 24px' }}>
       <div className="container-fluid" style={{ maxWidth: 1300 }}>
         {/* ── Page Header (Standardized) ── */}
         <div className="text-center mb-5">

@@ -7,6 +7,7 @@ import { reviewsService } from '../services/reviewsService';
 import { useAuth } from '../services/useAuth';
 import { useNotificationHub } from '../hooks/useNotificationHub';
 import '../components/EbayProductDetail.css';
+import { notify } from '../utils/toast';
 
 const EbayProductDetail = () => {
     const { id } = useParams();
@@ -113,10 +114,10 @@ const EbayProductDetail = () => {
                 rating: reviewRating,
                 comment: reviewComment
             });
-            alert("Your review has been sent!");
+            notify("Your review has been sent!", 'success');
             window.location.reload();
         } catch (error) {
-            alert(error.response?.data || "An error occurred while sending the review. Please check if you have purchased this product.");
+            notify(error.response?.data || "An error occurred while sending the review. Please check if you have purchased this product.", 'error');
         }
     };
 
@@ -126,14 +127,14 @@ const EbayProductDetail = () => {
                 sellerId: user.userId,
                 reply: sellerReplyText
             });
-            alert("Response sent!");
+            notify("Response sent!", 'success');
             setReplyingTo(null);
             setSellerReplyText('');
             // Refresh data
             const updated = await productService.getProductById(id);
             setProduct(updated);
         } catch (error) {
-            alert("Error while responding.");
+            notify("Error while responding.", 'error');
         }
     };
 
@@ -144,19 +145,19 @@ const EbayProductDetail = () => {
                 reason: reportReason,
                 description: reportDescription
             });
-            alert("Reported this review to admin.");
+            notify("Reported this review to admin.", 'success');
             setReportingReview(null);
             setReportReason('Other');
             setReportDescription('');
         } catch (error) {
-            alert("Error while reporting.");
+            notify("Error while reporting.", 'error');
         }
     };
 
     const handleReportProduct = async (e) => {
         e.preventDefault();
         if (!isAuth) {
-            alert("Please login to report this product.");
+            notify("Please login to report this product.", 'warning');
             return;
         }
         setProductReportSubmitting(true);
@@ -170,12 +171,12 @@ const EbayProductDetail = () => {
                 status: "Pending",
                 priority: "Low"
             });
-            alert("Your report has been submitted. Our team will review it shortly.");
+            notify("Your report has been submitted. Our team will review it shortly.", 'success');
             setShowReportProduct(false);
             setProductReportReason('Counterfeit');
             setProductReportDescription('');
         } catch (error) {
-            alert(error.response?.data || "An error occurred while submitting your report.");
+            notify(error.response?.data || "An error occurred while submitting your report.", 'error');
         } finally {
             setProductReportSubmitting(false);
         }
@@ -341,11 +342,11 @@ const EbayProductDetail = () => {
                                 className="btn-report-product"
                                 onClick={() => {
                                     if (!isAuth) {
-                                        alert("Please login to report this product.");
+                                        notify("Please login to report this product.", 'warning');
                                         return;
                                     }
                                     if (isOwner) {
-                                        alert("You cannot report your own product.");
+                                        notify("You cannot report your own product.", 'warning');
                                         return;
                                     }
                                     setShowReportProduct(!showReportProduct);
@@ -502,7 +503,7 @@ const EbayProductDetail = () => {
                                                     style={{ background: 'none', border: 'none', color: '#767676', cursor: 'pointer', padding: 0, fontSize: '13px' }}
                                                     onClick={() => {
                                                         if (!isAuth) {
-                                                            alert("Please login to report.");
+                                                            notify("Please login to report.", 'warning');
                                                             return;
                                                         }
                                                         setReportingReview(reportingReview === review.id ? null : review.id);

@@ -159,7 +159,7 @@ export const ReviewMonitoringPage = () => {
     };
 
     return (
-        <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Inter', sans-serif", padding: '24px 20px' }}>
+        <div style={{ minHeight: '100%', background: 'transparent', fontFamily: "inherit", padding: '4px 0 24px' }}>
             <div className="container-fluid" style={{ maxWidth: 1240 }}>
                 
                 {/* Toast Notification */}
@@ -308,7 +308,7 @@ export const ReviewMonitoringPage = () => {
                                 <div className="col-12 col-md-4">
                                     <form onSubmit={handleReviewSearchSubmit} className="position-relative">
                                         <i className="bi bi-search position-absolute text-muted" style={{ top: '10px', left: '12px' }}></i>
-                                        <input 
+                                        <input aria-label="Search reviewer, product, comment" 
                                             type="text"
                                             className="form-control form-control-sm ps-5 rounded-pill border-light-subtle"
                                             placeholder="Search reviewer, product, comment..."
@@ -590,7 +590,7 @@ export const ReviewMonitoringPage = () => {
                                 <div className="col-12 col-md-6">
                                     <form onSubmit={handleFeedbackSearchSubmit} className="position-relative">
                                         <i className="bi bi-search position-absolute text-muted" style={{ top: '10px', left: '12px' }}></i>
-                                        <input 
+                                        <input aria-label="Search seller by name or email" 
                                             type="text"
                                             className="form-control form-control-sm ps-5 rounded-pill border-light-subtle"
                                             placeholder="Search seller by name or email..."
@@ -606,9 +606,9 @@ export const ReviewMonitoringPage = () => {
                                         onChange={(e) => { setTierFilter(e.target.value); setFeedbackPage(1); }}
                                     >
                                         <option value="All">Reputation Tier: All</option>
-                                        <option value="TopRated">🌟 Top Rated Seller (≥95% positive, ≥4.5 stars)</option>
-                                        <option value="AboveStandard">🔹 Above Standard (80 - 94% positive)</option>
-                                        <option value="BelowStandard">⚠️ Below Standard (&lt;80% positive - Needs Attention)</option>
+                                        <option value="TopRated">Top Rated Seller (≥95% positive, ≥4.5 stars)</option>
+                                        <option value="AboveStandard">Above Standard (80 - 94% positive)</option>
+                                        <option value="BelowStandard">Below Standard (&lt;80% positive - Needs Attention)</option>
                                     </select>
                                 </div>
                                 <div className="col-12 col-md-2 text-end">

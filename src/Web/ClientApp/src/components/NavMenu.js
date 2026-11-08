@@ -16,7 +16,7 @@ const SidebarLink = ({ to, icon, children }) => {
         className={`sidebar-link ${isActive ? 'active' : ''}`} 
         to={to}
       >
-        <i className={icon}></i>
+        <i className={icon} aria-hidden="true"></i>
         <span>{children}</span>
       </NavLink>
     </NavItem>
@@ -27,6 +27,18 @@ export const NavMenu = ({ isOpen, toggleSidebar, closeSidebar }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
 
+  // Same roles/permissions as the routes in AppRoutes.js
+  const operationLinks = [
+    ['/users', 'bi bi-people', 'Users', 'ManageUsers'],
+    ['/products', 'bi bi-box-seam', 'Products', 'ManageProducts'],
+    ['/orders', 'bi bi-cart', 'Orders', 'ManageOrders'],
+    ['/review-monitoring', 'bi bi-chat-left-text', 'Reviews', 'ModerateReviews'],
+    ['/disputes', 'bi bi-shield-exclamation', 'Disputes', 'ManageDisputes'],
+    ['/return-requests', 'bi bi-arrow-return-left', 'Return Requests', 'ManageOrders'],
+    ['/sellers', 'bi bi-person-badge', 'Sellers Overview', 'ManageUsers'],
+    ['/broadcasts', 'bi bi-megaphone', 'Broadcasts', 'ManageBroadcasts'],
+  ].filter(([, , , permission]) => canAccess(user, ['SuperAdmin', 'Support'], permission));
+
   const handleLogout = async () => {
     await logout();
     navigate('/login');
@@ -34,55 +46,46 @@ export const NavMenu = ({ isOpen, toggleSidebar, closeSidebar }) => {
 
   return (
     <>
-      <nav className={`sidebar shadow-sm ${isOpen ? 'show' : 'collapsed'}`}>
+      <nav className={`sidebar ${isOpen ? 'show' : 'collapsed'}`} aria-label="Main navigation">
         <div className="sidebar-header d-flex align-items-center justify-content-between px-3">
           <Link to="/" className="text-decoration-none d-flex align-items-center" onClick={closeSidebar}>
-            <span className="fw-bold" style={{ color: '#e53238' }}>e</span>
-            <span className="fw-bold" style={{ color: '#0064d2' }}>b</span>
-            <span className="fw-bold" style={{ color: '#f5af02' }}>a</span>
-            <span className="fw-bold" style={{ color: '#86b817' }}>y</span>
-            <span className="ms-1 text-dark small fw-semibold">{user?.role === 'Seller' ? 'Seller' : 'Admin'}</span>
+            <span className="brand-mark"><span className="e">e</span><span className="b">b</span><span className="a">a</span><span className="y">y</span></span>
+            <span className="ms-2 badge rounded-pill text-bg-light border fw-semibold" style={{ fontSize: '0.7rem', letterSpacing: 0 }}>{user?.role === 'Seller' ? 'Seller' : 'Admin'}</span>
           </Link>
           <button 
-            className="btn btn-link text-dark p-0 border-0 fs-4 d-flex align-items-center justify-content-center" 
+            type="button"
+            className="btn btn-link text-secondary p-0 border-0 fs-5 d-flex align-items-center justify-content-center" 
             onClick={toggleSidebar}
-            title="Toggle Sidebar"
+            title="Collapse sidebar"
+            aria-label="Collapse sidebar"
           >
-            <i className="bi bi-list"></i>
+            <i className="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
           </button>
         </div>
         <div className="sidebar-menu">
           <ul className="navbar-nav w-100" onClick={() => { if(window.innerWidth < 992) closeSidebar(); }}>
-            {user?.role !== 'Seller' && <SidebarLink to="/dashboard" icon="bi bi-speedometer2">Dashboard</SidebarLink>}
+            {user?.role !== 'Seller' && <SidebarLink to="/dashboard" icon="bi bi-grid-1x2">Dashboard</SidebarLink>}
             
             {user?.role === 'Seller' && (
               <>
+                <li className="sidebar-section">Store</li>
                 <SidebarLink to="/seller-products" icon="bi bi-box-seam">Your products</SidebarLink>
                 <SidebarLink to="/seller-bank-account" icon="bi bi-bank">Payout bank account</SidebarLink>
               </>
             )}
 
-            {/* Same roles/permissions as the routes in AppRoutes.js */}
-            {[
-              ['/users', 'bi bi-people', 'Users', 'ManageUsers'],
-              ['/products', 'bi bi-box-seam', 'Products', 'ManageProducts'],
-              ['/orders', 'bi bi-cart', 'Orders', 'ManageOrders'],
-              ['/review-monitoring', 'bi bi-chat-left-text', 'Reviews', 'ModerateReviews'],
-              ['/disputes', 'bi bi-shield-exclamation', 'Disputes', 'ManageDisputes'],
-              ['/return-requests', 'bi bi-cart', 'Return Requests', 'ManageOrders'],
-              ['/sellers', 'bi bi-person-badge', 'Sellers Overview', 'ManageUsers'],
-              ['/broadcasts', 'bi bi-megaphone', 'Broadcasts', 'ManageBroadcasts'],
-            ].filter(([, , , permission]) => canAccess(user, ['SuperAdmin', 'Support'], permission))
-              .map(([to, icon, label]) => <SidebarLink key={to} to={to} icon={icon}>{label}</SidebarLink>)}
+            {operationLinks.length > 0 && <li className="sidebar-section">Operations</li>}
+            {operationLinks.map(([to, icon, label]) => <SidebarLink key={to} to={to} icon={icon}>{label}</SidebarLink>)}
 
 
 
             {(user?.role === 'SuperAdmin' || user?.roles?.includes('SuperAdmin')) && (
               <>
+                <li className="sidebar-section">System</li>
                 <SidebarLink to="/payout-engine" icon="bi bi-lightning-charge">Payout Engine</SidebarLink>
 
 
-                <SidebarLink to="/audit-logs" icon="bi bi-bar-chart-line">Audit Logs</SidebarLink>
+                <SidebarLink to="/audit-logs" icon="bi bi-journal-text">Audit Logs</SidebarLink>
                 <SidebarLink to="/sensitive-logs" icon="bi bi-shield-lock">Sensitive Logs</SidebarLink>
                 <SidebarLink to="/admin-roles" icon="bi bi-gear">Admin Roles</SidebarLink>
                 <SidebarLink to="/active-connections" icon="bi bi-hdd-network">Active Connections</SidebarLink>
@@ -96,7 +99,8 @@ export const NavMenu = ({ isOpen, toggleSidebar, closeSidebar }) => {
               <li className="nav-item d-flex align-items-center mb-1">
                 <div 
                   className="rounded-circle text-white d-flex justify-content-center align-items-center shadow-sm"
-                  style={{ width: '36px', height: '36px', fontSize: '1rem', backgroundColor: '#0064d2', flexShrink: 0 }}
+                  style={{ width: '36px', height: '36px', fontSize: '0.95rem', fontWeight: 600, backgroundColor: 'var(--ebay-blue)', flexShrink: 0 }}
+                  aria-hidden="true"
                 >
                   {user.email ? user.email.charAt(0).toUpperCase() : <i className="bi bi-person"></i>}
                 </div>
@@ -113,12 +117,13 @@ export const NavMenu = ({ isOpen, toggleSidebar, closeSidebar }) => {
             
             <li className="nav-item mt-2">
               <button 
+                type="button"
                 className="btn btn-link sidebar-link border-0 w-100 text-start p-0 bg-transparent text-danger fw-medium" 
                 onClick={handleLogout}
                 style={{ cursor: 'pointer', textDecoration: 'none' }}
               >
-                <i className="bi bi-box-arrow-right"></i>
-                <span className="ms-2">Logout</span>
+                <i className="bi bi-box-arrow-right" aria-hidden="true"></i>
+                <span>Log out</span>
               </button>
             </li>
           </ul>

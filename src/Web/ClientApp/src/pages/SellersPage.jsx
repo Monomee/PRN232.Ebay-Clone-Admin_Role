@@ -296,7 +296,7 @@ export const SellersPage = () => {
     };
 
     return (
-        <div className="container-fluid py-4 bg-white" style={{ minHeight: '100vh' }}>
+        <div className="container-fluid px-0 pb-4">
             <ToastMessage
                 message={toast.message}
                 type={toast.type}
@@ -471,7 +471,7 @@ export const SellersPage = () => {
                             <span className="input-group-text bg-white border-end-0 text-muted pe-1">
                                 <i className="bi bi-search"></i>
                             </span>
-                            <input
+                            <input aria-label="Search name, email, UID"
                                 type="text"
                                 className="form-control border-start-0 shadow-none ps-2"
                                 placeholder="Search name, email, UID..."

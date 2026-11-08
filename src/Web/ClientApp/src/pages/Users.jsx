@@ -97,7 +97,7 @@ export const UserList = () => {
 
             <div className="row g-2 mb-3">
                 <div className="col-md-6">
-                    <input
+                    <input aria-label="Search by username/email"
                         className="form-control"
                         placeholder="Search by username/email..."
                         value={search}

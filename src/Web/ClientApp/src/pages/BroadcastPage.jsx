@@ -113,7 +113,7 @@ export function BroadcastPage() {
   const scheduledCount = (listData.items || []).filter(item => item.status === "Scheduled").length;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: "'Inter', sans-serif", padding: '28px 20px' }}>
+    <div style={{ minHeight: '100%', background: 'transparent', fontFamily: "inherit", padding: '4px 0 24px' }}>
       <div className="container-fluid" style={{ maxWidth: 1200 }}>
         {/* ── Page Header (Standardized) ── */}
         <div className="text-center mb-5">
@@ -148,7 +148,7 @@ export function BroadcastPage() {
               <div className="card-body p-4">
                 <div className="mb-4">
                   <label className="form-label fw-semibold small text-secondary mb-2">Announcement Title</label>
-                  <input
+                  <input aria-label="Short & punchy subject"
                     className="form-control border shadow-none bg-light bg-opacity-25 rounded-3 px-3"
                     placeholder="Short & punchy subject..."
                     value={form.title}
@@ -196,7 +196,7 @@ export function BroadcastPage() {
                   {form.targetAudience === "Group" && (
                     <div className="mb-4">
                       <label className="form-label fw-semibold small text-secondary mb-2">Segment Group</label>
-                      <input
+                      <input aria-label="Label or ID"
                         className="form-control border shadow-none bg-light bg-opacity-25 rounded-3 px-3"
                         placeholder="Label or ID"
                         value={form.targetGroup}

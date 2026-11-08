@@ -56,7 +56,7 @@ const SellerProductManagementPage = () => {
     };
 
     return (
-        <Container fluid className="px-5 py-4" style={{ backgroundColor: '#F9FAFB', minHeight: '100vh', fontFamily: "'Inter', sans-serif" }}>
+        <Container fluid className="px-0 pb-4">
             <div className="d-flex justify-content-between align-items-center mb-4">
                 <div>
                     <h2 style={{ fontWeight: 700, color: '#111827' }}>Product Management (Seller)</h2>

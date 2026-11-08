@@ -39,7 +39,7 @@ export function DisputeDetailPage() {
         return;
       }
       setToast({
-        message: `⚖️ Case ${data.caseId} resolved by another admin. Winner: ${data.winner}. Refreshing...`,
+        message: `Case ${data.caseId} resolved by another admin. Winner: ${data.winner}. Refreshing...`,
         type: "info"
       });
       loadDisputeDetail();
@@ -110,7 +110,7 @@ export function DisputeDetailPage() {
 
       justResolvedRef.current = true; // Set flag BEFORE calling API — SignalR may fire before API returns
       await disputeService.resolveDispute(id, payload);
-      setToast({ message: "✅ Dispute resolved successfully!", type: "success" });
+      setToast({ message: "Dispute resolved successfully!", type: "success" });
       setShowResolveModal(false);
       await loadDisputeDetail(); // Refresh once
     } catch (error) {

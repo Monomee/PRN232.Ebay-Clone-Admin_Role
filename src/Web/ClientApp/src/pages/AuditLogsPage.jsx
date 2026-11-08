@@ -68,7 +68,7 @@ export function AuditLogsPage() {
 
 
   return (
-    <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: "'Inter', sans-serif", padding: '28px 20px' }}>
+    <div style={{ minHeight: '100%', background: 'transparent', fontFamily: "inherit", padding: '4px 0 24px' }}>
       <div className="container-fluid" style={{ maxWidth: 1400 }}>
         {/* ── Page Header (Standardized) ── */}
         <div className="text-center mb-5">
@@ -114,7 +114,7 @@ export function AuditLogsPage() {
                 <div className="col-md-3">
                   <div className="position-relative">
                     <i className="bi bi-person position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary"></i>
-                    <input
+                    <input aria-label="Admin Username"
                       className="form-control border-0 bg-white rounded-pill ps-5 py-2 shadow-sm"
                       placeholder="Admin Username..."
                       value={filters.adminUsername}
@@ -126,7 +126,7 @@ export function AuditLogsPage() {
                 <div className="col-md-2">
                   <div className="position-relative">
                     <i className="bi bi-box position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary"></i>
-                    <input
+                    <input aria-label="Entity (Product, User)"
                       className="form-control border-0 bg-white rounded-pill ps-5 py-2 shadow-sm"
                       placeholder="Entity (Product, User...)"
                       value={filters.targetType}
@@ -138,7 +138,7 @@ export function AuditLogsPage() {
                 <div className="col-md-2">
                   <div className="position-relative">
                     <i className="bi bi-activity position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary"></i>
-                    <input
+                    <input aria-label="Action (Ban, Update)"
                       className="form-control border-0 bg-white rounded-pill ps-5 py-2 shadow-sm"
                       placeholder="Action (Ban, Update...)"
                       value={filters.action}
