@@ -26,6 +26,25 @@ public class SignInRulesHttpTests
     }
 
     [Test]
+    public async Task Login_OverPlainHttp_SetsCookiesWithoutSecure_SoBrowsersKeepThem()
+    {
+        using var factory = PublicFactory();
+        using (var scope = factory.Services.CreateScope())
+        {
+            var db = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            db.Users.Add(new User { Id = 741, Email = "plainhttp@test.local", Username = "plainhttp", Role = "Seller",
+                Password = BCrypt.Net.BCrypt.HashPassword("Passw0rd!") });
+            await db.SaveChangesAsync();
+        }
+
+        using var client = new HttpClient(factory.Server.CreateHandler(c => c.Connection.RemoteIpAddress = IPAddress.Loopback))
+            { BaseAddress = new Uri("http://localhost") };
+        var res = await client.PostAsJsonAsync("/api/Auth/login", new { email = "plainhttp@test.local", password = "Passw0rd!" });
+        var auth = res.Headers.GetValues("Set-Cookie").Single(c => c.StartsWith("auth_token="));
+        Assert.That(auth, Does.Contain("httponly").IgnoreCase.And.Not.Contain("secure").IgnoreCase);
+    }
+
+    [Test]
     public async Task SignIns_AreRecorded_WithRealIp_DeviceCookie_AndImpossibleTravel()
     {
         using var factory = PublicFactory();

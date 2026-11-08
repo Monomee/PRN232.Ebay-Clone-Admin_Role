@@ -53,6 +53,9 @@ public class Auth : EndpointGroupBase
              .RequireRateLimiting(RateLimitingExtensions.AuthenticatedPolicy);
     }
 
+    // Cookies use Secure = http.Request.IsHttps (real scheme, X-Forwarded-Proto from trusted proxies): browsers drop
+    // Secure cookies on plain http://<IP>, which left the VPS demo bouncing Login → /enable2FA → Login.
+    // ponytail: on HTTP the session cookie travels unencrypted; put the VPS behind HTTPS and this turns Secure back on.
     private const string TwoFactorChallengeCookie = "2fa_challenge";
 
     // Per-account lockout on top of the per-IP rate limit: guessing one account's password (or TOTP) from many IPs
@@ -75,7 +78,7 @@ public class Auth : EndpointGroupBase
             device = Convert.ToHexString(RandomNumberGenerator.GetBytes(16));
             http.Response.Cookies.Append(DeviceCookie, device, new CookieOptions
             {
-                HttpOnly = true, Secure = true, SameSite = SameSiteMode.Strict, Path = "/api/Auth",
+                HttpOnly = true, Secure = http.Request.IsHttps, SameSite = SameSiteMode.Strict, Path = "/api/Auth",
                 Expires = DateTimeOffset.UtcNow.AddDays(400), // browsers cap cookie lifetime at ~400 days
             });
         }
@@ -116,7 +119,7 @@ public class Auth : EndpointGroupBase
             http.Response.Cookies.Append(TwoFactorChallengeCookie, jwt.GenerateTwoFactorChallenge(result.UserId), new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,
+                Secure = http.Request.IsHttps,
                 SameSite = SameSiteMode.Strict,
                 Path = "/api/Auth",
                 Expires = DateTimeOffset.UtcNow.Add(JwtService.TwoFactorChallengeLifetime)
@@ -130,7 +133,7 @@ public class Auth : EndpointGroupBase
         http.Response.Cookies.Append("auth_token", result.Token!, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = http.Request.IsHttps,
             SameSite = SameSiteMode.Strict,
             Expires = DateTimeOffset.UtcNow.Add(JwtService.TokenLifetime) // cookie dies with the JWT inside it
         });
@@ -170,7 +173,7 @@ public class Auth : EndpointGroupBase
         http.Response.Cookies.Append("auth_token", result.Token!, new CookieOptions
         {
             HttpOnly = true,
-            Secure = true,
+            Secure = http.Request.IsHttps,
             SameSite = SameSiteMode.Strict,
             Expires = DateTimeOffset.UtcNow.Add(JwtService.TokenLifetime) // cookie dies with the JWT inside it
         });
