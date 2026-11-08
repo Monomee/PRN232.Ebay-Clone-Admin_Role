@@ -221,7 +221,7 @@ export function MockPage() {
                         <form onSubmit={handlePurchaseSubmit} className="d-flex flex-column gap-3">
                             <div className="pe-input-group">
                                 <label className="pe-input-label">Seller ID</label>
-                                <input type="number" className="pe-form-control" name="sellerId" value={purchaseData.sellerId} onChange={handlePurchaseChange} placeholder="Enter Seller ID" min="1" required />
+                                <input aria-label="Enter Seller ID" type="number" className="pe-form-control" name="sellerId" value={purchaseData.sellerId} onChange={handlePurchaseChange} placeholder="Enter Seller ID" min="1" required />
                             </div>
 
                             <div className="pe-input-group">
@@ -270,7 +270,7 @@ export function MockPage() {
                         <form onSubmit={handlePayoutSubmit} className="d-flex flex-column gap-3">
                             <div className="pe-input-group">
                                 <label className="pe-input-label">Seller ID</label>
-                                <input type="number" className="pe-form-control" name="sellerId" value={payoutData.sellerId} onChange={handlePayoutChange} placeholder="Enter Seller ID" min="1" required />
+                                <input aria-label="Enter Seller ID" type="number" className="pe-form-control" name="sellerId" value={payoutData.sellerId} onChange={handlePayoutChange} placeholder="Enter Seller ID" min="1" required />
                             </div>
 
                             <div className="pe-input-group">

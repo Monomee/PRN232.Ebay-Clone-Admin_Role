@@ -99,7 +99,7 @@ export function DisputesPage() {
   // Redis backplane đảm bảo nhận được ngay cả khi admin đó kết nối vào pod khác
   const handleDisputeResolved = useCallback((data) => {
     setToast({
-      message: `⚖️ Dispute ${data.caseId} resolved! Winner: ${data.winner}`,
+      message: `Dispute ${data.caseId} resolved! Winner: ${data.winner}`,
       type: "success"
     });
     // Tự động refresh danh sách để phản ánh trạng thái mới nhất
@@ -188,7 +188,7 @@ export function DisputesPage() {
   const unassignedCount = (disputesData.items || []).filter(d => !d.assignedTo).length;
 
   return (
-    <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: "'Inter', sans-serif", padding: '28px 20px' }}>
+    <div style={{ minHeight: '100%', background: 'transparent', fontFamily: "inherit", padding: '4px 0 24px' }}>
       <div className="container-fluid" style={{ maxWidth: 1400 }}>
         {/* ── Page Header (Standardized) ── */}
         <div className="text-center mb-5 position-relative">
@@ -293,7 +293,7 @@ export function DisputesPage() {
                     <div className="d-flex gap-2">
                       <div className="position-relative flex-grow-1">
                         <i className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary" style={{ fontSize: '0.85rem' }}></i>
-                        <input
+                        <input aria-label="Search Case ID, Buyer, Content"
                           type="text"
                           className="form-control border-0 bg-white rounded-pill ps-5 py-2 shadow-sm"
                           placeholder="Search Case ID, Buyer, Content..."

@@ -144,9 +144,9 @@ const OrdersPage = () => {
   );
 
   return (
-    <div className="container-fluid py-4" style={{ background: '#ffffff', minHeight: '100vh' }}>
+    <div className="container-fluid px-0 pb-4">
       <div className="d-flex flex-column align-items-center mb-5 text-center">
-        <h2 className="fw-bold mb-0 text-dark" style={{ letterSpacing: '-1px' }}>Order Management</h2>
+        <h1 className="h2 fw-bold mb-0 text-dark" style={{ letterSpacing: '-1px' }}>Order Management</h1>
         <p className="text-secondary mb-0 mt-2" style={{ fontSize: '0.95rem', maxWidth: '600px' }}>
           Monitor and fulfill platform transactions with an overview of all customer activities.
         </p>

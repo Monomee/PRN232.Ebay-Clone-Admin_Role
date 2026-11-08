@@ -59,17 +59,19 @@ export const AdminNotifications = () => {
     if (!user) return null;
 
     return (
-        <div ref={dropdownRef} style={{ position: 'fixed', top: '15px', right: '25px', zIndex: 1050 }}>
-            <button 
+        <div ref={dropdownRef} className="position-relative">
+            <button
+                type="button"
                 onClick={() => setIsOpen(!isOpen)}
-                className="btn btn-light rounded-circle shadow-sm position-relative d-flex align-items-center justify-content-center"
-                style={{ width: '45px', height: '45px', border: '1px solid #dee2e6' }}
+                className="btn-icon position-relative"
+                aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+                aria-expanded={isOpen}
             >
-                <i className="bi bi-bell-fill text-primary" style={{ fontSize: '1.2rem' }}></i>
+                <i className="bi bi-bell" style={{ fontSize: '1.1rem' }} aria-hidden="true"></i>
                 {unreadCount > 0 && (
-                    <span 
+                    <span
                         className="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"
-                        style={{ fontSize: '0.75rem' }}
+                        style={{ fontSize: '0.65rem' }}
                     >
                         {unreadCount > 9 ? '9+' : unreadCount}
                     </span>
@@ -77,14 +79,14 @@ export const AdminNotifications = () => {
             </button>
 
             {isOpen && (
-                <div 
-                    className="dropdown-menu dropdown-menu-end shadow-lg show" 
-                    style={{ position: 'absolute', top: '100%', right: '0', width: '350px', marginTop: '10px', maxHeight: '400px', overflowY: 'auto', padding: 0, borderRadius: '8px' }}
+                <div
+                    className="dropdown-menu dropdown-menu-end shadow-lg show"
+                    style={{ position: 'absolute', top: '100%', right: '0', width: 'min(360px, calc(100vw - 32px))', marginTop: '8px', maxHeight: '420px', overflowY: 'auto', padding: 0, borderRadius: '12px' }}
                 >
-                    <div className="p-3 bg-light border-bottom fw-bold d-flex justify-content-between align-items-center" style={{ borderRadius: '8px 8px 0 0' }}>
+                    <div className="px-3 py-2 border-bottom fw-semibold d-flex justify-content-between align-items-center bg-white sticky-top" style={{ borderRadius: '12px 12px 0 0' }}>
                         <span>Notifications</span>
-                        <button className="btn btn-sm btn-link p-0 text-decoration-none" onClick={loadNotifications}>
-                            <i className="bi bi-arrow-clockwise"></i>
+                        <button type="button" className="btn btn-sm btn-link p-0 text-decoration-none" onClick={loadNotifications} aria-label="Refresh notifications">
+                            <i className="bi bi-arrow-clockwise" aria-hidden="true"></i>
                         </button>
                     </div>
                     <div className="list-group list-group-flush">
@@ -94,7 +96,7 @@ export const AdminNotifications = () => {
                                     key={br.id} 
                                     className={`list-group-item list-group-item-action py-3 ${!br.isRead ? 'bg-light' : ''}`}
                                     onClick={() => !br.isRead && handleMarkAsRead(br.id)}
-                                    style={{ cursor: 'pointer', borderLeft: !br.isRead ? '4px solid #007bff' : 'none' }}
+                                    style={{ cursor: 'pointer', borderLeft: !br.isRead ? '3px solid var(--ebay-blue)' : 'none' }}
                                 >
                                     <div className="d-flex w-100 justify-content-between mb-1">
                                         <h6 className={`mb-1 ${!br.isRead ? 'fw-bold' : ''} text-dark`}>{br.title}</h6>

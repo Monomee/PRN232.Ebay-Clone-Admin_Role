@@ -167,7 +167,7 @@ export function AdminRolesPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: "'Inter', sans-serif", padding: '28px 20px' }}>
+    <div style={{ minHeight: '100%', background: 'transparent', fontFamily: "inherit", padding: '4px 0 24px' }}>
       <div className="container-fluid" style={{ maxWidth: 1400 }}>
         {/* ── Page Header (Standardized) ── */}
         <div className="text-center mb-5">
@@ -199,7 +199,7 @@ export function AdminRolesPage() {
                 <form className="row g-3" onSubmit={submitCreateRole}>
                   <div className="col-12">
                     <label className="form-label fw-semibold small text-secondary mb-2">Role Designation</label>
-                    <input
+                    <input aria-label="e.g. Sales Manager"
                       className="form-control border shadow-none bg-light bg-opacity-25 rounded-3 px-3"
                       placeholder="e.g. Sales Manager"
                       value={roleForm.roleName}
@@ -211,7 +211,7 @@ export function AdminRolesPage() {
                   </div>
                   <div className="col-12">
                     <label className="form-label fw-semibold small text-secondary mb-2">Responsibility Description</label>
-                    <input
+                    <input aria-label="Specify the scope of this role"
                       className="form-control border shadow-none bg-light bg-opacity-25 rounded-3 px-3"
                       placeholder="Specify the scope of this role..."
                       value={roleForm.description}
@@ -392,7 +392,7 @@ export function AdminRolesPage() {
           <div className="card-header bg-white border-bottom py-3 px-4 d-sm-flex align-items-center justify-content-between gap-3 flex-wrap">
             <h6 className="mb-0 fw-bold text-dark" style={{ letterSpacing: '-0.2px', fontSize: '1rem' }}>Administrative Accounts</h6>
             <div className="d-flex gap-2 flex-wrap flex-grow-1 justify-content-md-end" style={{ maxWidth: '600px' }}>
-              <input
+              <input aria-label="Search administrators"
                 className="form-control border shadow-none bg-light bg-opacity-25 rounded-3 px-3 flex-grow-1"
                 placeholder="Search administrators..."
                 value={search}

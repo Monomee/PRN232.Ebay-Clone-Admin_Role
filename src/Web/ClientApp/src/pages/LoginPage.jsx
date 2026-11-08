@@ -7,14 +7,9 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ─── Icons ──────────────────────────────────────────────────────────────────
 const EbayLogo = () => (
-  <svg viewBox="0 0 100 40" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: 90, height: 36 }}>
-    <text x="0" y="32" fontFamily="'Georgia', serif" fontSize="36" fontWeight="900" letterSpacing="-2">
-      <tspan fill="#E53238">e</tspan>
-      <tspan fill="#0064D2">b</tspan>
-      <tspan fill="#F5AF02">a</tspan>
-      <tspan fill="#86B817">y</tspan>
-    </text>
-  </svg>
+  <span className="brand-mark" style={{ fontSize: 30 }} aria-label="eBay">
+    <span className="e">e</span><span className="b">b</span><span className="a">a</span><span className="y">y</span>
+  </span>
 );
 
 const ShieldIcon = () => (
@@ -110,7 +105,7 @@ const CodeInput = ({ value, onChange, disabled }) => {
             textAlign: "center",
             fontSize: 22,
             fontWeight: 700,
-            fontFamily: "'DM Mono', monospace",
+            fontFamily: "var(--font-mono)",
             border: d ? "2px solid #0064D2" : "2px solid #dde3ef",
             borderRadius: 10,
             background: d ? "#f0f6ff" : "#fafbfd",
@@ -152,10 +147,6 @@ export default function LoginPage() {
 
   useEffect(() => {
     setMounted(true);
-    const link = document.createElement("link");
-    link.rel = "stylesheet";
-    link.href = "https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=DM+Sans:wght@400;500;600&family=DM+Mono:wght@400;500;700&display=swap";
-    document.head.appendChild(link);
   }, []);
 
   const triggerShake = () => {
@@ -299,7 +290,7 @@ export default function LoginPage() {
     width: "100%",
     padding: "14px 16px 14px 46px",
     fontSize: 15,
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "inherit",
     border: "2px solid #dde3ef",
     borderRadius: 12,
     background: "#fafbfd",
@@ -321,7 +312,7 @@ export default function LoginPage() {
     padding: "15px 24px",
     fontSize: 15,
     fontWeight: 600,
-    fontFamily: "'DM Sans', sans-serif",
+    fontFamily: "inherit",
     background: "linear-gradient(135deg, #0064D2 0%, #0041a8 100%)",
     color: "#fff",
     border: "none",
@@ -347,7 +338,7 @@ export default function LoginPage() {
         alignItems: "center",
         justifyContent: "center",
         padding: 20,
-        fontFamily: "'DM Sans', sans-serif",
+        fontFamily: "inherit",
         position: "relative",
         overflow: "hidden",
       }}>
@@ -365,7 +356,7 @@ export default function LoginPage() {
               <span style={{
                 fontSize: 13, fontWeight: 600, color: "#6b7a99",
                 letterSpacing: "2px", textTransform: "uppercase",
-                fontFamily: "'DM Sans', sans-serif",
+                fontFamily: "inherit",
               }}>Admin</span>
             </div>
           </div>
@@ -399,7 +390,7 @@ export default function LoginPage() {
                 <div style={{ marginBottom: 32 }}>
                   <h1 style={{
                     fontSize: 26, fontWeight: 800,
-                    fontFamily: "'Playfair Display', serif",
+                    fontFamily: "inherit",
                     color: "#0a1628", marginBottom: 6, letterSpacing: "-0.5px",
                   }}>Welcome back</h1>
                   <p style={{ fontSize: 14, color: "#6b7a99" }}>Sign in to your admin account</p>
@@ -408,7 +399,7 @@ export default function LoginPage() {
                 <form onSubmit={handleLogin}>
                   <div style={inputWrap}>
                     <span style={iconStyle}><MailIcon /></span>
-                    <input
+                    <input aria-label="admin@ebay.com"
                       type="email"
                       placeholder="admin@ebay.com"
                       value={email}
@@ -421,7 +412,7 @@ export default function LoginPage() {
 
                   <div style={{ ...inputWrap, marginBottom: 24 }}>
                     <span style={iconStyle}><LockIcon /></span>
-                    <input
+                    <input aria-label="Password"
                       type={showPw ? "text" : "password"}
                       placeholder="Password"
                       value={password}
@@ -449,7 +440,7 @@ export default function LoginPage() {
                       fontSize: 13, color: "#c0303a", fontWeight: 500,
                       display: "flex", alignItems: "center", gap: 8,
                     }}>
-                      <span style={{ fontSize: 16 }}>⚠</span> {error}
+                      <i className="bi bi-exclamation-circle-fill" aria-hidden="true"></i> {error}
                     </div>
                   )}
 
@@ -487,7 +478,7 @@ export default function LoginPage() {
                   </div>
                   <h1 style={{
                     fontSize: 24, fontWeight: 800,
-                    fontFamily: "'Playfair Display', serif",
+                    fontFamily: "inherit",
                     color: "#0a1628", marginBottom: 6,
                   }}>Two-Factor Auth</h1>
                   <p style={{ fontSize: 14, color: "#6b7a99", lineHeight: 1.6 }}>
@@ -507,7 +498,7 @@ export default function LoginPage() {
                       fontSize: 13, color: "#c0303a", fontWeight: 500,
                       display: "flex", alignItems: "center", gap: 8,
                     }}>
-                      <span style={{ fontSize: 16 }}>⚠</span> {error}
+                      <i className="bi bi-exclamation-circle-fill" aria-hidden="true"></i> {error}
                     </div>
                   )}
 
@@ -525,7 +516,7 @@ export default function LoginPage() {
                     style={{
                       width: "100%", marginTop: 12,
                       padding: "13px 24px", fontSize: 14, fontWeight: 500,
-                      fontFamily: "'DM Sans', sans-serif",
+                      fontFamily: "inherit",
                       background: "transparent", color: "#6b7a99",
                       border: "2px solid #eaeff8", borderRadius: 12, cursor: "pointer",
                       transition: "all 0.2s",

@@ -55,7 +55,7 @@ export function DisputeDashboard() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', background: '#ffffff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <LoadingIndicator text="Synthesizing dispute intelligence..." />
       </div>
     );
@@ -102,7 +102,7 @@ export function DisputeDashboard() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: "'Inter', sans-serif", padding: '28px 20px' }}>
+    <div style={{ minHeight: '100%', background: 'transparent', fontFamily: "inherit", padding: '4px 0 24px' }}>
       <div className="container-fluid" style={{ maxWidth: 1400 }}>
         
         {/* ── Page Header (Standardized) ── */}

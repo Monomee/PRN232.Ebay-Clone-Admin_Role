@@ -45,18 +45,18 @@ const protect = (element, allowedRoles = [], permission) => (
 const AppRoutes = [
   // ── Public ───────────────────────────────────────────────────────
   {
-    path: "/login",
+    path: "/login", title: "Sign in",
     element: <LoginPage />,
     noLayout: true
   },
   {
-    path: "/register",
+    path: "/register", title: "Create account",
     element: <RegisterPage />,
     noLayout: true
   },
   // ── Cần login nhưng chưa cần 2FA ─────────────────────────────────
   {
-    path: "/enable2FA",
+    path: "/enable2FA", title: "Two-factor setup",
     element: (
       <ProtectedRoute skip2FACheck>
         <Enable2FAPage />
@@ -67,117 +67,117 @@ const AppRoutes = [
 
   // ── Cần login + bắt buộc có 2FA ──────────────────────────────────
   {
-    index: true,
+    index: true, title: "Dashboard",
     element: protect(<DashboardPage />, ["SuperAdmin", "Support", "Monitor"], "ViewDashboard")
   },
   {
-    path: "/home",
+    path: "/home", title: "eBay: Electronics, Fashion, Collectibles & more",
     element: <EbayHomepage />,
     noLayout: true
   },
   {
-    path: "/dashboard",
+    path: "/dashboard", title: "Dashboard",
     element: protect(<DashboardPage />, ["SuperAdmin", "Support", "Monitor"], "ViewDashboard")
   },
   {
-    path: "/users",
+    path: "/users", title: "Users",
     element: protect(<UsersPage />, ["SuperAdmin", "Support"], "ManageUsers")
   },
   {
-    path: "/users/:userId",
+    path: "/users/:userId", title: "User details",
     element: protect(<UserDetailPage />, ["SuperAdmin", "Support"], "ManageUsers")
   },
   {
-    path: "/broadcasts",
+    path: "/broadcasts", title: "Broadcasts",
     element: protect(<BroadcastPage />, ["SuperAdmin", "Support"], "ManageBroadcasts")
   },
   {
-    path: "/admin-roles",
+    path: "/admin-roles", title: "Admin roles",
     element: protect(<AdminRolesPage />, ["SuperAdmin"])
   },
   {
-    path: "/audit-logs",
+    path: "/audit-logs", title: "Audit logs",
     element: protect(<AuditLogsPage />, ["SuperAdmin"])
   },
   {
-    path: "/sensitive-logs",
+    path: "/sensitive-logs", title: "Sensitive logs",
     element: protect(<SensitiveLogsPage />, ["SuperAdmin"])
   },
   {
-    path: "/fetch-data",
+    path: "/fetch-data", title: "Fetch data",
     element: protect(<FetchData />, ["SuperAdmin"])
   },
   {
-    path: "/disputes",
+    path: "/disputes", title: "Disputes",
     element: protect(<DisputesPage />, ["SuperAdmin", "Support"], "ManageDisputes")
   },
   {
-    path: "/disputes/dashboard",
+    path: "/disputes/dashboard", title: "Dispute analytics",
     element: protect(<DisputeDashboard />, ["SuperAdmin", "Support"], "ManageDisputes")
   },
   {
-    path: "/disputes/:id",
+    path: "/disputes/:id", title: "Dispute details",
     element: protect(<DisputeDetailPage />, ["SuperAdmin", "Support"], "ManageDisputes")
   },
 
 
   {
-    path: "/sellers",
+    path: "/sellers", title: "Sellers",
     element: protect(<SellersPage />, ["SuperAdmin", "Support"], "ManageUsers")
   },
 
   {
-    path: '/products',
+    path: '/products', title: "Product moderation",
     element: protect(<ProductModerationPage/>, ["SuperAdmin", "Support"], "ManageProducts")
   },
   {
-    path: '/review-monitoring',
+    path: '/review-monitoring', title: "Reviews",
     element: protect(<ReviewMonitoringPage />, ["SuperAdmin", "Support"], "ModerateReviews")
   },
   {
-    path: "/public",
+    path: "/public", title: "Public listings",
     element: protect(<ProductList />, ["SuperAdmin", "Support"])
   },
   {
-    path: "/seller-products",
+    path: "/seller-products", title: "Your products",
     element: protect(<SellerProductManagementPage />, ["SuperAdmin", "Support", "Seller"])
   },
   {
-    path: "/seller-bank-account",
+    path: "/seller-bank-account", title: "Payout bank account",
     element: protect(<SellerBankAccountPage />, ["Seller"])
   },
   {
-    path: "/product/:id",
+    path: "/product/:id", title: "Product · eBay",
     element: <EbayProductDetail />,
     noLayout: true
   },
 
   {
-    path: "/return-requests",
+    path: "/return-requests", title: "Return requests",
     element: protect(<ReturnRequestsPage />, ["SuperAdmin", "Support"], "ManageOrders")
   },
   {
-    path: "/return-requests/:id",
+    path: "/return-requests/:id", title: "Return request",
     element: protect(<ReturnRequestDetailPage />, ["SuperAdmin", "Support"], "ManageOrders")
   },
   {
-    path: "/mock",
+    path: "/mock", title: "Simulation toolbox",
     element: protect(<MockPage />, ["SuperAdmin"])
   },
   {
-    path: "/sellers/pending/:sellerId",
+    path: "/sellers/pending/:sellerId", title: "Seller pending funds",
     element: protect(<SellerPendingFundsPage />, ["SuperAdmin"])
   },
   {
-    path: "/payout-engine",
+    path: "/payout-engine", title: "Payout engine",
     element: protect(<PayoutEnginePage />, ["SuperAdmin"])
   },
   {
-    path: "/active-connections",
+    path: "/active-connections", title: "Active connections",
     element: protect(<ActiveConnectionsPage />, ["SuperAdmin"])
   },
   {
-    path: "/orders",
+    path: "/orders", title: "Orders",
     element: protect(<OrdersPage />, ["SuperAdmin", "Support", "Administrator"], "ManageOrders")
   }
 ];

@@ -105,8 +105,12 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="min-vh-100 d-flex align-items-center justify-content-center bg-light py-5 px-3">
-      <div className="card border-0 shadow-sm rounded-4 w-100" style={{ maxWidth: 520 }}>
+    <div className="auth-shell">
+      <div className="w-100" style={{ maxWidth: 520 }}>
+      <a href="/login" className="auth-brand" aria-label="eBay, back to sign in">
+        <span className="brand-mark"><span className="e">e</span><span className="b">b</span><span className="a">a</span><span className="y">y</span></span>
+      </a>
+      <div className="card border-0 shadow rounded-4 w-100">
         <div className="card-body p-4 p-md-5">
           <h1 className="h4 fw-bold mb-1">Create an account</h1>
           <p className="text-secondary small mb-4">Buyer or seller. Seller accounts need identity details (CCCD).</p>
@@ -116,10 +120,12 @@ export default function RegisterPage() {
 
           {step === "form" && (
             <form onSubmit={register} noValidate>
-              <div className="btn-group w-100 mb-3" role="group" aria-label="Account type">
+              <div className="segmented mb-4" role="group" aria-label="Account type">
                 {["Buyer", "Seller"].map((role) => (
-                  <button key={role} type="button" onClick={() => setForm({ ...form, role })}
-                    className={`btn ${form.role === role ? "btn-primary" : "btn-outline-primary"}`}>{role}</button>
+                  <button key={role} type="button" onClick={() => setForm({ ...form, role })} aria-pressed={form.role === role}
+                    className={form.role === role ? "active" : ""}>
+                    <i className={`bi ${role === "Buyer" ? "bi-bag" : "bi-shop"} me-2`} aria-hidden="true"></i>{role}
+                  </button>
                 ))}
               </div>
 
@@ -151,7 +157,7 @@ export default function RegisterPage() {
               {siteKey && <div ref={captchaRef} className="mb-3" />}
 
               <button type="submit" className="btn btn-primary w-100" disabled={busy || siteKey === null || (siteKey && !captchaToken)}>
-                {busy ? "Creating account..." : "Create account"}
+                {busy ? <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Creating account...</> : "Create account"}
               </button>
             </form>
           )}
@@ -162,18 +168,22 @@ export default function RegisterPage() {
               <input id="reg-code" inputMode="numeric" maxLength={6} autoComplete="one-time-code" className="form-control form-control-lg text-center mb-3"
                 value={code} onChange={(e) => setCode(e.target.value.replace(/\D/g, ""))} required />
               <button type="submit" className="btn btn-primary w-100 mb-2" disabled={busy || code.length !== 6}>
-                {busy ? "Checking..." : "Verify email"}
+                {busy ? <><span className="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Checking...</> : "Verify email"}
               </button>
               <button type="button" className="btn btn-link w-100 small" onClick={resend}>Send a new code</button>
             </form>
           )}
 
           {step === "done" && (
-            <p className="mb-0 small">Your account will be usable once it passes review. You will be able to sign in after that.</p>
+            <div className="text-center py-2">
+              <i className="bi bi-hourglass-split text-primary d-block mb-2" style={{ fontSize: "2rem" }} aria-hidden="true"></i>
+              <p className="mb-0 small text-secondary">Your account will be usable once it passes review. You will be able to sign in after that.</p>
+            </div>
           )}
 
-          <p className="text-center small mt-4 mb-0"><a href="/login">Back to sign in</a></p>
+          <p className="text-center small mt-4 mb-0 text-secondary">Already have an account? <a href="/login" className="fw-semibold">Sign in</a></p>
         </div>
+      </div>
       </div>
     </div>
   );

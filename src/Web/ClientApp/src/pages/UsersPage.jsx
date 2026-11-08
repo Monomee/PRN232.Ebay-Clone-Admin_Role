@@ -107,7 +107,7 @@ export function UsersPage() {
 
 
   return (
-    <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: "'Inter', sans-serif", padding: '28px 20px' }}>
+    <div style={{ minHeight: '100%', background: 'transparent', fontFamily: "inherit", padding: '4px 0 24px' }}>
       <div className="container-fluid" style={{ maxWidth: 1300 }}>
         {/* ── Page Header (Standardized) ── */}
         <div className="text-center mb-5">
@@ -175,7 +175,7 @@ export function UsersPage() {
                 <div className="d-flex gap-2 flex-grow-1" style={{ maxWidth: '450px' }}>
                   <div className="position-relative flex-grow-1">
                     <i className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary" style={{ fontSize: '0.85rem' }}></i>
-                    <input
+                    <input aria-label="Search accounts"
                       type="text"
                       className="form-control border-0 bg-white rounded-pill ps-5 py-2 shadow-sm"
                       placeholder="Search accounts..."

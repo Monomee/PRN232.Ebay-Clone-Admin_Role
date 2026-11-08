@@ -1,65 +1,47 @@
 import React, { useState } from 'react';
 import { exportToExcel, exportToPDF } from '../../services/exportService';
+import { notify } from '../../utils/toast';
 
 export const DashboardActions = ({ metrics, stats, dashboardId, dateRange }) => {
   const [exporting, setExporting] = useState(false);
 
   const handleExcelExport = () => {
     const success = exportToExcel(metrics, stats, dateRange);
-    if (!success) alert("Failed to export Excel.");
+    if (!success) notify("Failed to export Excel.", 'error');
   };
 
   const handlePDFExport = async () => {
     setExporting(true);
     const success = await exportToPDF(dashboardId);
     setExporting(false);
-    if (!success) alert("Failed to export PDF.");
+    if (!success) notify("Failed to export PDF.", 'error');
   };
 
   return (
     <div className="d-flex gap-2 ms-2">
-      <button 
-        className="btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 shadow-sm"
+      <button
+        type="button"
+        className="btn btn-sm btn-light border d-inline-flex align-items-center gap-2 px-3"
         onClick={handleExcelExport}
-        title="Download Excel Spreadsheet"
-        style={{ 
-          width: 36, 
-          height: 36, 
-          backgroundColor: '#15833b', 
-          color: '#fff',
-          transition: 'all 0.2s',
-        }}
-        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        title="Download Excel spreadsheet"
       >
-        <div className="d-flex flex-column align-items-center" style={{ lineHeight: 0.8 }}>
-          <i className="bi bi-file-earmark-arrow-down-fill" style={{ fontSize: '16px' }}></i>
-          <span style={{ fontSize: '7px', fontWeight: '900', marginTop: '2px' }}>XLS</span>
-        </div>
+        <i className="bi bi-file-earmark-spreadsheet text-success" aria-hidden="true"></i>
+        <span>Excel</span>
       </button>
-      
-      <button 
-        className={`btn btn-sm rounded-circle d-flex align-items-center justify-content-center border-0 shadow-sm ${exporting ? 'disabled' : ''}`}
+
+      <button
+        type="button"
+        className={`btn btn-sm btn-light border d-inline-flex align-items-center gap-2 px-3 ${exporting ? 'disabled' : ''}`}
         onClick={handlePDFExport}
-        title="Download PDF Report"
-        style={{ 
-          width: 36, 
-          height: 36, 
-          backgroundColor: '#e0103a', 
-          color: '#fff',
-          transition: 'all 0.2s',
-        }}
-        onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.1)'}
-        onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+        title="Download PDF report"
+        aria-busy={exporting}
       >
         {exporting ? (
           <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
         ) : (
-          <div className="d-flex flex-column align-items-center" style={{ lineHeight: 0.8 }}>
-            <i className="bi bi-file-earmark-arrow-down-fill" style={{ fontSize: '16px' }}></i>
-            <span style={{ fontSize: '7px', fontWeight: '900', marginTop: '2px' }}>PDF</span>
-          </div>
+          <i className="bi bi-file-earmark-pdf text-danger" aria-hidden="true"></i>
         )}
+        <span>PDF</span>
       </button>
     </div>
   );

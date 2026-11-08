@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { NavMenu } from './NavMenu';
 import { AdminNotifications } from './AdminNotifications';
 
-export const Layout = ({ children }) => {
+export const Layout = ({ children, title }) => {
   const [sidebarOpen, setSidebarOpen] = useState(window.innerWidth > 992);
 
   // Handle auto-close on mobile when navigating (could be added to NavMenu instead)
@@ -25,34 +25,30 @@ export const Layout = ({ children }) => {
   return (
     <div className={`app-container ${sidebarOpen ? 'sidebar-open' : 'sidebar-closed'}`}>
       <NavMenu isOpen={sidebarOpen} toggleSidebar={toggleSidebar} closeSidebar={closeSidebar} />
-      <AdminNotifications />
-      
+
       <main className="main-content">
-        {/* ── Floated Toggle Button (Only when sidebar is closed) ── */}
-        {!sidebarOpen && (
-          <button 
-            className="btn shadow-sm d-flex align-items-center justify-content-center position-fixed" 
-            onClick={toggleSidebar}
-            style={{ 
-              top: '20px', 
-              left: '20px', 
-              zIndex: 1100, 
-              width: '45px', 
-              height: '45px', 
-              borderRadius: '12px',
-              backgroundColor: '#fff',
-              border: '1px solid var(--ebay-border)',
-              color: 'var(--ebay-black)'
-            }}
-          >
-            <i className="bi bi-list fs-4"></i>
-          </button>
-        )}
+        {/* Top bar: menu button (when the sidebar is hidden), page title, notifications on the right */}
+        <header className="app-topbar">
+          {!sidebarOpen && (
+            <>
+              <button type="button" className="btn-icon" onClick={toggleSidebar} aria-label="Open navigation menu">
+                <i className="bi bi-list fs-5" aria-hidden="true"></i>
+              </button>
+              <span className="brand-mark d-none d-sm-inline" aria-hidden="true">
+                <span className="e">e</span><span className="b">b</span><span className="a">a</span><span className="y">y</span>
+              </span>
+            </>
+          )}
+          {title && <span className="app-topbar-title text-truncate">{title}</span>}
+          <div className="ms-auto">
+            <AdminNotifications />
+          </div>
+        </header>
         {children}
       </main>
 
       {/* ── Sidebar Overlay (Mobile Only) ── */}
-      <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={closeSidebar}></div>
+      <div className={`sidebar-overlay ${sidebarOpen ? 'show' : ''}`} onClick={closeSidebar} aria-hidden="true"></div>
     </div>
   );
 };

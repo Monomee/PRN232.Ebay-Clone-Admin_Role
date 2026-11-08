@@ -130,7 +130,7 @@ export const SensitiveLogsPage = () => {
     };
 
     return (
-        <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'Inter', sans-serif", padding: '24px 20px' }}>
+        <div style={{ minHeight: '100%', background: 'transparent', fontFamily: "inherit", padding: '4px 0 24px' }}>
             <div className="container-fluid" style={{ maxWidth: 1260 }}>
 
                 {/* Toast Notification */}
@@ -249,7 +249,7 @@ export const SensitiveLogsPage = () => {
                             <div className="col-12 col-md-4">
                                 <form onSubmit={handleSearchSubmit} className="position-relative">
                                     <i className="bi bi-search position-absolute text-muted" style={{ top: '10px', left: '12px' }}></i>
-                                    <input 
+                                    <input aria-label="Search by Actor, Action, Target, IP" 
                                         type="text"
                                         className="form-control form-control-sm ps-5 rounded-pill border-light-subtle"
                                         placeholder="Search by Actor, Action, Target, IP..."

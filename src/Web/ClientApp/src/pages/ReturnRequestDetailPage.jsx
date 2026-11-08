@@ -95,12 +95,11 @@ export default function ReturnRequestDetailPage() {
 
   if (loading) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ width: 44, height: 44, border: '3px solid #e5e7eb', borderTop: '3px solid #6366f1', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 14px' }} />
-          <p style={{ color: '#9ca3af', fontFamily: "'DM Sans', sans-serif" }}>Loading details...</p>
+          <div style={{ width: 44, height: 44, border: '3px solid #e5e7eb', borderTop: '3px solid #0064d2', borderRadius: '50%', animation: 'spin 0.8s linear infinite', margin: '0 auto 14px' }} />
+          <p style={{ color: '#9ca3af', fontFamily: "inherit" }}>Loading details...</p>
         </div>
       </div>
     );
@@ -108,11 +107,10 @@ export default function ReturnRequestDetailPage() {
 
   if (error || !detail) {
     return (
-      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#f8fafc' }}>
-        <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+      <div style={{ minHeight: '60vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <div style={{ textAlign: 'center' }}>
-          <div style={{ fontSize: 48 }}>⚠️</div>
-          <p style={{ color: '#ef4444', fontFamily: "'DM Sans', sans-serif", marginTop: 12 }}>{error || 'Request not found.'}</p>
+          <div style={{ fontSize: 48, color: '#ef4444' }}><i className="bi bi-exclamation-triangle" aria-hidden="true"></i></div>
+          <p style={{ color: '#ef4444', fontFamily: "inherit", marginTop: 12 }}>{error || 'Request not found.'}</p>
           <button onClick={() => navigate('/return-requests')} style={backBtnStyle}>← Back to list</button>
         </div>
       </div>
@@ -142,15 +140,14 @@ export default function ReturnRequestDetailPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#f8fafc', fontFamily: "'DM Sans', sans-serif" }}>
-      <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet" />
+    <div style={{ fontFamily: "inherit" }}>
 
       {/* Top Bar */}
       <div style={{ background: '#fff', borderBottom: '1px solid #e5e7eb', padding: '16px 36px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <button
             onClick={() => navigate('/return-requests')}
-            style={{ background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: "'DM Sans', sans-serif" }}
+            style={{ background: 'none', border: '1.5px solid #e5e7eb', borderRadius: 8, padding: '7px 14px', cursor: 'pointer', fontSize: 13, fontWeight: 600, color: '#374151', fontFamily: "inherit" }}
           >
             ← Back
           </button>
@@ -175,7 +172,7 @@ export default function ReturnRequestDetailPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* Request Information */}
-          <Card title="📋 Request Information">
+          <Card icon="bi-clipboard-check" title="Request Information">
             <Row label="Customer" value={
               <span>
                 <strong>{detail.buyerUsername || '—'}</strong>
@@ -189,7 +186,7 @@ export default function ReturnRequestDetailPage() {
           </Card>
 
           {/* Evidence Images */}
-          <Card title="🖼️ Evidence Images from Customer">
+          <Card icon="bi-images" title="Evidence Images from Customer">
             {images.length === 0 ? (
               <div style={{ padding: '24px 0', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
                 Customer has not provided any evidence images.
@@ -207,7 +204,7 @@ export default function ReturnRequestDetailPage() {
                       transition: 'border-color 0.2s, transform 0.2s',
                       flexShrink: 0,
                     }}
-                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#6366f1'; e.currentTarget.style.transform = 'scale(1.03)'; }}
+                    onMouseEnter={e => { e.currentTarget.style.borderColor = '#0064d2'; e.currentTarget.style.transform = 'scale(1.03)'; }}
                     onMouseLeave={e => { e.currentTarget.style.borderColor = '#e5e7eb'; e.currentTarget.style.transform = 'scale(1)'; }}
                   >
                     <img src={url} alt={`evidence-${i}`} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -218,7 +215,7 @@ export default function ReturnRequestDetailPage() {
           </Card>
 
           {/* Products in Order */}
-          <Card title="🛒 Products in Order">
+          <Card icon="bi-bag" title="Products in Order">
             {(!detail.orderItems || detail.orderItems.length === 0) ? (
               <p style={{ color: '#9ca3af', fontSize: 13 }}>No product data available.</p>
             ) : (
@@ -247,7 +244,7 @@ export default function ReturnRequestDetailPage() {
           </Card>
 
             {/* Timeline / Audit Log */}
-            <Card title="📜 Activity Timeline (Audit Log)">
+            <Card icon="bi-clock-history" title="Activity Timeline (Audit Log)">
               {(!detail.history || detail.history.length === 0) ? (
                 <div style={{ padding: '12px 0', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
                   No actions recorded yet.
@@ -257,7 +254,7 @@ export default function ReturnRequestDetailPage() {
                   {detail.history.map((item, i) => (
                     <div key={i} style={{ display: 'flex', gap: 12 }}>
                       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#6366f1', marginTop: 4 }}></div>
+                        <div style={{ width: 10, height: 10, borderRadius: '50%', background: '#0064d2', marginTop: 4 }}></div>
                         {i < detail.history.length - 1 && <div style={{ width: 1, flex: 1, background: '#e5e7eb', margin: '4px 0' }}></div>}
                       </div>
                       <div style={{ flex: 1, paddingBottom: i < detail.history.length - 1 ? 16 : 0 }}>
@@ -275,7 +272,7 @@ export default function ReturnRequestDetailPage() {
             </Card>
 
             {/* Chat Evidence */}
-            <Card title="💬 Buyer & Seller Chat History (Evidence)">
+            <Card icon="bi-chat-left-text" title="Buyer & Seller Chat History (Evidence)">
               {messages.length === 0 ? (
                 <div style={{ padding: '24px 0', textAlign: 'center', color: '#9ca3af', fontSize: 13 }}>
                   No conversation history found between the two parties.
@@ -310,7 +307,7 @@ export default function ReturnRequestDetailPage() {
                 </div>
               )}
               <p style={{ marginTop: 16, fontSize: 11, color: '#6b7280', fontStyle: 'italic', textAlign: 'center' }}>
-                ⚠️ Note: This is the full direct chat history between the parties on the eBay system.
+                <i className="bi bi-info-circle me-1" aria-hidden="true"></i>Note: This is the full direct chat history between the parties on the eBay system.
               </p>
             </Card>
           </div>
@@ -319,8 +316,8 @@ export default function ReturnRequestDetailPage() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
 
           {/* Order Summary */}
-          <Card title="📦 Order Summary">
-            <Row label="Order ID" value={<strong style={{ color: '#4f46e5' }}>#{detail.orderId}</strong>} />
+          <Card icon="bi-receipt" title="Order Summary">
+            <Row label="Order ID" value={<strong style={{ color: '#0064d2' }}>#{detail.orderId}</strong>} />
             <Row label="Order Date" value={detail.orderDate ? new Date(detail.orderDate).toLocaleDateString('en-US') : '—'} />
             <Row label="Order Status" value={detail.orderStatus} />
             <div style={{ borderTop: '1px dashed #e5e7eb', margin: '12px 0' }} />
@@ -331,7 +328,7 @@ export default function ReturnRequestDetailPage() {
             } />
             {detail.resolutionAction && (
               <Row label="Resolution Path" value={
-                <span style={{ fontWeight: 600, color: '#4f46e5' }}>
+                <span style={{ fontWeight: 600, color: '#0064d2' }}>
                   {detail.resolutionAction === 'RequireReturn' ? 'Return & Refund' : 
                    detail.resolutionAction === 'KeepItem' ? 'Keep Item & Refund' : 'Immediate Refund'}
                 </span>
@@ -339,14 +336,14 @@ export default function ReturnRequestDetailPage() {
             )}
             {detail.isRefundedByEbayFund && (
               <div style={{ background: '#fef9c3', padding: '4px 8px', borderRadius: 4, fontSize: 11, color: '#854d0e', marginTop: 8, textAlign: 'center' }}>
-                 🛡️ Paid by eBay Trust Fund
+                 <i className="bi bi-shield-check me-1" aria-hidden="true"></i>Paid by eBay Trust Fund
               </div>
             )}
           </Card>
 
           {/* Shipping Info */}
           {(detail.trackingNumber || detail.returnLabelUrl) && (
-            <Card title="🚚 Shipping Information">
+            <Card icon="bi-truck" title="Shipping Information">
               {detail.trackingNumber && <Row label="Tracking Number" value={<strong>{detail.trackingNumber}</strong>} />}
               {detail.deliveryStatus && <Row label="Delivery Status" value={detail.deliveryStatus} />}
               {detail.returnLabelUrl && (
@@ -354,10 +351,10 @@ export default function ReturnRequestDetailPage() {
                   <a href={detail.returnLabelUrl} target="_blank" rel="noreferrer" style={{
                     display: 'block', textAlign: 'center', padding: '8px', 
                     background: '#f3f4f6', borderRadius: 8, fontSize: 12, 
-                    color: '#4f46e5', fontWeight: 600, textDecoration: 'none',
+                    color: '#0064d2', fontWeight: 600, textDecoration: 'none',
                     border: '1.5px solid #e5e7eb'
                   }}>
-                    📄 View Return Label (PDF/Image)
+                    <i className="bi bi-file-earmark-text me-1" aria-hidden="true"></i>View Return Label (PDF/Image)
                   </a>
                 </div>
               )}
@@ -370,7 +367,7 @@ export default function ReturnRequestDetailPage() {
               background: '#fff', borderRadius: 14, padding: 24,
               border: '1px solid #e5e7eb', boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
             }}>
-              <h3 style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: '#111827' }}>⚖️ Decision Panel</h3>
+              <h3 style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: '#111827' }}><i className="bi bi-bank text-primary me-2" aria-hidden="true"></i>Decision Panel</h3>
               <p style={{ margin: '0 0 16px', fontSize: 12, color: '#6b7280' }}>
                 Select an action to process this request.
               </p>
@@ -379,13 +376,13 @@ export default function ReturnRequestDetailPage() {
                 onClick={() => { setModal('adjudicate'); setAdminNote(''); setSubmitError(''); }}
                 style={{
                   width: '100%', padding: '12px', borderRadius: 10,
-                  background: '#6366f1', color: '#fff', border: 'none',
+                  background: '#0064d2', color: '#fff', border: 'none',
                   fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "inherit",
                   marginBottom: 10, transition: 'background 0.2s',
                 }}
               >
-                ⚖️ Adjudicate
+                <i className="bi bi-bank me-1" aria-hidden="true"></i>Adjudicate
               </button>
 
               <div style={{ display: 'flex', gap: 10 }}>
@@ -395,11 +392,11 @@ export default function ReturnRequestDetailPage() {
                     flex: 1, padding: '10px', borderRadius: 10,
                     background: '#10b981', color: '#fff', border: 'none',
                     fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "inherit",
                     transition: 'background 0.2s',
                   }}
                 >
-                  ✅ Approve
+                  <i className="bi bi-check-circle me-1" aria-hidden="true"></i>Approve
                 </button>
                 <button
                   onClick={() => { setModal('reject'); setAdminNote(''); setSubmitError(''); }}
@@ -408,11 +405,11 @@ export default function ReturnRequestDetailPage() {
                     background: '#fff', color: '#ef4444',
                     border: '1.5px solid #ef4444',
                     fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "inherit",
                     transition: 'all 0.2s',
                   }}
                 >
-                  ❌ Reject
+                  <i className="bi bi-x-circle me-1" aria-hidden="true"></i>Reject
                 </button>
               </div>
 
@@ -424,11 +421,11 @@ export default function ReturnRequestDetailPage() {
                     background: '#f8fafc', color: '#475569',
                     border: '1.5px solid #e2e8f0',
                     fontWeight: 700, fontSize: 13, cursor: 'pointer',
-                    fontFamily: "'DM Sans', sans-serif",
+                    fontFamily: "inherit",
                     marginTop: 10, transition: 'all 0.2s',
                   }}
                 >
-                  ❄️ Freeze Request
+                  <i className="bi bi-snow me-1" aria-hidden="true"></i>Freeze Request
                 </button>
               )}
             </div>
@@ -440,7 +437,7 @@ export default function ReturnRequestDetailPage() {
                background: '#fff', borderRadius: 14, padding: 24,
                border: '1px solid #e5e7eb', boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
              }}>
-               <h3 style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: '#111827' }}>📮 Provide Return Label</h3>
+               <h3 style={{ margin: '0 0 6px', fontSize: 14, fontWeight: 700, color: '#111827' }}><i className="bi bi-mailbox text-primary me-2" aria-hidden="true"></i>Provide Return Label</h3>
                <p style={{ margin: '0 0 16px', fontSize: 12, color: '#6b7280' }}>
                  This request is waiting for the Admin to provide a return shipping label to the customer.
                </p>
@@ -450,11 +447,11 @@ export default function ReturnRequestDetailPage() {
                    width: '100%', padding: '12px', borderRadius: 10,
                    background: '#10b981', color: '#fff', border: 'none',
                    fontWeight: 700, fontSize: 14, cursor: 'pointer',
-                   fontFamily: "'DM Sans', sans-serif",
+                   fontFamily: "inherit",
                    transition: 'background 0.2s',
                  }}
                >
-                 📦 Upload Shipping Label
+                 <i className="bi bi-upload me-1" aria-hidden="true"></i>Upload Shipping Label
                </button>
              </div>
           )}
@@ -467,7 +464,7 @@ export default function ReturnRequestDetailPage() {
               borderRadius: 14, padding: 20, textAlign: 'center',
             }}>
               <div style={{ fontSize: 36, marginBottom: 8 }}>
-                {detail.status === 'Approved' ? '✅' : '❌'}
+                {detail.status === 'Approved' ? <i className="bi bi-check-circle-fill text-success" aria-hidden="true"></i> : <i className="bi bi-x-circle-fill text-danger" aria-hidden="true"></i>}
               </div>
               <p style={{ margin: 0, fontWeight: 700, color: detail.status === 'Approved' ? '#065f46' : '#991b1b', fontSize: 14 }}>
                 {detail.status === 'Approved' ? 'Refunded' : 
@@ -507,7 +504,7 @@ export default function ReturnRequestDetailPage() {
             <style>{`@keyframes slideUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }`}</style>
 
             <div style={{ fontSize: 36, textAlign: 'center', marginBottom: 12 }}>
-              {modal === 'approve' ? '✅' : modal === 'reject' ? '❌' : '⚖️'}
+              {modal === 'approve' ? <i className="bi bi-check-circle-fill text-success" aria-hidden="true"></i> : modal === 'reject' ? <i className="bi bi-x-circle-fill text-danger" aria-hidden="true"></i> : <i className="bi bi-bank text-primary" aria-hidden="true"></i>}
             </div>
             <h2 style={{ margin: '0 0 6px', textAlign: 'center', fontSize: 18, fontWeight: 700, color: '#111827' }}>
               {modal === 'approve' ? 'Confirm Approval' : modal === 'reject' ? 'Confirm Rejection' : modal === 'adjudicate' ? 'Adjudicate Request' : modal === 'freeze' ? 'Freeze Request' : 'Provide Shipping Label'}
@@ -555,7 +552,7 @@ export default function ReturnRequestDetailPage() {
                  <label style={{ display: 'block', fontSize: 13, fontWeight: 600, color: '#374151', marginBottom: 6 }}>
                     Shipping Label URL <span style={{ color: '#ef4444' }}>*</span>
                  </label>
-                 <input
+                 <input aria-label="https://example.com/labels/123.pdf"
                    type="text"
                    placeholder="https://example.com/labels/123.pdf"
                    value={returnLabelUrl}
@@ -563,7 +560,7 @@ export default function ReturnRequestDetailPage() {
                    style={{
                      width: '100%', padding: '10px 12px', borderRadius: 8,
                      border: '1.5px solid #e5e7eb', fontSize: 13,
-                     fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box',
+                     fontFamily: "inherit", boxSizing: 'border-box',
                      outline: 'none',
                    }}
                  />
@@ -581,17 +578,17 @@ export default function ReturnRequestDetailPage() {
                   style={{
                     width: '100%', padding: '10px 12px', borderRadius: 8,
                     border: '1.5px solid #e5e7eb', fontSize: 13, resize: 'vertical',
-                    fontFamily: "'DM Sans', sans-serif", boxSizing: 'border-box',
+                    fontFamily: "inherit", boxSizing: 'border-box',
                     outline: 'none',
                   }}
-                  onFocus={e => e.target.style.borderColor = '#6366f1'}
+                  onFocus={e => e.target.style.borderColor = '#0064d2'}
                   onBlur={e => e.target.style.borderColor = '#e5e7eb'}
                 />
               </>
             )}
 
             {submitError && (
-              <p style={{ color: '#ef4444', fontSize: 12, margin: '6px 0 0' }}>⚠️ {submitError}</p>
+              <p style={{ color: '#ef4444', fontSize: 12, margin: '6px 0 0' }}><i className="bi bi-exclamation-circle me-1" aria-hidden="true"></i>{submitError}</p>
             )}
 
             <div style={{ display: 'flex', gap: 10, marginTop: 20 }}>
@@ -602,7 +599,7 @@ export default function ReturnRequestDetailPage() {
                   flex: 1, padding: 12, borderRadius: 10,
                   border: '1.5px solid #e5e7eb', background: '#fff',
                   color: '#374151', fontWeight: 600, fontSize: 14,
-                  cursor: 'pointer', fontFamily: "'DM Sans', sans-serif",
+                  cursor: 'pointer', fontFamily: "inherit",
                 }}
               >
                 Cancel
@@ -613,11 +610,11 @@ export default function ReturnRequestDetailPage() {
                 style={{
                   flex: 1, padding: 12, borderRadius: 10,
                   border: 'none',
-                  background: (modal === 'approve' || modal === 'provideLabel') ? '#10b981' : modal === 'reject' ? '#ef4444' : '#6366f1',
+                  background: (modal === 'approve' || modal === 'provideLabel') ? '#10b981' : modal === 'reject' ? '#ef4444' : '#0064d2',
                   color: '#fff', fontWeight: 700, fontSize: 14,
                   cursor: submitting ? 'not-allowed' : 'pointer',
                   opacity: submitting ? 0.7 : 1,
-                  fontFamily: "'DM Sans', sans-serif",
+                  fontFamily: "inherit",
                 }}
               >
                 {submitting ? 'Processing...' : 
@@ -661,13 +658,15 @@ export default function ReturnRequestDetailPage() {
 
 /* ── Reusable sub-components ── */
 
-function Card({ title, children }) {
+function Card({ title, icon, children }) {
   return (
     <div style={{
       background: '#fff', borderRadius: 14, padding: 24,
       border: '1px solid #e5e7eb', boxShadow: '0 1px 6px rgba(0,0,0,0.04)',
     }}>
-      <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#111827' }}>{title}</h3>
+      <h3 style={{ margin: '0 0 16px', fontSize: 14, fontWeight: 700, color: '#111827', display: 'flex', alignItems: 'center', gap: 8 }}>
+        {icon && <i className={`bi ${icon} text-primary`} aria-hidden="true"></i>}{title}
+      </h3>
       {children}
     </div>
   );
@@ -684,18 +683,18 @@ function Row({ label, value }) {
 
 function StatusChip({ status }) {
   const map = {
-    Pending:               { bg: '#fef3c7', color: '#92400e', label: '⏳ Pending Review'    },
-    Approved:              { bg: '#d1fae5', color: '#065f46', label: '✅ Refunded'         },
-    Rejected:              { bg: '#fee2e2', color: '#991b1b', label: '❌ Rejected'         },
-    WaitingForReturnLabel: { bg: '#e0e7ff', color: '#3730a3', label: '📮 Waiting for Label' },
-    ReturnLabelProvided:   { bg: '#dcfce7', color: '#166534', label: '🚚 Label Provided'   },
-    Returned:              { bg: '#fef9c3', color: '#854d0e', label: '📦 Item Returned'     },
-    Escalated:             { bg: '#ffedd5', color: '#9a3412', label: '⚖️ Escalated'       },
-    AwaitingShipment:      { bg: '#e0f2fe', color: '#0369a1', label: '🚢 Awaiting Shipment' },
-    InTransit:             { bg: '#faf5ff', color: '#7e22ce', label: '✈️ In Transit'        },
-    Delivered:             { bg: '#ecfdf5', color: '#047857', label: '🏁 Delivered'         },
-    Completed:             { bg: '#f9fafb', color: '#111827', label: '🏁 Completed'         },
-    Frozen:                { bg: '#f1f5f9', color: '#475569', label: '❄️ Frozen'      },
+    Pending:               { bg: '#fef3c7', color: '#92400e', label: 'Pending Review'    },
+    Approved:              { bg: '#d1fae5', color: '#065f46', label: 'Refunded'         },
+    Rejected:              { bg: '#fee2e2', color: '#991b1b', label: 'Rejected'         },
+    WaitingForReturnLabel: { bg: '#e0e7ff', color: '#3730a3', label: 'Waiting for Label' },
+    ReturnLabelProvided:   { bg: '#dcfce7', color: '#166534', label: 'Label Provided'   },
+    Returned:              { bg: '#fef9c3', color: '#854d0e', label: 'Item Returned'     },
+    Escalated:             { bg: '#ffedd5', color: '#9a3412', label: 'Escalated'       },
+    AwaitingShipment:      { bg: '#e0f2fe', color: '#0369a1', label: 'Awaiting Shipment' },
+    InTransit:             { bg: '#faf5ff', color: '#7e22ce', label: 'In Transit'        },
+    Delivered:             { bg: '#ecfdf5', color: '#047857', label: 'Delivered'         },
+    Completed:             { bg: '#f9fafb', color: '#111827', label: 'Completed'         },
+    Frozen:                { bg: '#f1f5f9', color: '#475569', label: 'Frozen'      },
   };
   const s = map[status] || { bg: '#f3f4f6', color: '#374151', label: status };
   return (
@@ -703,7 +702,7 @@ function StatusChip({ status }) {
       background: s.bg, color: s.color,
       padding: '6px 16px', borderRadius: 20,
       fontSize: 13, fontWeight: 700,
-      fontFamily: "'DM Sans', sans-serif"
+      fontFamily: "inherit"
     }}>
       {s.label}
     </span>
@@ -712,8 +711,8 @@ function StatusChip({ status }) {
 
 const backBtnStyle = {
   marginTop: 16, padding: '9px 18px',
-  background: '#6366f1', color: '#fff',
+  background: '#0064d2', color: '#fff',
   border: 'none', borderRadius: 8,
   cursor: 'pointer', fontSize: 13, fontWeight: 600,
-  fontFamily: "'DM Sans', sans-serif",
+  fontFamily: "inherit",
 };

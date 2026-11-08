@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { productService } from '../../services/productService'; // Ensure correct path
 import { reviewsService } from '../../services/reviewsService';
+import { notify } from '../../utils/toast';
 
 export const ProductList = () => {
     const [products, setProducts] = useState([]);
@@ -104,11 +105,11 @@ export const ProductList = () => {
             // Call API using the service you defined
             await productService.reportProduct(reportingProductId, payload);
             
-            alert("Report sent successfully!");
+            notify("Report sent successfully!", 'success');
             handleCloseReport(); // Close modal after successful submission
         } catch (error) {
             console.error(error);
-            alert("Error sending report. Please try again.");
+            notify("Error sending report. Please try again.", 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -128,11 +129,11 @@ export const ProductList = () => {
 
             await reviewsService.createReview(payload);
             
-            alert("Review submitted successfully! It will be moderated if it contains sensitive content.");
+            notify("Review submitted successfully! It will be moderated if it contains sensitive content.", 'success');
             handleCloseReview();
         } catch (error) {
             console.error(error);
-            alert("Error submitting review.");
+            notify("Error submitting review.", 'error');
         } finally {
             setIsSubmitting(false);
         }
@@ -228,7 +229,7 @@ export const ProductList = () => {
                             {/* Bằng chứng */}
                             <div>
                                 <label style={{ display: 'block', fontSize: '13px', fontWeight: 'bold', marginBottom: '4px' }}>Evidence Link (Optional)</label>
-                                <input 
+                                <input aria-label="https://imgur.com/your-image" 
                                     type="text" 
                                     name="evidenceFiles" 
                                     value={reportData.evidenceFiles} 
@@ -321,7 +322,7 @@ export const ProductList = () => {
                                 />
                                 {reviewData.comment && ["scam", "fuck", "die"].some(w => reviewData.comment.toLowerCase().includes(w)) && (
                                     <p style={{ color: '#ef4444', fontSize: '12px', marginTop: '4px' }}>
-                                        ⚠️ Content contains sensitive words, it will be flagged by the system.
+                                        <i className="bi bi-exclamation-triangle me-1" aria-hidden="true"></i>Content contains sensitive words, it will be flagged by the system.
                                     </p>
                                 )}
                             </div>

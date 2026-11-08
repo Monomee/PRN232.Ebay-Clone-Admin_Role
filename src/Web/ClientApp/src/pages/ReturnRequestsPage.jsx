@@ -5,7 +5,7 @@ import { useNotificationHub } from '../hooks/useNotificationHub.js';
 
 const STATUS_TABS = [
   { key: 'NeedAction', label: 'Need Action',  color: '#ef4444' }, // Pending + Escalated + Frozen
-  { key: 'InProgress', label: 'In Progress',  color: '#6366f1' }, // WaitingLabel, Provided, Awaiting, Transit
+  { key: 'InProgress', label: 'In Progress',  color: '#0064d2' }, // WaitingLabel, Provided, Awaiting, Transit
   { key: 'Approved',   label: 'Refunded',     color: '#10b981' },
   { key: 'Rejected',   label: 'Rejected',     color: '#94a3b8' },
 ];
@@ -125,7 +125,7 @@ export default function ReturnRequestsPage() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', background: '#ffffff', fontFamily: "'Inter', sans-serif", padding: '28px 20px' }}>
+    <div style={{ minHeight: '100%', background: 'transparent', fontFamily: "inherit", padding: '4px 0 24px' }}>
       <div className="container-fluid" style={{ maxWidth: 1200 }}>
         {/* ── Page Header (Standardized) ── */}
         <div className="text-center mb-5">
@@ -182,7 +182,7 @@ export default function ReturnRequestsPage() {
                 <div className="col-md-5">
                   <div className="position-relative">
                     <i className="bi bi-search position-absolute top-50 start-0 translate-middle-y ms-3 text-secondary" style={{ fontSize: '0.85rem' }}></i>
-                    <input
+                    <input aria-label="Search Order ID"
                       type="text"
                       className="form-control form-control-sm border-0 bg-white rounded-pill ps-5 py-2 shadow-sm"
                       placeholder="Search Order ID..."
