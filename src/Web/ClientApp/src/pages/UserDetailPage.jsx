@@ -256,8 +256,10 @@ export function UserDetailPage() {
 
                 {/* ── Sign-ins: where and on which browser the account was used ── */}
                 <div className="card border-0 shadow-sm rounded-4 overflow-hidden">
-                  <div className="card-header bg-white border-bottom py-3 px-4">
+                  <div className="card-header bg-white border-bottom py-3 px-4 d-flex justify-content-between align-items-center">
                     <h5 className="mb-0 fw-bold text-dark"><i className="bi bi-clock-history me-2 text-primary"></i>Recent Sign-ins</h5>
+                    {/* DB-IP Lite licence (CC BY 4.0) requires this attribution where its data is shown */}
+                    <a href="https://db-ip.com" target="_blank" rel="noopener noreferrer" className="small text-muted">IP Geolocation by DB-IP</a>
                   </div>
                   <div className="card-body p-0">
                     <div className="table-responsive">

@@ -37,12 +37,15 @@ public class SensitiveLogHttpTests
             builder.UseEnvironment("Testing")
                 .UseSetting("ConnectionStrings:MyCnn", "Server=unused;Database=unused;Trusted_Connection=True;TrustServerCertificate=True")
                 .UseSetting("Security:EncryptionKey", Convert.ToBase64String(Enumerable.Repeat((byte)7, 32).ToArray()))
+                .UseSetting("Captcha:TurnstileSecretKey", "") // a real key in src/Web/appsettings.json would demand a real captcha
                 .UseSetting("Jwt:Key", SigningKey).UseSetting("Jwt:Issuer", "EbayCloneTest").UseSetting("Jwt:Audience", "EbayCloneTest");
             foreach (var (key, value) in Settings) builder.UseSetting(key, value);
             builder.ConfigureLogging(logging => logging.ClearProviders().AddConsole());
             builder.ConfigureTestServices(services =>
             {
                 services.RemoveAll<IHostedService>();
+                // src/Web/appsettings.json may hold real Gmail credentials: tests must never mail anyone.
+                services.RemoveAll<IEmailService>().AddSingleton(new Mock<IEmailService>().Object);
                 services.RemoveAll<DbContextOptions<ApplicationDbContext>>();
                 services.RemoveAll<IDbContextOptionsConfiguration<ApplicationDbContext>>();
                 services.AddDbContext<ApplicationDbContext>(o => o.UseInMemoryDatabase(_database));

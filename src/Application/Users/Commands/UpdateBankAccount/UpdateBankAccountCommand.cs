@@ -25,8 +25,21 @@ public class UpdateBankAccountCommandHandler(IApplicationDbContext db, IUser act
 
         if (string.IsNullOrWhiteSpace(request.BankName) || string.IsNullOrWhiteSpace(request.AccountName))
             throw Fail("BankName", "Vui lòng nhập tên ngân hàng và tên chủ tài khoản.");
-        if (AccountLinking.NormalizeBankAccount(request.AccountNumber) == null)
+        if (AccountLinking.NormalizeBankAccount(request.AccountNumber) is not { } accountNumber)
             throw Fail("AccountNumber", "Số tài khoản không hợp lệ.");
+
+        // One bank account, one seller: payouts of several shops landing in one account is the multi-account pattern
+        // (the monitor only acts on links to banned accounts). Same hash as AccountLinking.Extract.
+        var bankHash = encryption.ComputeHmac("bank:" + accountNumber);
+        var owners = await db.UserIdentifiers
+            .Where(i => i.Type == AccountLinking.Types.Bank && i.ValueHash == bankHash && i.UserId != userId)
+            .Select(i => i.UserId).Distinct().ToListAsync(ct);
+        if (owners.Count > 0)
+        {
+            log.Add("BankAccountReuse", "User", userId.ToString(), "Financial", new { linkedUserIds = owners });
+            await db.SaveChangesAsync(ct); // the attempt stays as evidence even though the change is refused
+            throw Fail("AccountNumber", "Tài khoản ngân hàng này đã được đăng ký cho một tài khoản khác.");
+        }
         if (AccountLinking.KycName(user.VerificationDocuments, encryption) is { } kycName && !AccountLinking.NamesMatch(kycName, request.AccountName))
             throw Fail("AccountName", "Tên chủ tài khoản phải trùng với tên trên giấy tờ đã xác minh.");
 

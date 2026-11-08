@@ -73,6 +73,9 @@ services:
       Redis__ConnectionString: "redis:6379"
       # Chỉ bật khi chạy JMeter (tài khoản test chưa bật 2FA). App từ chối khởi động nếu bật ở Production.
       Security__AllowApiWithout2FA: "${ALLOW_API_WITHOUT_2FA:-false}"
+      # Duyệt rủi ro user mới, monitor, settlement, payout. CHỈ bật ở instance 1: payout/settlement chưa có khóa
+      # chạy một lần (IRunOnceGuard), bật ở cả hai replica có thể trả tiền hai lần.
+      BackgroundJobs__Enabled: "true"
     restart: unless-stopped
 
   # ============================================================

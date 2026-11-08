@@ -3,7 +3,8 @@ using System.Text.Json;
 
 namespace EbayClone.Application.Users.Risk;
 
-public record IpLocation(double Latitude, double Longitude, string Place);
+/// Country: ISO code; sign-ins within one country never count as travel (see SignInMonitor.IsImpossibleTravel).
+public record IpLocation(double Latitude, double Longitude, string Place, string? Country = null);
 
 /// Offline IP lookups: "is this a server rather than a home/mobile connection" and "roughly where is it".
 public static class IpIntelligence
@@ -20,16 +21,15 @@ public static class IpIntelligence
         ("95.216.0.0/15", "Hetzner"), ("65.108.0.0/15", "Hetzner"),
         ("45.76.0.0/16", "Vultr"), ("45.77.0.0/16", "Vultr"));
 
-    // ponytail: sample country-level table so the rules can be demoed and tested offline (one machine, IPs sent via
-    // X-Forwarded-For). Production: MaxMind GeoLite2 City database. Country-level on purpose: switching between two
-    // ISPs of one country must never look like travel.
+    // Fallback when no city database is configured (GeoIp:DatabasePath, see UseLocator) and for offline tests
+    // (one machine, IPs sent via X-Forwarded-For).
     private static readonly (IPNetwork Network, IpLocation Location)[] Locations = Parse(
-        ("14.160.0.0/11", new IpLocation(21.03, 105.85, "Việt Nam (VNPT)")),
-        ("113.160.0.0/11", new IpLocation(21.03, 105.85, "Việt Nam (VNPT)")),
-        ("27.64.0.0/12", new IpLocation(21.03, 105.85, "Việt Nam (Viettel)")),
-        ("171.224.0.0/11", new IpLocation(21.03, 105.85, "Việt Nam (Viettel)")),
-        ("73.0.0.0/8", new IpLocation(39.83, -98.58, "United States (Comcast)")),
-        ("126.0.0.0/8", new IpLocation(35.68, 139.69, "Japan (SoftBank)")));
+        ("14.160.0.0/11", new IpLocation(21.03, 105.85, "Việt Nam (VNPT)", "VN")),
+        ("113.160.0.0/11", new IpLocation(21.03, 105.85, "Việt Nam (VNPT)", "VN")),
+        ("27.64.0.0/12", new IpLocation(21.03, 105.85, "Việt Nam (Viettel)", "VN")),
+        ("171.224.0.0/11", new IpLocation(21.03, 105.85, "Việt Nam (Viettel)", "VN")),
+        ("73.0.0.0/8", new IpLocation(39.83, -98.58, "United States (Comcast)", "US")),
+        ("126.0.0.0/8", new IpLocation(35.68, 139.69, "Japan (SoftBank)", "JP")));
 
     private static volatile (IPNetwork Network, string Provider)[] _datacenters = SampleDatacenters;
 
@@ -66,7 +66,18 @@ public static class IpIntelligence
             .Select(cidr => (IPNetwork.Parse(cidr!), "Google Cloud"))];
     }
 
-    public static IpLocation? Locate(string? ip) => Find(ip, Locations)?.Value;
+    private static volatile Func<IPAddress, IpLocation?>? _locator;
+
+    /// City-level database lookup (DB-IP Lite / MaxMind GeoLite2 .mmdb), set once at startup by Infrastructure.
+    public static void UseLocator(Func<IPAddress, IpLocation?>? locator) => _locator = locator;
+
+    public static IpLocation? Locate(string? ip)
+    {
+        if (_locator is { } locator && IPAddress.TryParse(ip?.Trim(), out var address)
+            && locator(address.IsIPv4MappedToIPv6 ? address.MapToIPv4() : address) is { } found)
+            return found;
+        return Find(ip, Locations)?.Value;
+    }
 
     /// Great-circle distance (haversine).
     public static double DistanceKm(double lat1, double lng1, double lat2, double lng2)

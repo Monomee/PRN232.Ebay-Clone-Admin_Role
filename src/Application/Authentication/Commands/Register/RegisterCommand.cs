@@ -34,6 +34,8 @@ public class RegisterCommandValidator : AbstractValidator<RegisterCommand>
     public RegisterCommandValidator()
     {
         RuleFor(x => x.Email).NotEmpty().EmailAddress().MaximumLength(100);
+        // A throwaway inbox makes the email code worthless: anyone can open a thousand of them.
+        RuleFor(x => x.Email).Must(e => !AccountLinking.IsDisposableEmail(e)).WithMessage("Không chấp nhận email dùng một lần.");
         RuleFor(x => x.Username).NotEmpty().Length(3, 50).Matches("^[A-Za-z0-9_.-]+$")
             .WithMessage("Tên đăng nhập chỉ gồm chữ không dấu, số và . _ -");
         RuleFor(x => x.Password).NotEmpty().MinimumLength(8).MaximumLength(72) // bcrypt reads at most 72 bytes
@@ -80,10 +82,18 @@ public class RegisterCommandHandler(IApplicationDbContext db, IEncryptionService
             await db.SaveChangesAsync(cancellationToken); // free the unique email before the new row is inserted
         }
 
+        // eBay user IDs are unique: a copy of a reputable seller's name is how buyers get fooled.
+        // Abandoned sign-ups (Unverified past UnverifiedExpiry) do not hold a name.
+        // ponytail: app check only (no unique index, the seed data was never checked); two sign-ups racing can both pass.
+        var username = request.Username.Trim();
+        var abandoned = now - EmailOtp.UnverifiedExpiry;
+        if (await db.Users.AnyAsync(u => u.Username == username && !(u.Status == EmailOtp.UnverifiedStatus && u.CreatedAt <= abandoned), cancellationToken))
+            throw Fail("Username", "Tên đăng nhập đã được sử dụng.");
+
         var user = new User
         {
             Email = email,
-            Username = request.Username.Trim(),
+            Username = username,
             Password = BCrypt.Net.BCrypt.HashPassword(request.Password),
             Role = request.Role,
             Status = EmailOtp.UnverifiedStatus,

@@ -60,6 +60,24 @@ public static class AccountLinking
         return signals;
     }
 
+    public static readonly TimeSpan SignupBurstWindow = TimeSpan.FromHours(24);
+
+    /// OwnSignals plus the ones that need the database (sign-up burst). Used wherever a sign-up is scored or shown.
+    public static async Task<List<RiskSignal>> OwnSignalsAsync(IApplicationDbContext db, User user, IEncryptionService encryption, CancellationToken ct)
+    {
+        var signals = OwnSignals(user, encryption);
+        // Private/loopback = our proxy or a dev box, never counted. LastLoginIp is the sign-up IP until the first sign-in.
+        if (NormalizeIp(user.LastLoginIp) != null && user.CreatedAt != default) // default: sign-up time unknown (and MinValue - 24h throws)
+        {
+            var since = user.CreatedAt - SignupBurstWindow;
+            var earlier = await db.Users.CountAsync(u => u.Id != user.Id && u.LastLoginIp == user.LastLoginIp
+                && u.CreatedAt >= since && u.CreatedAt <= user.CreatedAt, ct);
+            if (earlier >= Options.SignupBurstAccounts)
+                signals.Add(new($"{earlier} tài khoản khác đăng ký từ cùng IP trong {SignupBurstWindow.TotalHours:0} giờ", Options.SignupBurstWeight));
+        }
+        return signals;
+    }
+
     public static RiskAssessment Assess(IEnumerable<LinkedAccount> links, IEnumerable<RiskSignal> own)
     {
         var score = 0;

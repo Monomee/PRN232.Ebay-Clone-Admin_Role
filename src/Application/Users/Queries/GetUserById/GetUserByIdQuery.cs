@@ -56,7 +56,7 @@ public class GetUserByIdQueryHandler : IRequestHandler<GetUserByIdQuery, UserDto
         dto.MaskedNationalId = MaskNationalId(nationalId);
 
         var links = await AccountLinking.FindLinksAsync(_context, user, _encryption, cancellationToken);
-        var risk = AccountLinking.Assess(links, AccountLinking.OwnSignals(user, _encryption));
+        var risk = AccountLinking.Assess(links, await AccountLinking.OwnSignalsAsync(_context, user, _encryption, cancellationToken));
         dto.CurrentRiskScore = risk.Score;
         dto.RiskReasons = risk.Reasons.ToList();
         var linkedIds = links.Select(l => l.UserId).Distinct().ToList();

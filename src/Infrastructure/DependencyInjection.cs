@@ -77,6 +77,7 @@ public static class DependencyInjection
         builder.Services.AddHttpClient<IContentModerationService, OpenAiModerationService>();
         builder.Services.AddHttpClient<ICaptchaVerifier, TurnstileCaptchaVerifier>(c => c.Timeout = TimeSpan.FromSeconds(10));
         AccountLinking.Configure(builder.Configuration.GetSection("Risk").Get<RiskOptions>() ?? new RiskOptions());
+        GeoIpLocator.Configure(builder.Configuration["GeoIp:DatabasePath"]);
 
         if (builder.Configuration.GetValue<bool>("BackgroundJobs:Enabled"))
         {

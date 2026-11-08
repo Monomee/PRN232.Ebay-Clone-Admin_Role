@@ -165,6 +165,22 @@ public class RegisterTests
         await Should.ThrowAsync<ValidationException>(() => Register(Seller()));
     }
 
+    // Anti-clone: throwaway inboxes are refused, a username belongs to one account (abandoned sign-ups give it back).
+    [Test]
+    public async Task Register_DisposableEmailOrTakenUsername_IsRefused()
+    {
+        new RegisterCommandValidator().Validate(Seller("x@mailinator.com")).IsValid.ShouldBeFalse();
+
+        await Register(Seller());
+        var first = await _db.Users.SingleAsync();
+        await Should.ThrowAsync<ValidationException>(() => Register(Seller("other@example.com")));
+
+        first.CreatedAt = DateTimeOffset.UtcNow - EmailOtp.UnverifiedExpiry - TimeSpan.FromMinutes(1); // abandoned
+        await _db.SaveChangesAsync();
+        await Register(Seller("other@example.com"));
+        (await _db.Users.CountAsync(u => u.Username == "shop_1")).ShouldBe(2);
+    }
+
     [Test]
     public async Task Register_MailDown_AccountKeptAndCodeCanBeResent()
     {

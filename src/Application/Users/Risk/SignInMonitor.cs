@@ -73,6 +73,9 @@ public static class SignInMonitor
 
     public static bool IsImpossibleTravel(LoginHistory last, IpLocation now, DateTime at)
     {
+        // City-level geolocation of mobile networks is often a carrier hub far away (4G in Saigon located in Hanoi):
+        // within one country it is never treated as travel. The earlier sign-in's country comes from its stored IP.
+        if (now.Country != null && IpIntelligence.Locate(last.IpAddress)?.Country == now.Country) return false;
         var km = IpIntelligence.DistanceKm(last.Latitude!.Value, last.Longitude!.Value, now.Latitude, now.Longitude);
         var hours = Math.Max((at - last.CreatedAt).TotalHours, 1.0 / 60); // same-minute sign-ins: 1 minute
         return km >= MinTravelKm && km / hours > MaxPlausibleSpeedKmh;
