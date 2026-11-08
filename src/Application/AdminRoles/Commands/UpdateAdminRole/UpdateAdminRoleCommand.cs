@@ -1,4 +1,5 @@
 using EbayClone.Application.Common.Interfaces;
+using EbayClone.Domain.Constants;
 using EbayClone.Domain.Entities;
 using System.Text.Json;
 
@@ -21,11 +22,19 @@ public class UpdateAdminRoleCommandValidator : AbstractValidator<UpdateAdminRole
 public class UpdateAdminRoleCommandHandler(IApplicationDbContext context, ISensitiveDataLogger sensitiveLog, IUser actor)
     : IRequestHandler<UpdateAdminRoleCommand, bool>
 {
+    public static readonly HashSet<string> BuiltInRoles =
+        new([Roles.SuperAdmin, Roles.Administrator, Roles.Support, Roles.Monitor], StringComparer.OrdinalIgnoreCase);
+
     public async Task<bool> Handle(UpdateAdminRoleCommand request, CancellationToken cancellationToken)
     {
         var actorId = actor.GetRequiredActorId();
         var role = await context.AdminRoles.FindAsync([request.Id], cancellationToken);
         if (role == null) return false;
+        // Built-in roles are authorized by role name in code (Infrastructure DI); editing their stored
+        // permissions would show a change that does not happen.
+        if (BuiltInRoles.Contains(role.RoleName))
+            throw new Common.Exceptions.ValidationException([new FluentValidation.Results.ValidationFailure(nameof(request.Id),
+                "Built-in roles (SuperAdmin, Administrator, Support, Monitor) are defined in code and cannot be edited. Create a custom role instead.")]);
 
         var before = new { role.Description, role.Permissions };
         role.Description = request.Description;

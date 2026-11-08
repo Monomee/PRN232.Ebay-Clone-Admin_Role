@@ -30,6 +30,7 @@ Tóm tắt:
 - Trang **Admin Roles** (`/admin-roles`, SuperAdmin).
   - Tạo role mới, ví dụ *"QA Lead"*, và tick các quyền (checkbox).
   - Bấm **Edit** ở một role để sửa mô tả và quyền (`PUT /api/AdminRoles/roles/{id}`).
+  - Role có sẵn (SuperAdmin, Administrator, Support, Monitor) hiện chữ **Built-in**, không sửa được: quyền của chúng gắn với tên role trong code.
   - Tạo tài khoản admin và gán role cho tài khoản đó.
 - Server chỉ nhận **8 quyền cấp được** (`AdminPermissions.Grantable`). Gõ sai tên, hoặc cố cấp quyền chỉ dành cho SuperAdmin như `ManageAdminRoles`, thì bị 400.
 - Mỗi lần sửa role ghi `AdminActions` `UpdateAdminRole` (trước/sau) và `SensitiveDataLog` (`AdminPrivilege`).

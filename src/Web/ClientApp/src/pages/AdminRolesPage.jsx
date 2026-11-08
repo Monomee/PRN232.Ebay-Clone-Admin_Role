@@ -23,6 +23,8 @@ const GRANTABLE_PERMISSIONS = [
   ["ManageBroadcasts", "Broadcasts & emails"],
 ];
 const EMPTY_ROLE_FORM = { roleName: "", description: "", permissions: [] };
+// Authorized by role name in code, not by stored permissions: the server refuses to edit them.
+const BUILT_IN_ROLES = ["superadmin", "administrator", "support", "monitor"];
 
 export function AdminRolesPage() {
   const adminId = useMemo(() => getCurrentAdminId(), []);
@@ -368,9 +370,13 @@ export function AdminRolesPage() {
                           </div>
                         </td>
                         <td className="pe-4 text-end">
-                          <button className="btn btn-sm btn-outline-primary rounded-pill px-3" onClick={() => startEditRole(role)}>
-                            <i className="bi bi-pencil me-1"></i>Edit
-                          </button>
+                          {BUILT_IN_ROLES.includes(role.roleName.toLowerCase()) ? (
+                            <span className="text-muted x-small" title="Defined in code">Built-in</span>
+                          ) : (
+                            <button className="btn btn-sm btn-outline-primary rounded-pill px-3" onClick={() => startEditRole(role)}>
+                              <i className="bi bi-pencil me-1"></i>Edit
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

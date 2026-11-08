@@ -31,6 +31,19 @@ public class UpdateAdminRoleTests
         Assert.That(await handler.Handle(new(999, null, []), default), Is.False, "unknown role");
     }
 
+    // Support/Monitor/... get their access from the role name in code; an edit would change nothing real.
+    [Test]
+    public async Task BuiltInRole_CannotBeEdited()
+    {
+        using var db = new ApplicationDbContext(new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+        db.AdminRoles.Add(new AdminRole { Id = 2, RoleName = "Support", Permissions = "[]" });
+        await db.SaveChangesAsync();
+        var handler = new UpdateAdminRoleCommandHandler(db, new Mock<ISensitiveDataLogger>().Object, SensitiveLogTests.Actor("42", "SuperAdmin"));
+        Assert.ThrowsAsync<EbayClone.Application.Common.Exceptions.ValidationException>(() => handler.Handle(new(2, null, ["ViewDashboard"]), default));
+        Assert.That(await db.AdminActions.AnyAsync(), Is.False);
+    }
+
     [TestCase("ManageAdminRoles")] // SuperAdmin-only: checked by role, granting it would silently do nothing
     [TestCase("ViewAuditLogs")]
     [TestCase("managedisputes")]
