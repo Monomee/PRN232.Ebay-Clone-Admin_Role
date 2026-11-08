@@ -10,7 +10,9 @@ export const AdminNotifications = () => {
     const dropdownRef = useRef(null);
 
     useEffect(() => {
-        if (user) {
+        // Layout renders before ProtectedRoute redirects to /enable2FA; without 2FA the API answers 401
+        // and sessionGuard would send the user back to /login (Login → /enable2FA → Login loop).
+        if (user?.twoFactorEnabled) {
             loadNotifications();
         }
     }, [user]);
