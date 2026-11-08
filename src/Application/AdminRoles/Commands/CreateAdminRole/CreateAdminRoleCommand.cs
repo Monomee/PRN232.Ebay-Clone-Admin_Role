@@ -22,6 +22,8 @@ public class CreateAdminRoleCommandValidator : AbstractValidator<CreateAdminRole
             .NotEmpty().WithMessage("Role name is required.")
             .MustAsync(async (name, ct) => !await context.AdminRoles.AnyAsync(r => r.RoleName.ToLower() == name.Trim().ToLower(), ct))
             .WithMessage("A role with this name already exists.");
+        RuleForEach(v => v.Permissions).Must(p => AdminPermissions.Grantable.Contains(p))
+            .WithMessage(p => $"Unknown permission. Allowed: {string.Join(", ", AdminPermissions.Grantable)}.");
     }
 }
 

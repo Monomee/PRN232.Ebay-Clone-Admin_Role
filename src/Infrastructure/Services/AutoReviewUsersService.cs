@@ -82,6 +82,8 @@ public class AutoReviewUsersService : BackgroundService
                 var monitor = await AccountMonitor.RunAsync(monitorDb, encryption,
                     sp.GetRequiredService<ISensitiveDataLogger>(), DateTime.UtcNow, cancellationToken);
                 if (monitor != new MonitorResult(0, 0, 0)) _logger.LogWarning("Account monitor: {Result}", monitor);
+                var blocked = await IpBlocklist.AutoBlockAsync(monitorDb, sp.GetRequiredService<ISensitiveDataLogger>(), DateTime.UtcNow, cancellationToken);
+                if (blocked > 0) _logger.LogWarning("Blocked sign-up from {Count} network(s) with repeated bans.", blocked);
                 var purged = await SignInMonitor.PurgeOldAsync(monitorDb, DateTime.UtcNow, cancellationToken);
                 if (purged > 0) _logger.LogInformation("Deleted {Count} sign-in records older than {Days} days.", purged, SignInMonitor.Retention.TotalDays);
             }

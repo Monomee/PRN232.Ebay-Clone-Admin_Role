@@ -12,6 +12,13 @@ export function createRole(payload) {
   });
 }
 
+export function updateRole(id, payload) {
+  return apiRequest(`${endpoints.adminRoles}/roles/${id}`, {
+    method: "PUT",
+    body: payload,
+  });
+}
+
 export function getAdminUsers(query) {
   return apiRequest(`${endpoints.adminRoles}/users`, { query });
 }

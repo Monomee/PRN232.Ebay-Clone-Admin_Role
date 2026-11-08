@@ -2,6 +2,7 @@ using EbayClone.Application.AdminRoles;
 using EbayClone.Application.AdminRoles.Commands.AssignRole;
 using EbayClone.Application.AdminRoles.Commands.CreateAdminRole;
 using EbayClone.Application.AdminRoles.Commands.CreateAdminUser;
+using EbayClone.Application.AdminRoles.Commands.UpdateAdminRole;
 using EbayClone.Application.AdminRoles.Queries.GetAdminRoles;
 using EbayClone.Application.AdminRoles.Queries.GetAdminUsers;
 using EbayClone.Application.Common.Models;
@@ -21,6 +22,7 @@ public class AdminRoles : EndpointGroupBase
         // Roles management
         groupBuilder.MapGet("roles", GetRoles);
         groupBuilder.MapPost("roles", CreateRole);
+        groupBuilder.MapPut("roles/{id:int}", UpdateRole);
 
         // Admin users management
         groupBuilder.MapGet("users", GetAdminUsers);
@@ -48,6 +50,11 @@ public class AdminRoles : EndpointGroupBase
 
         return TypedResults.Created($"/api/AdminRoles/roles/{roleId}", roleId);
     }
+
+    public async Task<Results<NoContent, NotFound>> UpdateRole(ISender sender, int id, [FromBody] UpdateRoleRequest request) =>
+        await sender.Send(new UpdateAdminRoleCommand(id, request.Description, request.Permissions))
+            ? TypedResults.NoContent()
+            : TypedResults.NotFound();
 
     public async Task<Ok<PaginatedList<AdminUserRoleDto>>> GetAdminUsers(
         ISender sender,
@@ -100,5 +107,6 @@ public class AdminRoles : EndpointGroupBase
 
 // Request DTOs
 public record CreateRoleRequest(string RoleName, string? Description, List<string> Permissions, int CreatedBy);
+public record UpdateRoleRequest(string? Description, List<string> Permissions);
 public record CreateAdminUserRequest(string Username, string Email, string Password, int RoleId, int CreatedBy);
 public record AssignRoleRequest(int UserId, int RoleId, int AssignedBy);

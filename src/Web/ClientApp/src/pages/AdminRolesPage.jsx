@@ -8,14 +8,23 @@ import {
   createRole,
   getAdminRoles,
   getAdminUsers,
+  updateRole,
 } from "../services/adminRoleService";
 
-function splitPermissions(value) {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter((item) => item.length > 0);
-}
+// Must match AdminPermissions.Grantable on the server; anything else is rejected there.
+const GRANTABLE_PERMISSIONS = [
+  ["ViewDashboard", "View dashboard"],
+  ["ViewReports", "View revenue / growth reports"],
+  ["ManageUsers", "Manage users & sellers"],
+  ["ManageProducts", "Moderate products"],
+  ["ManageOrders", "Orders & return requests"],
+  ["ManageDisputes", "Disputes"],
+  ["ModerateReviews", "Reviews & feedback"],
+  ["ManageBroadcasts", "Broadcasts & emails"],
+];
+const EMPTY_ROLE_FORM = { roleName: "", description: "", permissions: [] };
+// Authorized by role name in code, not by stored permissions: the server refuses to edit them.
+const BUILT_IN_ROLES = ["superadmin", "administrator", "support", "monitor"];
 
 export function AdminRolesPage() {
   const adminId = useMemo(() => getCurrentAdminId(), []);
@@ -27,11 +36,8 @@ export function AdminRolesPage() {
   const [loadingRoles, setLoadingRoles] = useState(false);
   const [loadingUsers, setLoadingUsers] = useState(false);
   const [toast, setToast] = useState({ message: "", type: "success" });
-  const [roleForm, setRoleForm] = useState({
-    roleName: "",
-    description: "",
-    permissions: "",
-  });
+  const [roleForm, setRoleForm] = useState(EMPTY_ROLE_FORM);
+  const [editingRoleId, setEditingRoleId] = useState(null);
   const [adminForm, setAdminForm] = useState({
     username: "",
     email: "",
@@ -83,18 +89,43 @@ export function AdminRolesPage() {
   const submitCreateRole = async (event) => {
     event.preventDefault();
     try {
-      await createRole({
-        roleName: roleForm.roleName,
-        description: roleForm.description,
-        permissions: splitPermissions(roleForm.permissions),
-        createdBy: adminId,
-      });
-      setRoleForm({ roleName: "", description: "", permissions: "" });
-      showSuccess("Role created.");
+      if (editingRoleId) {
+        await updateRole(editingRoleId, { description: roleForm.description, permissions: roleForm.permissions });
+        showSuccess("Role updated. Admins holding it must sign in again.");
+      } else {
+        await createRole({
+          roleName: roleForm.roleName,
+          description: roleForm.description,
+          permissions: roleForm.permissions,
+          createdBy: adminId,
+        });
+        showSuccess("Role created.");
+      }
+      setRoleForm(EMPTY_ROLE_FORM);
+      setEditingRoleId(null);
       await loadRoles();
     } catch (error) {
       showError(error.message);
     }
+  };
+
+  const togglePermission = (permission) =>
+    setRoleForm(p => ({
+      ...p,
+      permissions: p.permissions.includes(permission)
+        ? p.permissions.filter(x => x !== permission)
+        : [...p.permissions, permission],
+    }));
+
+  const startEditRole = (role) => {
+    setEditingRoleId(role.id);
+    setRoleForm({ roleName: role.roleName, description: role.description || "", permissions: role.permissions || [] });
+    window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelEditRole = () => {
+    setEditingRoleId(null);
+    setRoleForm(EMPTY_ROLE_FORM);
   };
 
   const submitCreateAdmin = async (event) => {
@@ -160,7 +191,8 @@ export function AdminRolesPage() {
             <div className="card border-0 shadow-sm rounded-4 overflow-hidden h-100">
               <div className="card-header bg-white border-bottom py-3 px-4">
                 <h6 className="mb-0 fw-bold text-dark" style={{ letterSpacing: '-0.2px', fontSize: '1rem' }}>
-                  <i className="bi bi-plus-circle me-2 text-primary"></i>Define New Role
+                  <i className={`bi ${editingRoleId ? "bi-pencil-square" : "bi-plus-circle"} me-2 text-primary`}></i>
+                  {editingRoleId ? `Edit Role: ${roleForm.roleName}` : "Define New Role"}
                 </h6>
               </div>
               <div className="card-body p-4">
@@ -172,6 +204,7 @@ export function AdminRolesPage() {
                       placeholder="e.g. Sales Manager"
                       value={roleForm.roleName}
                       onChange={(e) => setRoleForm(p => ({ ...p, roleName: e.target.value }))}
+                      disabled={!!editingRoleId}
                       required
                       style={{ height: '44px', fontSize: '0.9rem' }}
                     />
@@ -187,20 +220,34 @@ export function AdminRolesPage() {
                     />
                   </div>
                   <div className="col-12">
-                    <label className="form-label fw-semibold small text-secondary mb-2">Permissions (Comma Separated)</label>
-                    <textarea
-                      className="form-control border shadow-none bg-light bg-opacity-25 rounded-3 px-3 py-3"
-                      rows="3"
-                      placeholder="e.g. orders.read, products.write, users.ban"
-                      value={roleForm.permissions}
-                      onChange={(e) => setRoleForm(p => ({ ...p, permissions: e.target.value }))}
-                      style={{ fontSize: '0.9rem' }}
-                    />
+                    <label className="form-label fw-semibold small text-secondary mb-2">Permissions</label>
+                    <div className="row g-1">
+                      {GRANTABLE_PERMISSIONS.map(([key, label]) => (
+                        <div className="col-sm-6" key={key}>
+                          <div className="form-check">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              id={`perm-${key}`}
+                              checked={roleForm.permissions.includes(key)}
+                              onChange={() => togglePermission(key)}
+                            />
+                            <label className="form-check-label small" htmlFor={`perm-${key}`}>{label}</label>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="form-text">Admin roles, audit/sensitive logs and system pages stay SuperAdmin-only.</div>
                   </div>
-                  <div className="col-12 pt-2">
-                    <button className="btn btn-primary w-100 rounded-3 fw-bold py-2 shadow-sm border-0" type="submit" style={{ height: '44px', fontSize: '0.9rem' }}>
-                      <i className="bi bi-shield-plus me-2"></i>Provision Role
+                  <div className="col-12 pt-2 d-flex gap-2">
+                    <button className="btn btn-primary flex-grow-1 rounded-3 fw-bold py-2 shadow-sm border-0" type="submit" style={{ height: '44px', fontSize: '0.9rem' }}>
+                      <i className={`bi ${editingRoleId ? "bi-save" : "bi-shield-plus"} me-2`}></i>{editingRoleId ? "Save Permissions" : "Provision Role"}
                     </button>
+                    {editingRoleId && (
+                      <button className="btn btn-outline-secondary rounded-3 px-4" type="button" onClick={cancelEditRole} style={{ height: '44px' }}>
+                        Cancel
+                      </button>
+                    )}
                   </div>
                 </form>
               </div>
@@ -290,7 +337,8 @@ export function AdminRolesPage() {
                       <th className="ps-4 py-3 border-0">Identity</th>
                       <th className="py-3 border-0">Responsibility</th>
                       <th className="py-3 border-0 text-center">Active Admins</th>
-                      <th className="py-3 border-0 pe-4">Permission Matrix</th>
+                      <th className="py-3 border-0">Permission Matrix</th>
+                      <th className="py-3 border-0 pe-4"></th>
                     </tr>
                   </thead>
                   <tbody>
@@ -320,6 +368,15 @@ export function AdminRolesPage() {
                             ))}
                             {(role.permissions || []).length > 5 && <span className="text-muted x-small">+{role.permissions.length - 5} more</span>}
                           </div>
+                        </td>
+                        <td className="pe-4 text-end">
+                          {BUILT_IN_ROLES.includes(role.roleName.toLowerCase()) ? (
+                            <span className="text-muted x-small" title="Defined in code">Built-in</span>
+                          ) : (
+                            <button className="btn btn-sm btn-outline-primary rounded-pill px-3" onClick={() => startEditRole(role)}>
+                              <i className="bi bi-pencil me-1"></i>Edit
+                            </button>
+                          )}
                         </td>
                       </tr>
                     ))}

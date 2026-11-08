@@ -57,6 +57,8 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>, 
     public virtual DbSet<UserIdentifier> UserIdentifiers { get; set; }
     public virtual DbSet<LoginHistory> LoginHistories { get; set; }
 
+    public virtual DbSet<IpBlock> IpBlocks { get; set; }
+
 
     public new Task<int> SaveChangesAsync(CancellationToken cancellationToken)
     {
@@ -554,6 +556,14 @@ public partial class ApplicationDbContext : IdentityDbContext<ApplicationUser>, 
             entity.HasIndex(e => new { e.UserId, e.CreatedAt });
             entity.HasIndex(e => e.DeviceHash);
             entity.HasOne<User>().WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Cascade);
+        });
+
+        modelBuilder.Entity<IpBlock>(entity =>
+        {
+            entity.Property(e => e.Network).HasMaxLength(64);
+            entity.Property(e => e.Reason).HasMaxLength(200);
+            entity.HasIndex(e => new { e.LiftedAt, e.ExpiresAt }); // active blocks, read on every sign-up
+            entity.HasIndex(e => e.Network);
         });
 
         // NEW: Apply configurations from assembly for new entities

@@ -69,6 +69,11 @@ public class RegisterCommandHandler(IApplicationDbContext db, IEncryptionService
 
         var email = request.Email.Trim().ToLowerInvariant();
         var now = DateTime.UtcNow;
+        if (await IpBlocklist.ActiveBlockAsync(db, request.RemoteIp, now, cancellationToken) is { } block)
+        {
+            logger.LogWarning("Sign-up refused: network {Network} is blocked (IpBlock {Id})", block.Network, block.Id);
+            throw Fail("Register", "Không thể đăng ký lúc này. Vui lòng thử lại sau hoặc liên hệ bộ phận hỗ trợ.");
+        }
         var existing = await db.Users.FirstOrDefaultAsync(u => u.Email == email, cancellationToken);
         if (existing != null)
         {

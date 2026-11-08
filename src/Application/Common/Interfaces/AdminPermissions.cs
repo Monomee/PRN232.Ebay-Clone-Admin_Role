@@ -1,3 +1,4 @@
+using EbayClone.Domain.Constants;
 using System.Text.Json;
 using Microsoft.EntityFrameworkCore;
 
@@ -8,6 +9,14 @@ namespace EbayClone.Application.Common.Interfaces;
 public static class AdminPermissions
 {
     public const string ClaimType = "permission";
+
+    /// Policies a custom role can grant (AddGrantablePolicy in Infrastructure DI). Admin-role management,
+    /// audit/sensitive logs and system pages check the SuperAdmin role itself and can never be granted.
+    public static readonly string[] Grantable =
+    [
+        Policies.ViewDashboard, Policies.ViewReports, Policies.ManageUsers, Policies.ManageProducts,
+        Policies.ManageOrders, Policies.ManageDisputes, Policies.ModerateReviews, Policies.ManageBroadcasts,
+    ];
 
     public static async Task<List<string>> GetAdminPermissionsAsync(this IApplicationDbContext context, int userId, CancellationToken cancellationToken)
     {
