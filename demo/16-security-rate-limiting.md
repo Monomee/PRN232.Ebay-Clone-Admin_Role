@@ -163,8 +163,6 @@ Kết quả đã chạy ngày 2026-11-09:
 
 ### Demo B: chặn brute-force login (1 phút)
 
-> Trên bản deploy, mọi người dùng đang chung bộ đếm của nginx (xem "Hạn chế đã biết" bên dưới). Chạy demo này sẽ làm **mọi người** không đăng nhập được trong khoảng 30 giây. Chỉ chạy lúc demo.
-
 ```bash
 for i in $(seq 1 10); do
   curl -s -o /dev/null -D - https://ebay.petlify.xyz/api/Auth/login -H "Content-Type: application/json" \
@@ -174,32 +172,55 @@ done
 # sau đó:     HTTP/1.1 429  x-ratelimit-source: Nginx-Gateway  (hoặc App-RateLimiter)
 ```
 
-### Demo C: khóa theo tài khoản, đổi IP cũng không lách được (2 phút)
+### Demo C: khóa theo tài khoản, đổi IP cũng không lách được (khoảng 80 giây, chạy bằng script)
 
-Lớp này tính theo **email** (Redis), nên chạy đúng trên bản deploy dù request đi qua bao nhiêu proxy. Dùng một tài khoản phụ, **không dùng superadmin**. Cách nhau 6 giây để không chạm giới hạn login 12 req/phút của nginx:
+Lớp này tính theo **email** (Redis). Dùng một tài khoản phụ có mật khẩu đã biết, **không dùng superadmin**, vì tài khoản bị khóa thật 15 phút.
 
 ```bash
-for i in $(seq 1 10); do
-  curl -s https://ebay.petlify.xyz/api/Auth/login -H "Content-Type: application/json" \
-    -d '{"email":"<email-tai-khoan-phu>","password":"sai-mat-khau"}' | head -c 150; echo
-  sleep 6
-done
+./scripts/demo-lockout.sh <email-tai-khoan-phu>                    # mặc định https://ebay.petlify.xyz
+./scripts/demo-lockout.sh <email> http://localhost:5000            # chạy local
 ```
 
-- Đăng nhập **đúng mật khẩu** trên https://ebay.petlify.xyz/login, kết quả: *"Tài khoản tạm thời bị khóa do nhập sai nhiều lần. Vui lòng thử lại sau 15 phút."*
-- Gỡ khóa sau demo, trên VPS:
-  ```bash
-  docker exec ebay_redis redis-cli --scan --pattern "ebay-count:*"
-  docker exec ebay_redis redis-cli DEL "<key login-fail của email đó>"
-  ```
+Script hỏi mật khẩu đúng (không hiện lên màn hình), rồi:
+1. gửi 10 lần sai mật khẩu. Gặp 429 thì tự chờ theo `Retry-After` rồi gửi lại, nên demo luôn **cả 2 lớp**: rate limit theo IP chặn trước, khóa theo email chặn sau;
+2. đăng nhập **đúng mật khẩu** → *"Tài khoản tạm thời bị khóa do nhập sai nhiều lần. Vui lòng thử lại sau 15 phút."*;
+3. in lệnh gỡ khóa.
+
+Kết quả đã chạy ngày 2026-11-09 (email không tồn tại, vẫn bị đếm), mất 77 giây:
+
+```
+Lần 1/10 sai mật khẩu: Email hoặc mật khẩu không đúng
+...
+Lần 7/10 sai mật khẩu: Email hoặc mật khẩu không đúng
+    429 do Nginx-Gateway chặn (rate limit theo IP), chờ 10s rồi gửi lại...
+Lần 8/10 sai mật khẩu: Email hoặc mật khẩu không đúng
+    429 do App-RateLimiter chặn (rate limit theo IP), chờ 60s rồi gửi lại...
+Lần 9/10 sai mật khẩu: Email hoặc mật khẩu không đúng
+Lần 10/10 sai mật khẩu: Email hoặc mật khẩu không đúng
+
+>>> Đăng nhập với mật khẩu ĐÚNG:
+    Tài khoản tạm thời bị khóa do nhập sai nhiều lần. Vui lòng thử lại sau 15 phút.
+```
+
+Gỡ khóa sau demo, trên VPS (script in sẵn lệnh này):
+
+```bash
+docker exec ebay_redis redis-cli DEL "ebay-count:login-fail:<email viết thường>"
+```
 
 ### Không demo được trên bản deploy
 
 - **Demo 2 (giả IP bằng `X-Forwarded-For`)**: Cloudflare và Caddy ghi đè header này, nên không giả IP từ bên ngoài được (đây cũng là điều mong muốn). Demo phần này ở local.
 
-### Hạn chế đã biết trên bản deploy: IP thật của người dùng
+### Demo D: chỉ máy spam bị chặn, người khác vẫn dùng được (1 phút)
 
-Đo được ngày 2026-11-09: gửi 140 request vào `captcha-config` trong chưa đầy 1 phút, từ cùng một máy, mà lớp app (`standard`, 60 req/phút/IP) không chặn lần nào. Nghĩa là app không thấy IP thật của client:
+1. Laptop chạy flood ở Demo A với 140 request. Kết quả ngày 2026-11-09: 65 × 200, 75 × 429 (61 do `App-RateLimiter`, 14 do `Nginx-Gateway`).
+2. Ngay sau đó, mở https://ebay.petlify.xyz trên **điện thoại dùng 4G** (tắt wifi): vào bình thường. Đã kiểm ngày 2026-11-09.
+3. Kết luận: bộ đếm tính theo IP của từng người, không phải chung cho cả trang.
+
+### IP thật của người dùng (đã sửa)
+
+Trước khi sửa, đo ngày 2026-11-09: gửi 140 request vào `captcha-config` trong chưa đầy 1 phút, từ cùng một máy, mà lớp app (`standard`, 60 req/phút/IP) không chặn lần nào. Nghĩa là app không thấy IP thật của client:
 
 - **nginx** đếm theo `$binary_remote_addr`, tức là IP của Caddy. **Mọi người dùng chung một bộ đếm**: giới hạn login 12 req/phút là của cả trang, không phải của từng người. Kiểm bằng `docker logs ebay_nginx_lb --tail 20`: cột đầu tiên là cùng một IP `172.x`.
 - **App** lần ngược `X-Forwarded-For` qua các proxy tin cậy (`172.16.0.0/12`), rồi dừng ở IP edge của Cloudflare. Bộ đếm của app vì vậy tính theo IP edge Cloudflare, không theo người dùng.
@@ -208,6 +229,8 @@ done
 Cách sửa:
 1. **(Đã sửa trong repo)** `nginx/nginx.vps.conf`, trong `http {}`: `set_real_ip_from 172.16.0.0/12; real_ip_header X-Forwarded-For; real_ip_recursive on;`. nginx lấy IP từ `X-Forwarded-For` mà Caddy gửi, thay vì IP của Caddy. Request gọi thẳng `http://<IP_VPS>:5000` từ Internet không nằm trong `172.16.0.0/12`, nên không giả IP được.
 2. **(Cần làm trên VPS)** Caddy, trong khối `ebay.petlify.xyz`: `reverse_proxy 127.0.0.1:5000 { header_up X-Forwarded-For {http.request.header.CF-Connecting-IP} }`. Cloudflare gửi IP thật trong `CF-Connecting-IP`. Chỉ an toàn khi origin chỉ nhận kết nối từ Cloudflare. Chưa có bước này thì nginx và app đếm theo IP edge của Cloudflare: đỡ hơn một bộ đếm chung cho cả trang, nhưng chưa tính theo từng người dùng. App tự đọc đúng IP nhờ `TrustedProxyNetworks`, không phải sửa code.
+
+Sau khi deploy bản sửa, đo lại ngày 2026-11-09: app chặn sau khoảng 60 + 5 request (đúng policy `standard`), còn điện thoại 4G không bị ảnh hưởng (Demo D).
 
 ---
 
