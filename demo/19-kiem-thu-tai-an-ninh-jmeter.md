@@ -83,6 +83,57 @@
    ```
 6. Nếu không đủ thời gian: mở thẳng báo cáo đã commit trong `tests/jmeter/results/baseline/` và `results/security/`.
 
+## Demo trên bản deploy: https://ebay.petlify.xyz
+
+### Khác gì so với chạy local
+
+| Ở local (`docker-compose.loadtest.yml`) | Ở bản deploy |
+|---|---|
+| 2 replica, bật `ALLOW_API_WITHOUT_2FA` | 1 instance, **2FA bắt buộc** (`Security__AllowApiWithout2FA=false`) |
+| `limit_req` của nginx đã tắt để đo tải | nginx giới hạn **25 req/giây** cho `/api/`, cả trang dùng chung một bộ đếm (file 16) |
+| Máy riêng | VPS 2 core / 4 GB chạy chung Petlify, có Cloudflare đứng trước |
+
+Hệ quả:
+- Plan **02, 03, 04** không chạy được trên bản deploy: bước login trong setUp nhận `requireTwoFactor=true`, không có cookie, nên mọi request trả 401. **Số liệu tải lấy từ môi trường local** (bảng kết quả ở trên).
+- Tải lên `/api/` từ một máy chủ yếu đo **rate limiter** (nhiều 429), không đo sức chịu của app. Đây là điều đáng demo: hệ thống tự bảo vệ khi bị dồn tải.
+- **Không chạy 100–500 thread lên bản deploy**: có thể làm sập cả Petlify, và Cloudflare có thể chặn IP máy test. Giữ ≤ 20 thread, ≤ 60 giây.
+
+Mọi plan đều đọc `protocol`, `host`, `port` từ property, nên chỉ cần thêm:
+
+```powershell
+cd tests\jmeter
+$prod = "-Jprotocol=https -Jhost=ebay.petlify.xyz -Jport=443"
+```
+
+### Demo A: an ninh, plan 11 (2FA) và plan 01 (brute-force) (2 phút)
+
+```powershell
+# Tài khoản thật trên bản deploy, đã bật 2FA
+.\scripts\run.ps1 -Plan 11-security-2fa -OutDir results\prod -Extra "$prod -Jadmin_email=<email> -Jadmin_password=<mat-khau>"
+
+# Brute-force: chờ ít nhất 60 giây sau lượt login trước. Mọi người dùng không đăng nhập được khoảng 30 giây (file 16, Demo B)
+.\scripts\run.ps1 -Plan 01-login-bruteforce -OutDir results\prod -Extra $prod
+```
+
+- Plan 11: đúng mật khẩu nhưng chưa qua 2FA thì **không có `auth_token`**; mã 2FA sai cũng không có.
+- Plan 01: request vượt giới hạn trả **429** kèm `Retry-After`. Trên bản deploy, lớp chặn thường là nginx (1 + burst 6 = 7 lần qua được). Nếu assertion ở request thứ 6 báo đỏ, chạy lại với `-Jbruteforce_allowed=7`.
+- Plan 10 (IP whitelist) và 12 (RBAC) không áp dụng: bản deploy whitelist `0.0.0.0/0`, và tài khoản Monitor/Support phải qua 2FA. Thay plan 12 bằng kiểm tra khách chưa đăng nhập:
+  ```bash
+  curl -s -o /dev/null -w "%{http_code}\n" https://ebay.petlify.xyz/api/Users   # 401
+  ```
+
+### Demo B: tải nhẹ để thấy rate limiter hoạt động dưới tải (3 phút, JMeter GUI)
+
+1. Mở JMeter GUI, tạo plan mới:
+   - **Thread Group**: 20 thread, ramp-up 10 giây, chạy 60 giây (tick *Specify Thread lifetime*).
+   - **HTTP Request Defaults**: Protocol `https`, Server `ebay.petlify.xyz`, Port `443`.
+   - 2 **HTTP Request**: `GET /` (trang SPA, không bị rate limit) và `GET /api/Auth/captcha-config`.
+   - Listener: **Summary Report** và **Response Time Graph**.
+2. Bấm Run, chỉ vào Summary Report:
+   - `GET /`: lỗi 0%, thời gian phản hồi ổn định → trang vẫn phục vụ được 20 người dùng cùng lúc.
+   - `GET /api/Auth/captcha-config`: có một phần **429**, nghĩa là nginx đã cắt phần vượt 25 req/giây. Mở View Results Tree, xem header `X-RateLimit-Source: Nginx-Gateway`.
+3. Kết luận: dồn tải không làm sập app, phần vượt bị chặn ở cửa vào. Số liệu năng lực (p95, throughput với 100 user) lấy từ bảng chạy local ở trên.
+
 ## Câu hỏi hay gặp
 
 | Câu hỏi | Trả lời |

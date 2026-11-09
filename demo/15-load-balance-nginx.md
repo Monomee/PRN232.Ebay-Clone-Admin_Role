@@ -90,9 +90,77 @@ Hoặc mở `http://localhost:5000` trên trình duyệt, DevTools > Network, xe
   - dispute detail: p95 khoảng 390 ms.
 - Chi tiết: file 19.
 
+## Demo trên bản deploy: https://ebay.petlify.xyz
+
+### Kiến trúc thật trên VPS
+
+```
+Trình duyệt ─▶ Cloudflare ─▶ Caddy (host VPS, chung với Petlify) ─▶ ebay_nginx_lb :5000 ─▶ api1:8080
+               (TLS, CDN)     (reverse proxy theo domain)            (nginx/nginx.vps.conf)    (1 instance)
+```
+
+- VPS chỉ có 2 core / 4 GB và chạy chung Petlify, nên `docker-compose.vps.yml` chỉ chạy **1 instance** (`api1`, giới hạn 450 MB). nginx vẫn đứng trước: rate limit, WebSocket SignalR, `/nginx-health`. Muốn scale thì chỉ cần thêm dòng `server` vào `upstream`.
+- Bản 2 instance đầy đủ chạy local bằng `docker-compose.yml` (Demo 1–4 ở trên).
+
+### Demo A: request đi qua từng lớp (30 giây)
+
+```bash
+curl -s -o /dev/null -D - https://ebay.petlify.xyz/api/Auth/captcha-config | grep -iE "^server|^via|x-backend-server"
+# Server: cloudflare                 <- lớp Cloudflare
+# via: 1.1 Caddy                     <- reverse proxy trên VPS
+# x-backend-server: 172.20.0.4:8080  <- nginx của eBay chọn instance api1
+```
+
+Trên trình duyệt: mở https://ebay.petlify.xyz, DevTools > Network, chọn một request `/api/...`, xem 3 header trên.
+
+```bash
+curl -s https://ebay.petlify.xyz/nginx-health    # healthy
+```
+
+### Demo B: bật tạm instance thứ 2 trên VPS để thấy round-robin và failover (5 phút, tùy chọn)
+
+> Tốn thêm khoảng 450 MB RAM. Trước khi làm, xem `free -m` trên VPS còn trống ít nhất 600 MB. Làm xong thì tắt đi.
+
+Trên VPS, trong `/opt/ebay-admin`:
+
+1. Thêm `api2` vào `docker-compose.vps.yml`: chép nguyên khối `api1`, đổi 2 dòng:
+   ```yaml
+     api2:
+       container_name: ebay_api_2
+       ...
+       environment:
+         ...
+         BackgroundJobs__Enabled: "false"   # job nền chỉ chạy ở api1
+   ```
+2. Thêm `api2` vào `upstream` trong `nginx/nginx.vps.conf`:
+   ```nginx
+   upstream backend_api {
+       server api1:8080 max_fails=3 fail_timeout=10s;
+       server api2:8080 max_fails=3 fail_timeout=10s;
+       keepalive 32;
+   }
+   ```
+3. Chạy:
+   ```bash
+   docker compose -f docker-compose.vps.yml up -d api2
+   docker exec ebay_nginx_lb nginx -s reload
+   ```
+4. Từ máy bất kỳ:
+   ```bash
+   for i in 1 2 3 4 5 6; do
+     curl -s -o /dev/null -D - https://ebay.petlify.xyz/api/Auth/captcha-config | grep -i x-backend-server
+   done
+   # 2 địa chỉ 172.20.0.x:8080 luân phiên
+   ```
+5. Failover: trên VPS chạy `docker stop ebay_api_1`, rồi refresh trang admin. Vẫn dùng được, vẫn đăng nhập, và `x-backend-server` chỉ còn 1 địa chỉ. Chạy `docker start ebay_api_1` để bật lại.
+6. Dọn dẹp: `docker compose -f docker-compose.vps.yml rm -sf api2`, xóa dòng `api2` trong `upstream`, rồi `docker exec ebay_nginx_lb nginx -s reload`.
+
+Hai instance dùng chung SQL Server và Redis có sẵn trên VPS, và cùng `Jwt__Key`, nên JWT do api1 cấp vẫn được api2 chấp nhận.
+
 ## Câu hỏi hay gặp
 
 | Câu hỏi | Trả lời |
 |---|---|
+| Sao bản deploy chỉ có 1 instance? | VPS 2 core / 4 GB chạy chung Petlify. Kiến trúc đã sẵn sàng chạy nhiều instance (stateless, Redis, nginx upstream); thêm instance chỉ là thêm một dòng `server` (Demo B) |
 | DB có phải điểm chết không (single point of failure)? | Có, SQL Server đang chạy 1 bản. Bản tiếp theo cần replica hoặc dùng DB managed. Nói thật là hạn chế |
 | Session lưu ở đâu? | Không lưu trong RAM của instance (stateless). JWT trong cookie, trạng thái chung nằm ở Redis và DB, nên request nào đi instance nào cũng được |
