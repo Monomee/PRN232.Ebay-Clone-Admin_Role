@@ -134,6 +134,83 @@ Plan `tests/jmeter/plans/01-login-bruteforce.jmx` (file 19):
 
 ---
 
+## Demo trên bản deploy: https://ebay.petlify.xyz
+
+Đường đi: Cloudflare → Caddy → `ebay_nginx_lb` (`nginx/nginx.vps.conf`, cùng 2 zone ở trên) → `api1`. Các lệnh dưới chạy được từ bất kỳ máy nào có Git Bash / Linux / macOS.
+
+### Demo A: nginx chặn flood ở cửa vào (30 giây)
+
+Gửi 80 request cùng lúc vào một endpoint vô hại:
+
+```bash
+seq 1 80 | xargs -P 80 -I{} curl -s -D - -o /dev/null https://ebay.petlify.xyz/api/Auth/captcha-config \
+  | grep -iE "^HTTP/|x-ratelimit-source" | sort | uniq -c
+```
+
+Kết quả đã chạy ngày 2026-11-09:
+
+```
+     71 HTTP/1.1 200 OK
+      9 HTTP/1.1 429 Too Many Requests
+      9 x-ratelimit-source: Nginx-Gateway
+```
+
+- 25 req/giây + burst 20 được qua, phần vượt bị nginx trả **429** ngay, không đến được app.
+- Xem body và `Retry-After` của một request bị chặn:
+  ```bash
+  seq 1 60 | xargs -P 60 -I{} curl -s -i https://ebay.petlify.xyz/api/Auth/captcha-config | grep -m1 -A12 "429"
+  ```
+
+### Demo B: chặn brute-force login (1 phút)
+
+> Trên bản deploy, mọi người dùng đang chung bộ đếm của nginx (xem "Hạn chế đã biết" bên dưới). Chạy demo này sẽ làm **mọi người** không đăng nhập được trong khoảng 30 giây. Chỉ chạy lúc demo.
+
+```bash
+for i in $(seq 1 10); do
+  curl -s -o /dev/null -D - https://ebay.petlify.xyz/api/Auth/login -H "Content-Type: application/json" \
+    -d '{"email":"nobody@test.local","password":"sai"}' | grep -iE "^HTTP/|x-ratelimit-source" | tr '\n' ' '; echo
+done
+# 6–7 lần đầu: HTTP/1.1 200   (login sai vẫn trả 200, success=false)
+# sau đó:     HTTP/1.1 429  x-ratelimit-source: Nginx-Gateway  (hoặc App-RateLimiter)
+```
+
+### Demo C: khóa theo tài khoản, đổi IP cũng không lách được (2 phút)
+
+Lớp này tính theo **email** (Redis), nên chạy đúng trên bản deploy dù request đi qua bao nhiêu proxy. Dùng một tài khoản phụ, **không dùng superadmin**. Cách nhau 6 giây để không chạm giới hạn login 12 req/phút của nginx:
+
+```bash
+for i in $(seq 1 10); do
+  curl -s https://ebay.petlify.xyz/api/Auth/login -H "Content-Type: application/json" \
+    -d '{"email":"<email-tai-khoan-phu>","password":"sai-mat-khau"}' | head -c 150; echo
+  sleep 6
+done
+```
+
+- Đăng nhập **đúng mật khẩu** trên https://ebay.petlify.xyz/login, kết quả: *"Tài khoản tạm thời bị khóa do nhập sai nhiều lần. Vui lòng thử lại sau 15 phút."*
+- Gỡ khóa sau demo, trên VPS:
+  ```bash
+  docker exec ebay_redis redis-cli --scan --pattern "ebay-count:*"
+  docker exec ebay_redis redis-cli DEL "<key login-fail của email đó>"
+  ```
+
+### Không demo được trên bản deploy
+
+- **Demo 2 (giả IP bằng `X-Forwarded-For`)**: Cloudflare và Caddy ghi đè header này, nên không giả IP từ bên ngoài được (đây cũng là điều mong muốn). Demo phần này ở local.
+
+### Hạn chế đã biết trên bản deploy: IP thật của người dùng
+
+Đo được ngày 2026-11-09: gửi 140 request vào `captcha-config` trong chưa đầy 1 phút, từ cùng một máy, mà lớp app (`standard`, 60 req/phút/IP) không chặn lần nào. Nghĩa là app không thấy IP thật của client:
+
+- **nginx** đếm theo `$binary_remote_addr`, tức là IP của Caddy. **Mọi người dùng chung một bộ đếm**: giới hạn login 12 req/phút là của cả trang, không phải của từng người. Kiểm bằng `docker logs ebay_nginx_lb --tail 20`: cột đầu tiên là cùng một IP `172.x`.
+- **App** lần ngược `X-Forwarded-For` qua các proxy tin cậy (`172.16.0.0/12`), rồi dừng ở IP edge của Cloudflare. Bộ đếm của app vì vậy tính theo IP edge Cloudflare, không theo người dùng.
+- Lớp 3 (khóa theo email) **không bị ảnh hưởng**.
+
+Cách sửa:
+1. **(Đã sửa trong repo)** `nginx/nginx.vps.conf`, trong `http {}`: `set_real_ip_from 172.16.0.0/12; real_ip_header X-Forwarded-For; real_ip_recursive on;`. nginx lấy IP từ `X-Forwarded-For` mà Caddy gửi, thay vì IP của Caddy. Request gọi thẳng `http://<IP_VPS>:5000` từ Internet không nằm trong `172.16.0.0/12`, nên không giả IP được.
+2. **(Cần làm trên VPS)** Caddy, trong khối `ebay.petlify.xyz`: `reverse_proxy 127.0.0.1:5000 { header_up X-Forwarded-For {http.request.header.CF-Connecting-IP} }`. Cloudflare gửi IP thật trong `CF-Connecting-IP`. Chỉ an toàn khi origin chỉ nhận kết nối từ Cloudflare. Chưa có bước này thì nginx và app đếm theo IP edge của Cloudflare: đỡ hơn một bộ đếm chung cho cả trang, nhưng chưa tính theo từng người dùng. App tự đọc đúng IP nhờ `TrustedProxyNetworks`, không phải sửa code.
+
+---
+
 ## Câu hỏi hay gặp
 
 | Câu hỏi | Trả lời |

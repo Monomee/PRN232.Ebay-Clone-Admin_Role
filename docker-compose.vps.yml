@@ -87,6 +87,8 @@ services:
       EmailSettings__SmtpServer: "smtp.gmail.com"
       EmailSettings__Port: "587"
       Redis__ConnectionString: "redis:6379"
+      Captcha__TurnstileSiteKey: "${TURNSTILE_SITE_KEY:-}"
+      Captcha__TurnstileSecretKey: "${TURNSTILE_SECRET_KEY:-}"
       # Duyệt rủi ro user mới, monitor, IP datacenter update, settlement, payout (Bắt buộc chạy trên instance duy nhất này)
       BackgroundJobs__Enabled: "true"
       # Cho phép truy cập từ Internet & Reverse Proxy (InternalIpMiddleware dùng chuẩn CIDR 0.0.0.0/0 & ::/0)
