@@ -50,38 +50,80 @@
 - **Tải:** biết hệ thống chịu được bao nhiêu người cùng lúc trước khi người dùng thật phát hiện ra. Tìm endpoint chậm (dispute detail chậm nhất, p95 390 ms).
 - **An ninh:** tự động hóa các tấn công cơ bản (brute-force, giả IP, bỏ qua 2FA, vượt quyền). Mỗi lần sửa code thì chạy lại để chắc không mở lỗ hổng cũ.
 
-## Kịch bản demo
+## Kịch bản demo (khoảng 10 phút)
 
-> Cần Java 17 và JMeter 5.6.x, biến `JMETER_HOME`. Chạy trong PowerShell.
+Phần đo tải demo **trên local**. Bản deploy bắt buộc 2FA và có rate limit, nên các plan đo tải không chạy được lên đó. Bản deploy chỉ dùng cho phần an ninh và một bài tải nhẹ (bước 6, 7).
 
-1. Khởi động môi trường đo tải:
+### Chuẩn bị (trước buổi demo)
+
+1. Cài JMeter 5.6.3 (bản zip trên apache.org), giải nén, đặt biến `JMETER_HOME` trỏ vào thư mục đó. JMeter 5.6 chạy được trên Java 8, nhưng nên dùng Java 17. Các lệnh chạy trong PowerShell.
+2. Khởi động môi trường đo tải. Môi trường này có 2 replica, tắt `limit_req` và cho gọi API không cần 2FA, chỉ dùng để đo:
    ```powershell
    docker compose -f docker-compose.yml -f docker-compose.loadtest.yml up -d --build
    ```
-2. **Plan tải** (khoảng 2 phút). Script dùng đường dẫn tương đối, nên phải đứng trong `tests\jmeter`:
-   ```powershell
-   cd tests\jmeter
-   .\scripts\run.ps1 -Plan 02-dashboard-stats
-   ```
-   Trong lúc chờ:
-   - mở JMeter GUI với plan đó, chỉ vào Thread Group (100 thread, ramp-up), setUp Thread Group (login 1 lần, chia sẻ token), các assertion;
-   - giải thích: token nằm trong cookie HttpOnly, nên plan dùng Regex Extractor lấy `auth_token` từ header (README mục ghi chú kỹ thuật).
-3. Mở báo cáo HTML vừa sinh (`tests/jmeter/results/<plan>-<giờ chạy>/index.html`):
-   - bảng **Statistics**: số request, lỗi %, p95, throughput;
-   - biểu đồ **Response Time Over Time**.
-4. **Plan an ninh**, chạy nhanh từng cái:
-   ```powershell
-   .\scripts\run.ps1 -Plan 12-security-rbac
-   .\scripts\run.ps1 -Plan 11-security-2fa
-   ```
-   Mở `View Results Tree`:
-   - Monitor gọi `/api/Users` → 403 ✅;
-   - không có `2fa_challenge` → không có `auth_token` ✅.
-5. **Brute-force** (chạy riêng, cách lượt trước ít nhất 60 giây, với 1 replica để thấy 429 ở lớp app):
-   ```powershell
-   .\scripts\run.ps1 -Plan 01-login-bruteforce
-   ```
-6. Nếu không đủ thời gian: mở thẳng báo cáo đã commit trong `tests/jmeter/results/baseline/` và `results/security/`.
+3. Chạy thử một plan trước buổi demo để chắc chắn sinh được báo cáo.
+
+### Bước 1: giới thiệu bộ test (1 phút)
+
+Chỉ vào `tests/jmeter/`:
+- `plans/`: 4 plan tải (00, 02, 03, 04) và 4 plan an ninh (01, 10, 11, 12);
+- `config/`: cấu hình 100 user mặc định, `load-500` cho 500 user;
+- `data/*.csv`: dữ liệu đầu vào;
+- `scripts/run.ps1`: chạy một plan và xuất báo cáo HTML.
+
+### Bước 2: chạy một plan tải trên local (khoảng 2 phút chờ)
+
+Script dùng đường dẫn tương đối, nên phải đứng trong `tests\jmeter`:
+
+```powershell
+cd tests\jmeter
+.\scripts\run.ps1 -Plan 02-dashboard-stats
+```
+
+Trong lúc chờ, mở JMeter GUI với plan này và chỉ vào:
+- **Thread Group**: 100 thread, có ramp-up;
+- **setUp Thread Group**: login 1 lần, lấy `auth_token` từ header bằng Regex Extractor rồi chia cho mọi thread. Token nằm trong cookie HttpOnly nên phải lấy từ header (README mục ghi chú kỹ thuật);
+- các **Assertion**: kiểm status 200 và JSON trả về đúng.
+
+### Bước 3: đọc báo cáo (1 phút)
+
+Mở `tests\jmeter\results\02-dashboard-stats-<giờ chạy>\report\index.html`:
+- bảng **Statistics**: số request, % lỗi, p95, throughput;
+- biểu đồ **Response Time Over Time**.
+
+### Bước 4: so sánh khi tải tăng (1 phút, không cần chạy lại)
+
+Mở các báo cáo đã commit trong `tests/jmeter/results/baseline/`:
+- `02-dashboard-stats-100u`, `-200u`, `-500u`: cùng endpoint, tải tăng thì p95 thay đổi thế nào;
+- con số nên nêu (100 user, 2 replica): dashboard p95 khoảng **50 ms**, users/orders khoảng **244 ms**, dispute detail khoảng **390 ms** (chậm nhất), **0 lỗi**;
+- `results/cluster/`: kết quả so sánh 1 và 2 replica, dùng để nối sang phần load balance (file 15).
+
+### Bước 5: plan an ninh trên local (2 phút)
+
+```powershell
+.\scripts\run.ps1 -Plan 12-security-rbac   # Monitor gọi /api/Users bị 403, khách chưa đăng nhập bị 401
+.\scripts\run.ps1 -Plan 11-security-2fa    # chưa qua 2FA thì không có auth_token
+```
+
+Mở **View Results Tree** để chỉ từng ca đạt.
+
+Brute-force: chạy riêng, cách lượt login trước ít nhất 60 giây, với 1 replica để thấy 429 ở lớp app:
+
+```powershell
+.\scripts\run.ps1 -Plan 01-login-bruteforce
+```
+
+### Bước 6: plan an ninh lên bản deploy (2 phút)
+
+Plan 11 và 01 với `-Jprotocol=https -Jhost=ebay.petlify.xyz -Jport=443`. Lệnh và kết quả mong đợi ở mục "Demo trên bản deploy", Demo A, bên dưới.
+
+### Bước 7: bài tải nhẹ lên bản deploy (2 phút, tùy chọn)
+
+20 thread chạy 60 giây, gọi `GET /` và `GET /api/Auth/captcha-config`. Cách dựng plan ở mục "Demo trên bản deploy", Demo B, bên dưới. Ý chính cần nói: dồn tải không làm sập app, phần vượt bị chặn ngay ở cửa vào.
+
+### Dự phòng
+
+Nếu JMeter trục trặc lúc demo, mở thẳng các báo cáo HTML đã commit trong `tests/jmeter/results/baseline/` và `results/security/`. Như vậy vẫn đủ số liệu để trình bày.
 
 ## Demo trên bản deploy: https://ebay.petlify.xyz
 
@@ -139,4 +181,6 @@ $prod = "-Jprotocol=https -Jhost=ebay.petlify.xyz -Jport=443"
 | Câu hỏi | Trả lời |
 |---|---|
 | Sao phải bật `ALLOW_API_WITHOUT_2FA`? | JMeter không tự sinh được mã TOTP cho mỗi thread. Cờ này chỉ dùng trong môi trường đo tải, và app **từ chối khởi động** nếu bật ở Production |
-| 500 user thì sao? | Dùng profile `config/load-500.properties` (ghi đè số thread, ramp-up, thời gian) |
+| 500 user thì sao? | Có kết quả sẵn trong `results/baseline/*-500u`. Muốn chạy lại thì dùng profile `config/load-500.properties` (`-Profile load-500`) |
+| Endpoint nào chậm nhất? | Dispute detail, p95 khoảng 390 ms. Đây là chỗ nên tối ưu tiếp |
+| Sao không đo tải trên bản deploy? | Bản deploy bắt buộc 2FA (plan 02–04 bị 401), có rate limit 25 req/giây ở nginx, và VPS 2 core chạy chung Petlify. Đo tải lên đó chủ yếu là đo rate limiter |
